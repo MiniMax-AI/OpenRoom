@@ -1,0 +1,690 @@
+// EvidenceVault - Evidence Archive
+// Aoi-Dark dark theme + EvidenceVault style reference
+
+// ========== Aoi-Dark Tokens ==========
+$bg-1: #121214;
+$bg-2: #1c1d20;
+$bg-3: #282a2a;
+$grouped-4: #333333;
+$grouped-5: #404040;
+
+$fill-white-20: rgba(255, 255, 255, 0.2);
+$fill-white-15: rgba(255, 255, 255, 0.15);
+$fill-white-10: rgba(255, 255, 255, 0.1);
+$fill-white-6: rgba(255, 255, 255, 0.06);
+$fill-white-4: rgba(255, 255, 255, 0.04);
+$fill-white-2: rgba(255, 255, 255, 0.02);
+
+$text-primary: rgba(255, 255, 255, 0.9);
+$text-secondary: rgba(255, 255, 255, 0.75);
+$text-tertiary: rgba(255, 255, 255, 0.6);
+$text-quaternary: rgba(255, 255, 255, 0.5);
+$text-disabled: rgba(255, 255, 255, 0.35);
+
+$yellow: #faea5f;
+$cyan: #2ea7ff;
+$red: #ff3f4d;
+$purple: #7660ff;
+
+$mask-heavy: rgba(0, 0, 0, 0.7);
+
+$font-ui:
+  -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei',
+  sans-serif;
+
+// ========== Root Container ==========
+.vault {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  background: $bg-1;
+  color: $text-primary;
+  font-family: $font-ui;
+  overflow: hidden;
+}
+
+// ========== Sidebar ==========
+.sidebar {
+  width: 240px;
+  min-width: 200px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: $bg-2;
+  border-right: 1px solid $fill-white-6;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.sidebarHeader {
+  padding: 24px 24px 20px;
+  border-bottom: 1px solid $fill-white-6;
+}
+
+.sidebarTitle {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: $text-primary;
+  margin-bottom: 4px;
+}
+
+.sidebarSubtitle {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: $text-disabled;
+}
+
+.sidebarNav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: $fill-white-6;
+    border-radius: 2px;
+  }
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 24px;
+  font-size: 13px;
+  color: $text-tertiary;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+
+  &:hover {
+    color: $text-primary;
+    background: $fill-white-4;
+  }
+
+  &.navActive {
+    color: $text-primary;
+    background: $fill-white-6;
+  }
+}
+
+.navCount {
+  margin-left: auto;
+  font-size: 11px;
+  opacity: 0.5;
+}
+
+.navDivider {
+  height: 1px;
+  background: $fill-white-6;
+  margin: 8px 24px;
+}
+
+.sidebarFooter {
+  padding: 20px 24px;
+  border-top: 1px solid $fill-white-6;
+}
+
+.statusLabel {
+  font-size: 11px;
+  color: $text-disabled;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  background: #22c55e;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+.statusText {
+  font-size: 13px;
+  color: $text-secondary;
+}
+
+// ========== Main Content ==========
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+// ========== Header ==========
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid $fill-white-6;
+  flex-shrink: 0;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.headerTitle {
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.headerDecoration {
+  width: 4px;
+  height: 16px;
+  background: $yellow;
+  border-radius: 2px;
+  margin-right: 12px;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.categorySelect {
+  background: $bg-3;
+  border: 1px solid $fill-white-10;
+  border-radius: 8px;
+  color: $text-secondary;
+  font-size: 12px;
+  padding: 8px 12px;
+  outline: none;
+  cursor: pointer;
+
+  option {
+    background: $bg-2;
+    color: $text-primary;
+  }
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: $bg-3;
+  border: 1px solid $fill-white-6;
+  border-radius: 8px;
+  padding: 8px 12px;
+  min-width: 180px;
+  transition: border-color 0.15s;
+  color: $text-quaternary;
+
+  &:focus-within {
+    border-color: $cyan;
+  }
+
+  input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 13px;
+    color: $text-primary;
+    font-family: $font-ui;
+
+    &::placeholder {
+      color: $text-quaternary;
+    }
+  }
+}
+
+// ========== Content Area ==========
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: $fill-white-6;
+    border-radius: 2px;
+  }
+}
+
+// ========== Card Grid ==========
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+// ========== Evidence Card ==========
+.card {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  background: $bg-3;
+  border: 1px solid $fill-white-6;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    background: $grouped-4;
+    border-color: $fill-white-10;
+  }
+}
+
+.cardIconContainer {
+  flex-shrink: 0;
+  position: relative;
+}
+
+.cardIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cardContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.cardTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardTag {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cardDesc {
+  font-size: 12px;
+  color: $text-tertiary;
+  margin: 0 0 8px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  color: $text-quaternary;
+}
+
+.cardMetaItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+// ========== Detail Modal ==========
+.detailOverlay {
+  position: fixed;
+  inset: 0;
+  background: $mask-heavy;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 24px;
+}
+
+.detailModal {
+  width: 100%;
+  max-width: 800px;
+  max-height: 90%;
+  background: $bg-2;
+  border-radius: 16px;
+  border: 1px solid $fill-white-10;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.detailHeader {
+  padding: 20px 24px;
+  border-bottom: 1px solid $fill-white-6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(30, 30, 30, 0.4);
+  flex-shrink: 0;
+}
+
+.detailHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.detailBackBtn {
+  background: $fill-white-10;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: $text-primary;
+  flex-shrink: 0;
+  transition: background 0.15s;
+
+  &:hover {
+    background: $fill-white-15;
+  }
+}
+
+.detailTypeLabel {
+  font-size: 12px;
+  color: $text-quaternary;
+  margin-bottom: 2px;
+  letter-spacing: 1px;
+}
+
+.detailTitle {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.detailHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.detailImpactBadge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.detailCloseBtn {
+  background: transparent;
+  border: none;
+  color: $text-quaternary;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+
+  &:hover {
+    color: $text-primary;
+  }
+}
+
+.detailBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: $fill-white-6;
+    border-radius: 2px;
+  }
+}
+
+.detailInner {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+// ========== Metadata Grid ==========
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: $fill-white-2;
+  border-radius: 12px;
+  border: 1px solid $fill-white-4;
+}
+
+.metaItem {
+  // no extra styles needed
+}
+
+.metaLabel {
+  font-size: 11px;
+  color: $text-quaternary;
+  margin-bottom: 4px;
+}
+
+.metaValue {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+// ========== Tags ==========
+.tagsSection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.tagItem {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: $fill-white-4;
+  color: $text-tertiary;
+  border: 1px solid $fill-white-6;
+}
+
+// ========== Detail Sections ==========
+.detailSection {
+  margin-bottom: 32px;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  color: $text-quaternary;
+  text-transform: uppercase;
+  margin: 0 0 12px;
+  letter-spacing: 1px;
+  font-weight: 400;
+}
+
+.sectionText {
+  font-size: 16px;
+  line-height: 1.6;
+  color: $text-secondary;
+  margin: 0;
+}
+
+.contentBlock {
+  padding: 24px;
+  background: $bg-1;
+  border-radius: 12px;
+  border: 1px solid $fill-white-6;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  white-space: pre-wrap;
+  line-height: 1.6;
+  font-size: 14px;
+  color: rgba(212, 212, 216, 1);
+}
+
+// ========== Impact Analysis ==========
+.impactGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.impactPositive {
+  padding: 20px;
+  background: rgba(34, 197, 94, 0.08);
+  border-radius: 12px;
+  border: 1px solid rgba(34, 197, 94, 0.16);
+}
+
+.impactNegative {
+  padding: 20px;
+  background: rgba(255, 63, 77, 0.08);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 63, 77, 0.16);
+}
+
+.impactLabel {
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+
+  .impactPositive & {
+    color: #22c55e;
+  }
+  .impactNegative & {
+    color: #ff3f4d;
+  }
+}
+
+.impactText {
+  font-size: 14px;
+  line-height: 1.5;
+  color: $text-secondary;
+  margin: 0;
+}
+
+// ========== Empty / Loading / Error States ==========
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: $text-disabled;
+}
+
+.emptyText {
+  font-size: 16px;
+  margin-top: 16px;
+}
+
+.loadingState {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid $fill-white-10;
+  border-top-color: $yellow;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.errorState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: $text-tertiary;
+}
+
+.errorTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 16px;
+}
+
+.errorText {
+  font-size: 14px;
+  color: $text-quaternary;
+  margin-top: 8px;
+}
+
+// ========== Responsive ==========
+@media (max-width: 768px) {
+  .metaGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .impactGrid {
+    grid-template-columns: 1fr;
+  }
+  .detailBody {
+    padding: 20px;
+  }
+  .detailHeader {
+    padding: 16px 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 12px 16px;
+  }
+  .content {
+    padding: 16px;
+  }
+  .searchBox {
+    min-width: 120px;
+  }
+}

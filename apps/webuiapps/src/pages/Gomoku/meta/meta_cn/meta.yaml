@@ -1,0 +1,103 @@
+app_id: 9
+app_name: gomoku
+app_display_name: 五子棋
+version: "1.0.0"
+description: >
+  五子棋对弈应用。对局数据存储在 history/ 目录，state.json 保存统计与当前对局状态。
+  支持 PLACE_STONE/UNDO_MOVE/NEW_GAME/SURRENDER 操作类指令，以及 CRUD 和 REFRESH 数据变更指令。
+  本文件仅定义 Agent 下发给前端的操作指令，用户本地操作由前端代码自行处理和上报。
+displayDesc: >
+  经典五子棋对弈，在 15x15 棋盘上与 AI 一决高下。开局自由选择执黑或执白，支持悔棋和历史战绩回顾。
+
+# ============================================================
+# 以下 actions 仅用于 Agent → 前端 的指令下发。
+# Agent 在调用这些 action 之前，应当已经完成了云端文件的写入/修改/删除，
+# 下发 action 的目的是通知前端从云端同步最新数据并刷新 UI。
+# ============================================================
+
+actions:
+  # ========== 操作类 Action ==========
+  # 直接执行 App 方法，数据不匹配时返回 error
+
+  - type: PLACE_STONE
+    name: 落子
+    description: >
+      Agent 在棋盘指定位置落子。仅在 Agent 回合时有效，若当前不是 Agent 回合或位置已被占用则返回 error。
+      落子后前端自动判定胜负并切换回合。
+    params:
+      - name: row
+        type: string
+        description: 行号，范围 0-14，如 "7"
+        required: true
+      - name: col
+        type: string
+        description: 列号，范围 0-14，如 "7"
+        required: true
+
+  - type: UNDO_MOVE
+    name: 悔棋
+    description: >
+      撤回最近一组落子（人类 + Agent 各一步，共两步）。仅在对局进行中且至少有两步棋时有效。
+
+  - type: NEW_GAME
+    name: 新游戏
+    description: >
+      重置当前对局，回到颜色选择界面。用户需要重新选择执黑或执白。
+
+  - type: SURRENDER
+    name: 认输
+    description: >
+      Agent 代表某一方认输，对局立即结束，另一方获胜。
+    params:
+      - name: color
+        type: string
+        description: 认输方的棋子颜色，可选值为 "black" 或 "white"
+        required: true
+
+  # ========== 数据变更类 Action ==========
+  # Agent 已完成数据写入，App 只需刷新对应 Repo 从云端拉取最新数据
+
+  - type: CREATE_GAME
+    name: 创建对局记录
+    description: >
+      Agent 已在云端写入对局记录文件（/history/{id}.json）后，通知前端刷新历史记录。
+    params:
+      - name: filePath
+        type: string
+        description: Agent 写入的对局记录文件路径，如 /history/{id}.json
+        required: true
+
+  - type: UPDATE_GAME
+    name: 更新对局记录
+    description: >
+      Agent 已在云端更新对局记录文件后，通知前端刷新历史记录。
+    params:
+      - name: filePath
+        type: string
+        description: Agent 更新的对局记录文件路径，如 /history/{id}.json
+        required: true
+
+  - type: DELETE_GAME
+    name: 删除对局记录
+    description: >
+      Agent 已在云端删除对局记录文件后，通知前端刷新历史记录。
+    params:
+      - name: gameId
+        type: string
+        description: 被删除的对局记录 ID
+        required: true
+
+  # ========== 刷新类 Action ==========
+  # 通知 App 重载指定 Repo 数据
+
+  - type: REFRESH_HISTORY
+    name: 刷新对局历史
+    description: >
+      通知前端从云端重新加载 /history/ 目录下的所有对局记录。
+
+  # ========== 系统类 Action ==========
+
+  - type: SYNC_STATE
+    name: 同步状态
+    description: >
+      Agent 写入 state.json 到 NAS 后，通知 App 从云端拉取最新状态文件并应用到内存。

@@ -1,0 +1,204 @@
+app_id: 10008
+app_name: cyberNews
+app_display_name: 赛博新闻
+version: "1.0.0"
+description: >
+  赛博朋克2077夜之城风格的新闻终端与调查板应用。
+  数据存储在 /articles/（新闻文章）和 /cases/（调查案件，含内嵌线索）。
+  运行时状态存储在 /state.json。支持文章增删改查、案件增删改查、线索管理、新闻筛选和状态同步。
+  本文件仅定义 Agent 下发给前端的操作指令。
+displayDesc: >
+  赛博朋克新闻终端 — 浏览夜之城头条新闻，调查案件，在互动调查板上串联线索。
+
+actions:
+  - type: VIEW_ARTICLE
+    name: 查看文章
+    description: >
+      查看指定文章详情。Agent 下发此 action 让前端导航到指定文章。
+    params:
+      - name: articleId
+        type: string
+        description: 要查看的文章 ID
+        required: true
+
+  - type: SELECT_CASE
+    name: 选中案件
+    description: >
+      选中指定调查案件。Agent 下发此 action 让前端导航到指定案件。
+    params:
+      - name: caseId
+        type: string
+        description: 要选中的案件 ID
+        required: true
+
+  - type: MOVE_CLUE
+    name: 移动线索
+    description: >
+      移动线索卡片到调查板上的新位置。
+    params:
+      - name: caseId
+        type: string
+        description: 线索所属的案件 ID
+        required: true
+      - name: clueId
+        type: string
+        description: 要移动的线索 ID
+        required: true
+      - name: posX
+        type: string
+        description: 新的 X 坐标
+        required: true
+      - name: posY
+        type: string
+        description: 新的 Y 坐标
+        required: true
+
+  - type: FILTER_NEWS
+    name: 筛选新闻
+    description: >
+      按分类筛选新闻文章。
+    params:
+      - name: category
+        type: string
+        description: 筛选的分类
+        required: true
+
+  - type: CREATE_ARTICLE
+    name: 创建文章
+    description: >
+      Agent 已将新文章 JSON 写入 /articles/。此 action 通知前端刷新并展示新文章。
+    params:
+      - name: filePath
+        type: string
+        description: 创建的文章文件路径
+        required: true
+
+  - type: UPDATE_ARTICLE
+    name: 更新文章
+    description: >
+      Agent 已在云端更新文章 JSON。此 action 通知前端重新读取并刷新文章。
+    params:
+      - name: articleId
+        type: string
+        description: 被更新的文章 ID
+        required: true
+
+  - type: DELETE_ARTICLE
+    name: 删除文章
+    description: >
+      Agent 已从云端删除文章。此 action 通知前端从 UI 中移除该文章。
+    params:
+      - name: articleId
+        type: string
+        description: 要删除的文章 ID
+        required: true
+
+  - type: CREATE_CASE
+    name: 创建案件
+    description: >
+      Agent 已将新案件 JSON 写入 /cases/。此 action 通知前端刷新并展示新案件。
+    params:
+      - name: filePath
+        type: string
+        description: 创建的案件文件路径
+        required: true
+
+  - type: UPDATE_CASE
+    name: 更新案件
+    description: >
+      Agent 已在云端更新案件 JSON。此 action 通知前端重新读取并刷新案件。
+    params:
+      - name: caseId
+        type: string
+        description: 被更新的案件 ID
+        required: true
+
+  - type: DELETE_CASE
+    name: 删除案件
+    description: >
+      Agent 已从云端删除案件。此 action 通知前端从 UI 中移除该案件。
+    params:
+      - name: caseId
+        type: string
+        description: 要删除的案件 ID
+        required: true
+
+  - type: CREATE_CLUE
+    name: 创建线索
+    description: >
+      Agent 已在云端为案件添加线索。此 action 通知前端刷新案件并展示新线索。
+    params:
+      - name: caseId
+        type: string
+        description: 线索所属的案件 ID
+        required: true
+      - name: clueId
+        type: string
+        description: 创建的线索 ID
+        required: true
+
+  - type: UPDATE_CLUE
+    name: 更新线索
+    description: >
+      Agent 已在云端更新线索。此 action 通知前端刷新线索。
+    params:
+      - name: caseId
+        type: string
+        description: 线索所属的案件 ID
+        required: true
+      - name: clueId
+        type: string
+        description: 被更新的线索 ID
+        required: true
+
+  - type: DELETE_CLUE
+    name: 删除线索
+    description: >
+      Agent 已从云端删除线索。此 action 通知前端从案件中移除该线索。
+    params:
+      - name: caseId
+        type: string
+        description: 线索所属的案件 ID
+        required: true
+      - name: clueId
+        type: string
+        description: 要删除的线索 ID
+        required: true
+
+  - type: REFRESH_ARTICLES
+    name: 刷新文章列表
+    description: >
+      从云端重新加载所有文章并刷新 UI。
+    params:
+      - name: navigateTo
+        type: string
+        description: 刷新后可选导航到的视图
+        required: false
+      - name: focusId
+        type: string
+        description: 刷新后可选聚焦的文章 ID
+        required: false
+
+  - type: REFRESH_CASES
+    name: 刷新案件列表
+    description: >
+      从云端重新加载所有案件并刷新 UI。
+    params:
+      - name: navigateTo
+        type: string
+        description: 刷新后可选导航到的视图
+        required: false
+      - name: focusId
+        type: string
+        description: 刷新后可选聚焦的案件 ID
+        required: false
+
+  - type: SYNC_STATE
+    name: 同步状态
+    description: >
+      Agent 已在云端修改 state.json。此 action 通知前端读取最新状态并刷新 UI。
+    params:
+      - name: filePath
+        type: string
+        description: 状态文件路径，固定为 /state.json
+        required: true

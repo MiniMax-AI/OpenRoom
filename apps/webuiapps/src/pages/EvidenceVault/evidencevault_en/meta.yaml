@@ -1,0 +1,17 @@
+app_id: 13
+app_name: evidencevault
+app_display_name: Evidence Vault
+version: "1.0.0"
+description: >
+  Evidence Vault app, purely read-only mode. All archive data is pre-stored on cloud, pulled once on startup.
+  Neither users nor Agent perform write operations; data is static and read-only. No Agent actions defined.
+displayDesc: >
+  A digital evidence vault — browse and search archived documents by category with detailed views for quick reference.
+
+# ============================================================
+# This application is purely static and read-only.
+# No Agent → Frontend action instructions are provided.
+# Data is pre-prepared on the cloud and pulled once on startup.
+# ============================================================
+
+actions: []

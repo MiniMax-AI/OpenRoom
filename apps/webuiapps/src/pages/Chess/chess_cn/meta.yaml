@@ -1,0 +1,60 @@
+app_id: 12
+app_name: chess
+app_display_name: 国际象棋
+version: "1.0.0"
+description: >
+  国际象棋对弈应用。用户执白、Agent 执黑，严格回合制。游戏状态存储在 state.json。
+  支持完整规则：王车易位、过路兵、兵升变、将军/将杀/逼和检测。
+  支持 AGENT_MOVE/SYNC_STATE/NEW_GAME 指令。
+  本文件仅定义 Agent 下发给前端的操作指令，用户本地操作由前端代码自行处理和上报。
+displayDesc: >
+  经典国际象棋，与 AI 展开策略对决。支持完整规则，包括王车易位、过路兵和兵升变。
+
+# ============================================================
+# 以下 actions 仅用于 Agent → 前端 的指令下发。
+# Agent 在调用这些 action 之前，应当已经完成了云端 state.json 的写入/修改，
+# 下发 action 的目的是通知前端从云端同步最新数据并刷新 UI。
+# ============================================================
+
+actions:
+  - type: AGENT_MOVE
+    name: Agent走棋
+    description: >
+      Agent 已在云端的 state.json 中应用了自己的走法（更新 board、currentTurn 改为 "w"、
+      isAgentThinking 设为 false、追加 moveHistory、更新 gameStatus 等），
+      下发此 action 通知前端从云端读取最新状态并刷新 UI，同时解锁棋盘让用户继续操作。
+    params:
+      - name: filePath
+        type: string
+        description: Agent 写入的状态文件路径，固定为 /state.json
+        required: true
+      - name: from
+        type: string
+        description: Agent 走法的起始坐标，如 "e7"
+        required: false
+      - name: to
+        type: string
+        description: Agent 走法的目标坐标，如 "e5"
+        required: false
+
+  - type: SYNC_STATE
+    name: 同步状态
+    description: >
+      Agent 已在云端修改了 state.json（如调整棋局状态、回退走法等），
+      下发此 action 通知前端从云端读取最新状态并刷新 UI。
+    params:
+      - name: filePath
+        type: string
+        description: Agent 写入的状态文件路径，固定为 /state.json
+        required: true
+
+  - type: NEW_GAME
+    name: 新游戏
+    description: >
+      Agent 已在云端写入了一局新游戏的 state.json（含完整的初始棋盘数据），
+      下发此 action 通知前端从云端读取新棋局并刷新 UI。
+    params:
+      - name: filePath
+        type: string
+        description: Agent 写入的状态文件路径，固定为 /state.json
+        required: true

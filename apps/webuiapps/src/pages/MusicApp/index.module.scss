@@ -1,0 +1,510 @@
+@use './styles/variables.module.scss' as *;
+
+.musicApp {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: $color-bg;
+  color: $color-text;
+  font-family: $font-family;
+  overflow: hidden;
+}
+
+.mainContent {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+// Sidebar
+.sidebar {
+  width: $sidebar-width;
+  background: $color-bg;
+  border-right: 1px solid $color-border;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebarSection {
+  padding: $spacing-md 0;
+}
+
+.sectionTitle {
+  font-size: $font-size-xs;
+  font-weight: 600;
+  color: $color-text-secondary;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: $spacing-sm;
+  padding: 0 $spacing-md;
+}
+
+.playlistList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+}
+
+.playlistItem {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
+  border-radius: $radius-sm;
+  cursor: pointer;
+  transition: background $duration-fast $easing;
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+  border: none;
+  background: transparent;
+  text-align: left;
+  width: 100%;
+
+  &:hover {
+    background: $color-surface-hover;
+    color: $color-text;
+  }
+
+  &.active {
+    background: $color-surface;
+    color: $color-text;
+  }
+}
+
+.allTracksItem {
+  color: $color-text;
+  font-weight: 500;
+}
+
+// Content Area
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: linear-gradient(180deg, $color-surface 0%, $color-bg 300px);
+}
+
+.contentHeader {
+  padding: $spacing-lg $spacing-xl;
+  display: flex;
+  align-items: center;
+  gap: $spacing-lg;
+}
+
+.playlistInfo {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+}
+
+.playlistTitle {
+  font-size: $font-size-2xl;
+  font-weight: 700;
+}
+
+.playlistMeta {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.playAllBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: $radius-full;
+  background: $color-primary-500;
+  color: $color-bg;
+  border: none;
+  cursor: pointer;
+  transition:
+    transform $duration-fast $easing,
+    background $duration-fast $easing;
+
+  &:hover {
+    transform: scale(1.05);
+    background: $color-primary-600;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// Track List
+.trackList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 $spacing-md $spacing-md;
+}
+
+.trackListHeader {
+  display: grid;
+  grid-template-columns: 40px 1fr 200px 80px;
+  gap: $spacing-md;
+  padding: $spacing-sm $spacing-md;
+  border-bottom: 1px solid $color-border;
+  color: $color-text-secondary;
+  font-size: $font-size-xs;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  // Center index column and duration column
+  span:first-child,
+  span:last-child {
+    text-align: center;
+  }
+}
+
+.trackItem {
+  display: grid;
+  grid-template-columns: 40px 1fr 200px 80px;
+  gap: $spacing-md;
+  padding: $spacing-sm $spacing-md;
+  border-radius: $radius-sm;
+  cursor: pointer;
+  transition: background $duration-fast $easing;
+
+  &:hover {
+    background: $color-surface-hover;
+
+    .trackNumber {
+      display: none;
+    }
+
+    .trackPlayIcon {
+      display: flex;
+    }
+  }
+
+  &.playing {
+    .trackTitle {
+      color: $color-primary-500;
+    }
+
+    .trackNumber {
+      display: none;
+    }
+
+    .trackPlayingIcon {
+      display: flex;
+    }
+
+    &:hover .trackPlayingIcon {
+      display: none;
+    }
+  }
+}
+
+.trackIndex {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.trackNumber {
+  color: $color-text-secondary;
+  font-size: $font-size-sm;
+}
+
+.trackPlayIcon,
+.trackPlayingIcon {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: $color-text;
+}
+
+.trackPlayingIcon {
+  color: $color-primary-500;
+}
+
+.trackInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.trackTitle {
+  font-size: $font-size-base;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trackArtist {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trackAlbum {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+}
+
+.trackDuration {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Player Bar
+.playerBar {
+  height: $player-bar-height;
+  background: $color-surface;
+  border-top: 1px solid $color-border;
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  align-items: center;
+  padding: 0 $spacing-md;
+}
+
+.nowPlaying {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.nowPlayingCover {
+  width: 56px;
+  height: 56px;
+  background: $color-surface-hover;
+  border-radius: $radius-sm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $color-text-secondary;
+}
+
+.nowPlayingInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.nowPlayingTitle {
+  font-size: $font-size-sm;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nowPlayingArtist {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Player Controls
+.playerControls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.controlButtons {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+.controlBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: $color-text-secondary;
+  cursor: pointer;
+  border-radius: $radius-full;
+  transition: color $duration-fast $easing;
+
+  &:hover {
+    color: $color-text;
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  &.active {
+    color: $color-primary-500;
+  }
+}
+
+.playPauseBtn {
+  width: 40px;
+  height: 40px;
+  background: $color-text;
+  color: $color-bg;
+  border-radius: $radius-full;
+
+  &:hover {
+    transform: scale(1.05);
+    color: $color-bg;
+  }
+}
+
+// Progress Bar
+.progressBar {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  width: 100%;
+  max-width: 600px;
+}
+
+.progressTime {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  min-width: 40px;
+  text-align: center;
+}
+
+.progressSlider {
+  flex: 1;
+  height: 4px;
+  background: $color-border;
+  border-radius: $radius-full;
+  cursor: pointer;
+  position: relative;
+
+  &:hover .progressFill {
+    background: $color-primary-500;
+  }
+
+  &:hover .progressThumb {
+    opacity: 1;
+  }
+}
+
+.progressFill {
+  height: 100%;
+  background: $color-text;
+  border-radius: $radius-full;
+  position: relative;
+  transition: background $duration-fast $easing;
+}
+
+.progressThumb {
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  background: $color-text;
+  border-radius: $radius-full;
+  opacity: 0;
+  transition: opacity $duration-fast $easing;
+}
+
+// Volume Control
+.volumeControl {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: $spacing-sm;
+}
+
+.volumeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: $color-text-secondary;
+  cursor: pointer;
+
+  &:hover {
+    color: $color-text;
+  }
+}
+
+.volumeSlider {
+  width: 100px;
+  height: 4px;
+  background: $color-border;
+  border-radius: $radius-full;
+  cursor: pointer;
+  position: relative;
+
+  &:hover .volumeFill {
+    background: $color-primary-500;
+  }
+}
+
+.volumeFill {
+  height: 100%;
+  background: $color-text;
+  border-radius: $radius-full;
+}
+
+// Empty State
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-xl * 2;
+  color: $color-text-secondary;
+  text-align: center;
+  gap: $spacing-md;
+}
+
+.emptyIcon {
+  color: $color-text-muted;
+}
+
+// Loading
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid $color-border;
+  border-top-color: $color-primary-500;
+  border-radius: $radius-full;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

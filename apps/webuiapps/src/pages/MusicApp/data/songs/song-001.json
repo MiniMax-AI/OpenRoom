@@ -1,0 +1,10 @@
+{
+  "id": "song-001",
+  "title": "Midnight Dreams",
+  "artist": "Luna Echo",
+  "album": "Starlight Sessions",
+  "duration": 234,
+  "coverColor": "#6366F1",
+  "createdAt": 1707350400000,
+  "audioUrl": "/music/midnight-dreams.mp3"
+}

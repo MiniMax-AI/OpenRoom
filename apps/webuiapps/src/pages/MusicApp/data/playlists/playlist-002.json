@@ -1,0 +1,6 @@
+{
+  "id": "playlist-002",
+  "name": "Workout Mix",
+  "songIds": ["song-003", "song-004"],
+  "createdAt": 1707436800000
+}

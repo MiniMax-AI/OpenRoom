@@ -1,0 +1,1115 @@
+@use './styles/variables.module.scss' as *;
+
+// ============ Skew Angles ============
+$skew-angle: -3deg;
+$skew-angle-strong: -5deg;
+$skew-card: polygon(0 0, 100% 8px, 100% calc(100% - 8px), 0 100%);
+$skew-card-reverse: polygon(0 8px, 100% 0, 100% 100%, 0 calc(100% - 8px));
+// Tilt upper-right: negative angle = counter-clockwise, right shoulder up; small angle
+$tilt-upper-right: -1.2deg;
+
+// ============ Root ============
+.cyberNews {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: $color-bg;
+  color: $color-text;
+  font-family: $font-family;
+  position: relative;
+}
+
+// ============ Loading ============
+.loading {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-lg;
+}
+
+.loadingText {
+  font-size: $font-size-sm;
+  color: $color-accent;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  animation: blink 1.2s ease-in-out infinite;
+  transform: skewX($skew-angle);
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 2px solid $color-accent-dim;
+  border-top-color: $color-accent;
+  border-radius: 0;
+  animation: spin 0.8s linear infinite;
+  transform: skewX(-8deg);
+}
+
+@keyframes spin {
+  to {
+    transform: skewX(-8deg) rotate(360deg);
+  }
+}
+
+// ============ Nav Bar - Skewed Yellow Banner ============
+.navBar {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  padding: 0 $spacing-xl;
+  background: $color-accent;
+  flex-shrink: 0;
+  gap: $spacing-md;
+  position: relative;
+  overflow: hidden;
+  // Skewed bottom edge
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), 0 100%);
+  padding-bottom: 6px;
+}
+
+.navTitle {
+  font-size: 28px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  color: #121214;
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  transform: skewX($skew-angle);
+}
+
+.navTab {
+  all: unset;
+  cursor: pointer;
+  font-size: $font-size-base;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(18, 18, 20, 0.35);
+  padding: $spacing-xs $spacing-lg;
+  transition: all $duration-fast;
+  transform: skewX($skew-angle-strong);
+
+  &:hover {
+    color: rgba(18, 18, 20, 0.7);
+  }
+
+  &.active {
+    color: #121214;
+    background: rgba(18, 18, 20, 0.12);
+    position: relative;
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: #121214;
+    }
+  }
+}
+
+// ============ Main Content ============
+.mainContent {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+// ============ News Feed ============
+.newsFeed {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.categoryFilter {
+  display: flex;
+  gap: $spacing-xs;
+  padding: $spacing-sm $spacing-xl;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(250, 234, 95, 0.1);
+  background: $color-surface;
+}
+
+.categoryBtn {
+  all: unset;
+  cursor: pointer;
+  font-size: $font-size-sm;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: $color-text-muted;
+  padding: $spacing-xs $spacing-lg;
+  transform: skewX($skew-angle-strong);
+  transition: all $duration-fast;
+
+  &:hover {
+    color: $color-text-secondary;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  &.active {
+    color: #121214;
+    background: $color-accent;
+  }
+}
+
+.newsGrid {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: 1.8fr 1fr;
+  grid-template-rows: 1fr;
+  gap: 0;
+  align-items: stretch;
+
+  @media (max-width: 680px) {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+  }
+}
+
+// ============ Headline Card - Left headline stays rectangular, no skew ============
+.headlineCard {
+  position: relative;
+  background: $color-bg;
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  margin: 0 $spacing-xl;
+
+  &:hover .headlineImage {
+    transform: scale(1.05);
+  }
+
+  &:hover .headlineTitle {
+    color: $color-accent;
+  }
+}
+
+.headlineImageWrap {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  background: $color-surface;
+  // No counter-skew, the whole block skews with the card
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 24px), 0 100%);
+}
+
+.headlineAccentBar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  background: $color-red;
+  z-index: 3;
+}
+
+.headlineImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.headlineContent {
+  padding: $spacing-lg $spacing-xl $spacing-xl;
+  background: $color-bg;
+  position: relative;
+  // No counter-skew, the whole block skews with the card
+}
+
+.headlineMeta {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-sm;
+}
+
+.headlineDate {
+  font-size: $font-size-xs;
+  color: $color-text-muted;
+  letter-spacing: 1px;
+}
+
+.headlineBadge {
+  display: inline-block;
+  font-size: $font-size-sm;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  padding: $spacing-2xs $spacing-lg;
+
+  &.breaking {
+    background: $color-red;
+    color: #fff;
+  }
+  &.corporate {
+    background: $color-cyan;
+    color: #121214;
+  }
+  &.street {
+    background: $color-accent;
+    color: #121214;
+  }
+  &.tech {
+    background: #7660ff;
+    color: #fff;
+  }
+}
+
+.headlineTitle {
+  font-size: $font-size-2xl;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-style: italic;
+  line-height: 1.15;
+  color: #fff;
+  margin-bottom: $spacing-sm;
+  transition: color $duration-fast;
+}
+
+.headlineSummary {
+  font-size: $font-size-base;
+  color: $color-text-tertiary;
+  line-height: 1.5;
+}
+
+// ============ News List (Right Column) ============
+.newsListColumn {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: 100%;
+  background: $color-surface;
+  border-left: 3px solid $color-accent;
+}
+
+.newsListHeader {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-md $spacing-lg;
+  font-size: $font-size-base;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  color: #121214;
+  background: $color-accent;
+  flex-shrink: 0;
+  position: relative;
+  transform: skewX(0);
+  // Skewed bottom
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 calc(100% - 4px));
+
+  &::before {
+    content: '//';
+    color: $color-red;
+    font-weight: 900;
+    margin-right: $spacing-xs;
+  }
+}
+
+.newsList {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  flex: 1;
+  gap: $spacing-md;
+  padding: $spacing-md $spacing-sm;
+  min-height: 0;
+}
+
+// ============ News List Card - Fixed height, not stretched ============
+.newsListCard {
+  display: flex;
+  flex-direction: row;
+  flex: 0 0 auto;
+  height: 96px;
+  min-height: 96px;
+  max-height: 96px;
+  background: $color-surface;
+  cursor: pointer;
+  transition:
+    transform $duration-fast,
+    box-shadow $duration-fast;
+  position: relative;
+  overflow: hidden;
+  margin: 0 $spacing-sm;
+  transform: rotate($tilt-upper-right);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+
+  &:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    transform: rotate($tilt-upper-right) translateY(-2px);
+
+    .newsListThumbImg {
+      transform: scale(1.08);
+    }
+
+    .newsListTitleWrap {
+      background: $color-accent;
+
+      &::before {
+        border-left-color: $color-accent;
+      }
+    }
+
+    .newsListTitle {
+      color: #121214;
+    }
+
+    .newsListAccent {
+      background: $color-accent;
+    }
+  }
+
+  // Per-category color overrides
+  &.card_breaking {
+    .newsListAccent {
+      background: $color-red;
+    }
+    &:hover {
+      .newsListAccent {
+        background: $color-red;
+      }
+      .newsListTitleWrap {
+        background: $color-red;
+        &::before {
+          border-left-color: $color-red;
+        }
+      }
+      .newsListTitle {
+        color: #fff;
+      }
+    }
+  }
+
+  &.card_corporate {
+    .newsListAccent {
+      background: $color-cyan;
+    }
+    &:hover {
+      .newsListAccent {
+        background: $color-cyan;
+      }
+      .newsListTitleWrap {
+        background: $color-cyan;
+        &::before {
+          border-left-color: $color-cyan;
+        }
+      }
+      .newsListTitle {
+        color: #121214;
+      }
+    }
+  }
+
+  &.card_street {
+    .newsListAccent {
+      background: $color-accent;
+    }
+    &:hover {
+      .newsListAccent {
+        background: $color-accent;
+      }
+      .newsListTitleWrap {
+        background: $color-accent;
+        &::before {
+          border-left-color: $color-accent;
+        }
+      }
+      .newsListTitle {
+        color: #121214;
+      }
+    }
+  }
+
+  &.card_tech {
+    .newsListAccent {
+      background: #7660ff;
+    }
+    &:hover {
+      .newsListAccent {
+        background: #7660ff;
+      }
+      .newsListTitleWrap {
+        background: #7660ff;
+        &::before {
+          border-left-color: #7660ff;
+        }
+      }
+      .newsListTitle {
+        color: #fff;
+      }
+    }
+  }
+}
+
+.newsListAccent {
+  width: 4px;
+  flex-shrink: 0;
+  background: $color-cyan;
+  transition: background $duration-fast;
+  // Slight skew via clip-path
+  clip-path: polygon(0 0, 100% 4px, 100% calc(100% - 4px), 0 100%);
+}
+
+.newsListThumb {
+  width: 140px;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: $color-surface-elevated;
+  position: relative;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+
+.newsListThumbImg {
+  width: calc(100% + 10px);
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.newsListInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: $spacing-md $spacing-lg $spacing-md $spacing-md;
+  gap: 0;
+  justify-content: center;
+}
+
+.newsListMeta {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  margin-bottom: $spacing-2xs;
+  flex-shrink: 0;
+}
+
+.newsListBadge {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  padding: 2px $spacing-md;
+  transform: skewX($skew-angle-strong);
+
+  &.breaking {
+    background: $color-red;
+    color: #fff;
+  }
+  &.corporate {
+    background: $color-cyan;
+    color: #121214;
+  }
+  &.street {
+    background: $color-accent;
+    color: #121214;
+  }
+  &.tech {
+    background: #7660ff;
+    color: #fff;
+  }
+}
+
+.newsListDate {
+  font-size: 10px;
+  color: $color-text-muted;
+  letter-spacing: 0.5px;
+  transform: skewX($skew-angle);
+}
+
+// Title bar skews with the card, no separate skew
+.newsListTitleWrap {
+  background: rgba(0, 0, 0, 0.65);
+  padding: $spacing-2xs $spacing-md;
+  margin: $spacing-xs 0 0;
+  transition: background $duration-fast;
+  position: relative;
+  flex-shrink: 0;
+  max-width: 100%;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 6px 100% 0;
+    border-color: transparent rgba(0, 0, 0, 0.65) transparent transparent;
+    transition: border-color $duration-fast;
+  }
+}
+
+.newsListTitle {
+  font-size: $font-size-base;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-style: italic;
+  line-height: 1.3;
+  color: $color-accent;
+  transition: color $duration-fast;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+// Body text fixed to 2 full lines + ellipsis, avoiding half-line clipping
+.newsListSummary {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: $spacing-xs;
+  min-height: 3em; /* 2 full lines (1.5 x 2), ensures no half-line squeeze */
+  flex-shrink: 0;
+}
+
+// Checkered edge decoration
+.newsListEdge {
+  width: 10px;
+  flex-shrink: 0;
+  background: repeating-linear-gradient(
+    $skew-angle-strong,
+    rgba(255, 255, 255, 0.03) 0px,
+    rgba(255, 255, 255, 0.03) 3px,
+    transparent 3px,
+    transparent 6px
+  );
+}
+
+// ============ Empty State ============
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-3xl;
+  gap: $spacing-lg;
+  color: $color-text-muted;
+  grid-column: 1 / -1;
+
+  p {
+    font-size: $font-size-sm;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transform: skewX($skew-angle);
+  }
+}
+
+// ============ Article Detail ============
+.articleDetail {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: $spacing-2xl;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.articleBack {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  font-size: $font-size-sm;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: $color-accent;
+  margin-bottom: $spacing-xl;
+  align-self: flex-start;
+  transition: opacity $duration-fast;
+  transform: skewX($skew-angle);
+  background: rgba(250, 234, 95, 0.1);
+  padding: $spacing-xs $spacing-lg;
+
+  &:hover {
+    background: rgba(250, 234, 95, 0.2);
+  }
+}
+
+.articleContainer {
+  width: 100%;
+  max-width: 780px;
+}
+
+.articleImageWrap {
+  width: 100%;
+  aspect-ratio: 21 / 9;
+  overflow: hidden;
+  margin-bottom: $spacing-xl;
+  background: $color-surface;
+  position: relative;
+  // Skewed clip
+  clip-path: polygon(0 0, 100% 12px, 100% 100%, 0 calc(100% - 12px));
+
+  // Red accent bar
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    background: $color-red;
+    z-index: 2;
+  }
+}
+
+.articleImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.articleMeta {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  margin-bottom: $spacing-lg;
+}
+
+.articleTitle {
+  font-size: $font-size-3xl;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-style: italic;
+  line-height: 1.1;
+  color: #fff;
+  margin-bottom: $spacing-lg;
+  transform: skewX(-1deg);
+}
+
+.articleSummary {
+  font-size: $font-size-lg;
+  color: $color-text-secondary;
+  line-height: 1.6;
+  margin-bottom: $spacing-2xl;
+  padding-bottom: $spacing-xl;
+  padding-left: $spacing-lg;
+  border-left: 4px solid $color-accent;
+  transform: skewX(-0.5deg);
+}
+
+.articleContent {
+  font-size: $font-size-base;
+  color: $color-text-secondary;
+  line-height: 1.8;
+
+  h2 {
+    font-size: $font-size-lg;
+    font-weight: 800;
+    color: $color-accent;
+    text-transform: uppercase;
+    margin: $spacing-2xl 0 $spacing-md;
+  }
+
+  h3 {
+    font-size: $font-size-base;
+    font-weight: 700;
+    color: $color-text;
+    margin: $spacing-xl 0 $spacing-sm;
+  }
+
+  p {
+    margin: 0 0 $spacing-md;
+  }
+
+  ul,
+  ol {
+    padding-left: $spacing-2xl;
+    margin: 0 0 $spacing-md;
+  }
+
+  li {
+    margin-bottom: $spacing-xs;
+  }
+
+  strong {
+    color: $color-text;
+    font-weight: 700;
+  }
+
+  blockquote {
+    border-left: 3px solid $color-accent-muted;
+    padding-left: $spacing-lg;
+    margin: $spacing-md 0;
+    color: $color-text-tertiary;
+    font-style: italic;
+  }
+}
+
+// ============ News Ticker ============
+.ticker {
+  height: $ticker-height;
+  background: $color-red;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+  // Skewed top edge
+  clip-path: polygon(0 6px, 100% 0, 100% 100%, 0 100%);
+  padding-top: 4px;
+}
+
+.tickerLabel {
+  flex-shrink: 0;
+  font-size: $font-size-sm;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0 $spacing-2xl 0 $spacing-lg;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  z-index: 1;
+  position: relative;
+  // Skewed right edge
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 100%, 0 100%);
+  padding-right: $spacing-3xl;
+}
+
+.tickerTrack {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.tickerContent {
+  display: inline-block;
+  animation: tickerScroll 45s linear infinite;
+  font-size: $font-size-sm;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
+  transform: skewX($skew-angle);
+}
+
+.tickerSeparator {
+  display: inline-block;
+  margin: 0 $spacing-2xl;
+  color: rgba(255, 255, 255, 0.5);
+  transform: skewX(-10deg);
+}
+
+@keyframes tickerScroll {
+  0% {
+    transform: skewX($skew-angle) translateX(0);
+  }
+  100% {
+    transform: skewX($skew-angle) translateX(-50%);
+  }
+}
+
+// ============ Case Board ============
+.caseBoardLayout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.caseSidebar {
+  width: $case-sidebar-width;
+  flex-shrink: 0;
+  background: $color-surface;
+  border-right: 3px solid $color-accent;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.caseSidebarHeader {
+  padding: $spacing-md $spacing-lg;
+  font-size: $font-size-sm;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color: #121214;
+  background: $color-accent;
+  flex-shrink: 0;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 calc(100% - 4px));
+  transform: skewX(0);
+
+  span {
+    display: inline-block;
+    transform: skewX($skew-angle);
+  }
+}
+
+.caseList {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.caseItem {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-2xs;
+  padding: $spacing-md $spacing-lg;
+  width: 100%;
+  box-sizing: border-box;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-left: 3px solid transparent;
+  transition: all $duration-fast;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-left-color: $color-cyan;
+  }
+
+  &.active {
+    background: $color-accent-dim;
+    border-left-color: $color-accent;
+  }
+}
+
+.caseNumber {
+  font-size: 10px;
+  font-weight: 700;
+  color: $color-cyan;
+  letter-spacing: 1px;
+  transform: skewX($skew-angle);
+}
+
+.caseTitle {
+  font-size: $font-size-sm;
+  font-weight: 700;
+  color: $color-text;
+}
+
+.caseStatus {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transform: skewX($skew-angle);
+
+  &.open {
+    color: $color-accent;
+  }
+  &.closed {
+    color: $color-text-muted;
+  }
+  &.classified {
+    color: $color-red;
+  }
+}
+
+// ============ Board Canvas ============
+.boardCanvas {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  overflow: auto;
+  background-color: #3d2b1f;
+  background-image: url('../CyberNews/assets/corkboard-texture.jpg');
+  background-size: cover;
+  background-position: center;
+}
+
+.boardEmpty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $color-text-muted;
+  font-size: $font-size-sm;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  transform: skewX($skew-angle);
+}
+
+.boardInner {
+  position: relative;
+  width: 1200px;
+  height: 800px;
+  min-width: 100%;
+  min-height: 100%;
+}
+
+.connectionsSvg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+// ============ Clue Card ============
+.clueCard {
+  position: absolute;
+  width: 260px;
+  cursor: grab;
+  user-select: none;
+  transition: box-shadow $duration-fast;
+  z-index: 2;
+
+  &:active {
+    cursor: grabbing;
+    z-index: 10;
+  }
+
+  &:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+}
+
+.cluePin {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  z-index: 2;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+
+  &.press {
+    background: $color-cyan;
+  }
+  &.report {
+    background: $color-accent;
+  }
+  &.document {
+    background: #7660ff;
+  }
+  &.message {
+    background: $color-red;
+  }
+  &.note {
+    background: #4ade80;
+  }
+}
+
+.clueBody {
+  background: #f5f0e1;
+  padding: $spacing-md;
+  box-shadow: 2px 3px 8px rgba(0, 0, 0, 0.35);
+  transform: rotate(-1deg);
+
+  .clueCard:nth-child(2n) & {
+    transform: rotate(1.5deg);
+  }
+  .clueCard:nth-child(3n) & {
+    transform: rotate(-0.5deg);
+  }
+  .clueCard:nth-child(5n) & {
+    transform: rotate(2deg);
+  }
+}
+
+.clueType {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: $spacing-xs;
+
+  &.press {
+    color: #1a6b9a;
+  }
+  &.report {
+    color: #8a7520;
+  }
+  &.document {
+    color: #5040b0;
+  }
+  &.message {
+    color: #b02030;
+  }
+  &.note {
+    color: #2a8040;
+  }
+}
+
+.clueTitle {
+  font-size: $font-size-sm;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: $spacing-sm;
+  line-height: 1.3;
+}
+
+.clueContent {
+  font-size: 11px;
+  color: #333;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+// ============ Scanline Overlay ============
+.scanlines {
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.02) 2px,
+    rgba(0, 0, 0, 0.02) 4px
+  );
+  z-index: 100;
+}

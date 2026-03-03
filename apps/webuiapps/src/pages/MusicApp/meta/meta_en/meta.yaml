@@ -1,0 +1,191 @@
+app_id: 3
+app_name: musicPlayer
+app_display_name: Music Player
+version: "1.0.0"
+description: >
+  Music player app. Songs stored in songs/, playlists in playlists/, state.json holds playback progress and mode.
+  Supports PLAY_SONG/PAUSE/RESUME/SEEK/SET_VOLUME operation actions, song and playlist CRUD/REFRESH actions, and SYNC_STATE system action.
+  This file only defines action commands sent from Agent to frontend. User local operations are handled and reported by frontend code.
+displayDesc: >
+  A minimalist music player with song management, custom playlists, and multiple play modes for an immersive listening experience.
+
+# ============================================================
+# The following actions are only used for Agent → Frontend commands.
+# Before calling these actions, Agent has already completed writing/modifying/deleting cloud files.
+# The purpose of sending actions is to notify the frontend to sync latest data from cloud and refresh UI.
+# ============================================================
+
+actions:
+  # ========== Operation Actions ==========
+  # Directly execute App methods. On data mismatch, automatically refresh relevant Repo and retry once. Return error on second failure.
+
+  - type: PLAY_SONG
+    name: Play Song
+    description: >
+      Play a specified song. If songId is not found in current memory, automatically refreshes song Repo and retries.
+    params:
+      - name: songId
+        type: string
+        description: Song ID, e.g. song-001
+        required: true
+
+  - type: PAUSE
+    name: Pause Playback
+    description: >
+      Pause the currently playing song.
+
+  - type: RESUME
+    name: Resume Playback
+    description: >
+      Resume the currently paused song.
+
+  - type: NEXT_SONG
+    name: Next Song
+    description: >
+      Switch to the next song, determined by the current play mode.
+
+  - type: PREV_SONG
+    name: Previous Song
+    description: >
+      Switch to the previous song.
+
+  - type: SET_VOLUME
+    name: Set Volume
+    description: >
+      Adjust playback volume.
+    params:
+      - name: volume
+        type: number
+        description: Volume value, range 0.0 - 1.0
+        required: true
+
+  - type: SEEK
+    name: Seek Position
+    description: >
+      Jump to a specified playback position.
+    params:
+      - name: time
+        type: number
+        description: Target time in seconds
+        required: true
+
+  - type: SELECT_PLAYLIST
+    name: Select Playlist
+    description: >
+      Switch to a specified playlist view. If playlistId is not found in current memory, automatically refreshes playlist Repo and retries.
+    params:
+      - name: playlistId
+        type: string
+        description: Playlist ID, e.g. playlist-001
+        required: true
+
+  - type: SET_PLAY_MODE
+    name: Set Play Mode
+    description: >
+      Switch play mode.
+    params:
+      - name: mode
+        type: string
+        description: Play mode, options are "sequential", "repeat-one", "shuffle"
+        required: true
+
+  # ========== Data Mutation Actions ==========
+  # Agent has completed data writing. App only needs to refresh corresponding Repo to pull latest data from cloud.
+
+  - type: CREATE_SONG
+    name: Create Song
+    description: >
+      Agent has written a new song JSON to NAS /songs/ directory. Notifies frontend to refresh song Repo and sync latest data from cloud.
+    params:
+      - name: filePath
+        type: string
+        description: File path of the song written by Agent, e.g. /songs/song-006.json
+        required: true
+
+  - type: UPDATE_SONG
+    name: Update Song
+    description: >
+      Agent has updated a song file on NAS. Notifies frontend to refresh song Repo and sync latest data from cloud.
+    params:
+      - name: filePath
+        type: string
+        description: File path of the song updated by Agent, e.g. /songs/song-001.json
+        required: true
+
+  - type: DELETE_SONG
+    name: Delete Song
+    description: >
+      Agent has deleted a song file on NAS. Notifies frontend to refresh song Repo and remove corresponding data.
+    params:
+      - name: songId
+        type: string
+        description: ID of the deleted song, e.g. song-001
+        required: true
+
+  - type: CREATE_PLAYLIST
+    name: Create Playlist
+    description: >
+      Agent has written a new playlist JSON to NAS /playlists/ directory. Notifies frontend to refresh playlist Repo and sync latest data from cloud.
+    params:
+      - name: filePath
+        type: string
+        description: File path of the playlist written by Agent, e.g. /playlists/playlist-003.json
+        required: true
+
+  - type: UPDATE_PLAYLIST
+    name: Update Playlist
+    description: >
+      Agent has updated a playlist file on NAS. Notifies frontend to refresh playlist Repo and sync latest data from cloud.
+    params:
+      - name: filePath
+        type: string
+        description: File path of the playlist updated by Agent, e.g. /playlists/playlist-001.json
+        required: true
+
+  - type: DELETE_PLAYLIST
+    name: Delete Playlist
+    description: >
+      Agent has deleted a playlist file on NAS. Notifies frontend to refresh playlist Repo and remove corresponding data.
+    params:
+      - name: playlistId
+        type: string
+        description: ID of the deleted playlist, e.g. playlist-001
+        required: true
+
+  # ========== Refresh Actions ==========
+  # Notify App to reload specified Repo data. Supports navigateTo for view navigation.
+
+  - type: REFRESH_SONGS
+    name: Refresh Songs
+    description: >
+      Notify App to reload song data. Supports navigating to a target view before refreshing.
+    params:
+      - name: navigateTo
+        type: string
+        description: Target view to navigate to before refresh, e.g. "all-songs"
+        required: false
+      - name: focusId
+        type: string
+        description: Song ID to focus on after refresh
+        required: false
+
+  - type: REFRESH_PLAYLISTS
+    name: Refresh Playlists
+    description: >
+      Notify App to reload playlist data. Supports navigating to a target view before refreshing.
+    params:
+      - name: navigateTo
+        type: string
+        description: Target view to navigate to before refresh, e.g. "playlist"
+        required: false
+      - name: focusId
+        type: string
+        description: Playlist ID to focus on after refresh
+        required: false
+
+  # ========== System Actions ==========
+
+  - type: SYNC_STATE
+    name: Sync State
+    description: >
+      After Agent writes state.json to NAS, notifies App to call initFromCloud() to pull the latest state file and apply fields to memory.

@@ -1,0 +1,83 @@
+app_id: 2
+app_name: twitter
+app_display_name: 推特
+version: "3.0.0"
+description: >
+  社交媒体应用。帖子数据以细粒度文件存储在 posts/ 目录，每条帖子为独立 JSON 文件。
+  支持 CREATE_POST/UPDATE_POST/DELETE_POST/LIKE_POST/UNLIKE_POST/COMMENT_POST 数据变更指令。
+  本文件仅定义 Agent 下发给前端的操作指令，用户本地操作由前端代码自行处理和上报。
+displayDesc: >
+  个人社交动态平台，发布想法、点赞互动、评论交流，记录生活中的每一刻灵感。
+
+# ============================================================
+# 以下 actions 仅用于 Agent → 前端 的指令下发。
+# Agent 在调用这些 action 之前，应当已经完成了云端文件的写入/修改/删除，
+# 下发 action 的目的是通知前端从云端同步最新数据并刷新 UI。
+# ============================================================
+
+actions:
+  - type: CREATE_POST
+    name: 创建帖子
+    description: >
+      Agent 已在云端写入帖子文件（/posts/{id}.json）后，下发此 action 通知前端同步。
+      前端收到后从云端拉取该文件，更新本地文件树和 UI，无需本地再次创建文件。
+    params:
+      - name: filePath
+        type: string
+        description: Agent 写入的帖子文件路径，如 /posts/{id}.json
+        required: true
+
+  - type: UPDATE_POST
+    name: 更新帖子
+    description: >
+      Agent 已在云端更新帖子文件后，下发此 action 通知前端同步。
+      前端收到后从云端重新读取该文件，更新本地文件树和 UI。
+    params:
+      - name: filePath
+        type: string
+        description: Agent 更新的帖子文件路径，如 /posts/{id}.json
+        required: true
+
+  - type: DELETE_POST
+    name: 删除帖子
+    description: >
+      Agent 已在云端删除帖子文件后，下发此 action 通知前端同步。
+      前端收到后从本地文件树中移除该帖子并刷新 UI。
+    params:
+      - name: postId
+        type: string
+        description: 要删除的帖子 ID（对应文件名，不含 .json 后缀）
+        required: true
+
+  - type: LIKE_POST
+    name: 点赞帖子
+    description: >
+      Agent 已在云端更新帖子文件（likes +1、isLiked 设为 true）后，下发此 action 通知前端同步。
+      前端收到后从云端重新读取该帖子文件并刷新 UI。
+    params:
+      - name: postId
+        type: string
+        description: 要点赞的帖子 ID
+        required: true
+
+  - type: UNLIKE_POST
+    name: 取消点赞
+    description: >
+      Agent 已在云端更新帖子文件（likes -1、isLiked 设为 false）后，下发此 action 通知前端同步。
+      前端收到后从云端重新读取该帖子文件并刷新 UI。
+    params:
+      - name: postId
+        type: string
+        description: 要取消点赞的帖子 ID
+        required: true
+
+  - type: COMMENT_POST
+    name: 评论帖子
+    description: >
+      Agent 已在云端更新帖子文件（在 comments 数组中追加评论）后，下发此 action 通知前端同步。
+      前端收到后从云端重新读取该帖子文件并刷新 UI。
+    params:
+      - name: postId
+        type: string
+        description: 被评论的帖子 ID
+        required: true

@@ -1,0 +1,10 @@
+{
+  "id": "song-004",
+  "title": "Golden Hour",
+  "artist": "Sunset Collective",
+  "album": "Amber Skies",
+  "duration": 312,
+  "coverColor": "#F59E0B",
+  "createdAt": 1707609600000,
+  "audioUrl": "/music/golden-hour.mp3"
+}

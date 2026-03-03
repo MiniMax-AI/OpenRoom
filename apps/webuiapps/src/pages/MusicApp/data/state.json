@@ -1,0 +1,13 @@
+{
+  "currentView": "all-songs",
+  "activePlaylistId": null,
+  "player": {
+    "currentSongId": null,
+    "currentPlaylistContext": null,
+    "isPlaying": false,
+    "currentTime": 0,
+    "volume": 0.7,
+    "playMode": "sequential"
+  },
+  "searchQuery": ""
+}

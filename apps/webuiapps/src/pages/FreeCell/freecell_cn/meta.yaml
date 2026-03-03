@@ -1,0 +1,41 @@
+app_id: 10
+app_name: freecell
+app_display_name: 空当接龙
+version: "1.0.0"
+description: >
+  空当接龙纸牌游戏。游戏状态存储在 state.json，支持用户和 Agent 双向操作与状态同步。
+  支持 SYNC_STATE（状态同步）和 NEW_GAME（新开一局）指令。
+  本文件仅定义 Agent 下发给前端的操作指令，用户本地操作由前端代码自行处理和上报。
+displayDesc: >
+  经典空当接龙纸牌游戏，52 张牌的策略挑战。利用 4 个可用单元格巧妙排列，将所有牌归位即为胜利。
+
+# ============================================================
+# 以下 actions 仅用于 Agent → 前端 的指令下发。
+# Agent 在调用这些 action 之前，应当已经完成了云端 state.json 的写入/修改，
+# 下发 action 的目的是通知前端从云端同步最新数据并刷新 UI。
+# ============================================================
+
+actions:
+  - type: SYNC_STATE
+    name: 同步状态
+    description: >
+      Agent 已在云端修改了 state.json（如代替用户走棋、调整牌局状态等），
+      下发此 action 通知前端从云端读取最新状态并刷新 UI。
+      前端收到后调用 initFromCloud() 重新加载 /state.json。
+    params:
+      - name: filePath
+        type: string
+        description: Agent 写入的状态文件路径，固定为 /state.json
+        required: true
+
+  - type: NEW_GAME
+    name: 新游戏
+    description: >
+      Agent 已在云端写入了一局新游戏的 state.json（含完整的初始牌局数据），
+      下发此 action 通知前端从云端读取新牌局并刷新 UI。
+      前端收到后调用 initFromCloud() 加载新的 /state.json。
+    params:
+      - name: filePath
+        type: string
+        description: Agent 写入的状态文件路径，固定为 /state.json
+        required: true

@@ -1,0 +1,6 @@
+{
+  "id": "playlist-001",
+  "name": "Chill Vibes",
+  "songIds": ["song-001", "song-002", "song-005"],
+  "createdAt": 1707350400000
+}

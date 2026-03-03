@@ -1,0 +1,98 @@
+OpenRoom
+Copyright (c) 2025-2026 MiniMax
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+This project includes the following third-party open source software:
+
+---
+
+React (react, react-dom)
+Copyright (c) Meta Platforms, Inc. and affiliates.
+License: MIT
+https://github.com/facebook/react
+
+React Router (react-router-dom)
+Copyright (c) Remix Software Inc.
+License: MIT
+https://github.com/remix-run/react-router
+
+Three.js (three, @react-three/fiber, @react-three/drei)
+Copyright (c) 2010-2024 three.js authors
+License: MIT
+https://github.com/mrdoob/three.js
+
+React Spring (@react-spring/three)
+Copyright (c) Paul Henschel
+License: MIT
+https://github.com/pmndrs/react-spring
+
+Framer Motion (framer-motion)
+Copyright (c) 2018 Framer B.V.
+License: MIT
+https://github.com/framer/motion
+
+i18next (i18next, react-i18next)
+Copyright (c) 2022 i18next
+License: MIT
+https://github.com/i18next/i18next
+
+Day.js (dayjs)
+Copyright (c) 2018-present iamkun
+License: MIT
+https://github.com/iamkun/dayjs
+
+Lucide (lucide-react)
+Copyright (c) 2020 Lucide Contributors
+License: ISC
+https://github.com/lucide-icons/lucide
+
+Tiptap (@tiptap/react, @tiptap/starter-kit, @tiptap/pm, @tiptap/extension-placeholder, tiptap-markdown)
+Copyright (c) 2024 Tiptap GmbH
+License: MIT
+https://github.com/ueberdosis/tiptap
+
+React Markdown (react-markdown)
+Copyright (c) Espen Hovlandsdal
+License: MIT
+https://github.com/remarkjs/react-markdown
+
+clsx
+Copyright (c) Luke Edwards
+License: MIT
+https://github.com/lukeed/clsx
+
+tailwind-merge
+Copyright (c) Dany Castillo
+License: MIT
+https://github.com/dcastil/tailwind-merge
+
+TypeScript
+Copyright (c) Microsoft Corporation
+License: Apache-2.0
+https://github.com/microsoft/TypeScript
+
+Vite
+Copyright (c) 2019-present Evan You & Vite Contributors
+License: MIT
+https://github.com/vitejs/vite
+
+Tailwind CSS
+Copyright (c) Tailwind Labs, Inc.
+License: MIT
+https://github.com/tailwindlabs/tailwindcss
+
+ESLint
+Copyright OpenJS Foundation and other contributors
+License: MIT
+https://github.com/eslint/eslint
+
+Prettier
+Copyright (c) James Long and contributors
+License: MIT
+https://github.com/prettier/prettier
+
+Turborepo
+Copyright (c) 2022 Vercel, Inc.
+License: MIT
+https://github.com/vercel/turborepo

@@ -1,0 +1,10 @@
+{
+  "id": "song-003",
+  "title": "Electric Pulse",
+  "artist": "Neon Circuit",
+  "album": "Digital Dawn",
+  "duration": 267,
+  "coverColor": "#F43F5E",
+  "createdAt": 1707523200000,
+  "audioUrl": "/music/electric-pulse.mp3"
+}
