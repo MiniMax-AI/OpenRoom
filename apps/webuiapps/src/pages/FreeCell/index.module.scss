@@ -1,0 +1,328 @@
+// FreeCell solitaire styles
+
+// ============ Variables ============
+$felt: #277833;
+$felt-dark: #1e5e28;
+$card-bg: #ffffff;
+$card-border: #c8c8c8;
+$card-shadow: rgba(0, 0, 0, 0.15);
+$card-red: #c0392b;
+$card-black: #2c3e50;
+$slot-bg: rgba(255, 255, 255, 0.08);
+$slot-border: rgba(255, 255, 255, 0.2);
+$sel-border: #3498db;
+$sel-glow: rgba(52, 152, 219, 0.6);
+$tgt-border: #2ecc71;
+$tgt-glow: rgba(46, 204, 113, 0.4);
+$text-light: rgba(255, 255, 255, 0.9);
+
+// ============ Root Container ============
+.container {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: $felt;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei',
+    sans-serif;
+  overflow: hidden;
+  user-select: none;
+}
+
+// ============ Top Bar ============
+.topBar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: $felt-dark;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 8px;
+}
+
+.cellGroup {
+  display: flex;
+  gap: 6px;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.moveCount {
+  font-size: 13px;
+  color: $text-light;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.newGameBtn {
+  padding: 5px 14px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  color: $text-light;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.22);
+  }
+}
+
+// ============ Cell Slots (Free Cells & Foundation) ============
+.cellSlot {
+  width: clamp(44px, 7.5vw, 68px);
+  aspect-ratio: 5 / 7;
+  border-radius: 5px;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.emptySlot {
+  width: 100%;
+  height: 100%;
+  border-radius: 5px;
+  background: $slot-bg;
+  border: 1.5px dashed $slot-border;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.foundSuit {
+  font-size: clamp(16px, 2.5vw, 24px);
+  opacity: 0.3;
+}
+
+.fndRed {
+  color: $card-red;
+}
+
+.fndBlack {
+  color: $card-black;
+}
+
+.cellTarget {
+  .emptySlot,
+  .card {
+    border-color: $tgt-border;
+    box-shadow: 0 0 0 2px $tgt-glow;
+  }
+}
+
+// ============ Card Face ============
+.card {
+  width: 100%;
+  height: 100%;
+  background: $card-bg;
+  border: 1px solid $card-border;
+  border-radius: 5px;
+  box-shadow: 0 1px 3px $card-shadow;
+  position: relative;
+  cursor: pointer;
+  transition:
+    box-shadow 0.15s,
+    border-color 0.15s;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.cardRed {
+  .cardRank,
+  .cardSuit,
+  .cardCenterSuit {
+    color: $card-red;
+  }
+}
+
+.cardBlack {
+  .cardRank,
+  .cardSuit,
+  .cardCenterSuit {
+    color: $card-black;
+  }
+}
+
+.cardSelected {
+  border-color: $sel-border;
+  box-shadow:
+    0 0 0 2px $sel-glow,
+    0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.cardCornerTL {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.15;
+}
+
+.cardCornerBR {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.15;
+  transform: rotate(180deg);
+}
+
+.cardRank {
+  font-size: clamp(10px, 1.4vw, 14px);
+  font-weight: 700;
+}
+
+.cardSuit {
+  font-size: clamp(8px, 1.2vw, 12px);
+  margin-top: -1px;
+}
+
+.cardCenter {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.cardCenterSuit {
+  font-size: clamp(14px, 2.2vw, 24px);
+  opacity: 0.6;
+}
+
+// ============ Tableau (8 columns) ============
+.tableau {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 5px;
+  padding: 10px 12px 16px;
+  overflow-y: auto;
+  align-content: start;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  min-height: 80px;
+  border-radius: 5px;
+}
+
+.emptyCol {
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  border-radius: 5px;
+  border: 1.5px dashed $slot-border;
+  background: $slot-bg;
+  box-sizing: border-box;
+}
+
+.colTarget {
+  .emptyCol {
+    border-color: $tgt-border;
+    background: $tgt-glow;
+  }
+}
+
+.cardWrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  flex-shrink: 0;
+
+  // Stacking offset: each card reveals 28px (fixed visible height)
+  // margin-top = -(cardHeight) + 28px = -(width * 1.4) + 28px = -140% + 28px
+  &:not(:first-child) {
+    margin-top: calc(-140% + 28px);
+  }
+}
+
+// ============ Win Overlay ============
+.winOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.winBox {
+  text-align: center;
+  padding: 28px 40px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.winTitle {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.winMoves {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: #6b6b6b;
+}
+
+.winBtn {
+  padding: 8px 24px;
+  background: $felt;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: darken($felt, 6%);
+  }
+}
+
+// ============ Loading & Error States ============
+.loadingState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: fc-spin 0.8s linear infinite;
+}
+
+@keyframes fc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.errorText {
+  color: $text-light;
+  font-size: 14px;
+}

@@ -1,0 +1,204 @@
+app_id: 10008
+app_name: cyberNews
+app_display_name: CyberNews
+version: "1.0.0"
+description: >
+  Cyberpunk 2077 Night City-style news terminal and investigation board app.
+  Data stored in /articles/ (news articles) and /cases/ (investigation cases with embedded clues).
+  Runtime state in /state.json. Supports article CRUD, case CRUD, clue management, news filtering, and state sync.
+  This file only defines actions dispatched from Agent to frontend.
+displayDesc: >
+  A cyberpunk news terminal — browse Night City headlines, investigate cases, and connect clues on an interactive board.
+
+actions:
+  - type: VIEW_ARTICLE
+    name: View Article
+    description: >
+      View article details. Agent dispatches this to navigate the frontend to the specified article.
+    params:
+      - name: articleId
+        type: string
+        description: The article ID to view
+        required: true
+
+  - type: SELECT_CASE
+    name: Select Case
+    description: >
+      Select an investigation case. Agent dispatches this to navigate the frontend to the specified case.
+    params:
+      - name: caseId
+        type: string
+        description: The case ID to select
+        required: true
+
+  - type: MOVE_CLUE
+    name: Move Clue
+    description: >
+      Move a clue card to a new position on the investigation board.
+    params:
+      - name: caseId
+        type: string
+        description: The case ID containing the clue
+        required: true
+      - name: clueId
+        type: string
+        description: The clue ID to move
+        required: true
+      - name: posX
+        type: string
+        description: New X position
+        required: true
+      - name: posY
+        type: string
+        description: New Y position
+        required: true
+
+  - type: FILTER_NEWS
+    name: Filter News
+    description: >
+      Filter news articles by category.
+    params:
+      - name: category
+        type: string
+        description: The category to filter by
+        required: true
+
+  - type: CREATE_ARTICLE
+    name: Create Article
+    description: >
+      Agent has written a new article JSON to /articles/. This action notifies the frontend to refresh and display the new article.
+    params:
+      - name: filePath
+        type: string
+        description: The file path of the created article
+        required: true
+
+  - type: UPDATE_ARTICLE
+    name: Update Article
+    description: >
+      Agent has updated an article JSON on the cloud. This action notifies the frontend to re-read and refresh the article.
+    params:
+      - name: articleId
+        type: string
+        description: The article ID that was updated
+        required: true
+
+  - type: DELETE_ARTICLE
+    name: Delete Article
+    description: >
+      Agent has deleted an article from the cloud. This action notifies the frontend to remove it from the UI.
+    params:
+      - name: articleId
+        type: string
+        description: The article ID to delete
+        required: true
+
+  - type: CREATE_CASE
+    name: Create Case
+    description: >
+      Agent has written a new case JSON to /cases/. This action notifies the frontend to refresh and display the new case.
+    params:
+      - name: filePath
+        type: string
+        description: The file path of the created case
+        required: true
+
+  - type: UPDATE_CASE
+    name: Update Case
+    description: >
+      Agent has updated a case JSON on the cloud. This action notifies the frontend to re-read and refresh the case.
+    params:
+      - name: caseId
+        type: string
+        description: The case ID that was updated
+        required: true
+
+  - type: DELETE_CASE
+    name: Delete Case
+    description: >
+      Agent has deleted a case from the cloud. This action notifies the frontend to remove it from the UI.
+    params:
+      - name: caseId
+        type: string
+        description: The case ID to delete
+        required: true
+
+  - type: CREATE_CLUE
+    name: Create Clue
+    description: >
+      Agent has added a clue to a case on the cloud. This action notifies the frontend to refresh the case and display the new clue.
+    params:
+      - name: caseId
+        type: string
+        description: The case ID containing the new clue
+        required: true
+      - name: clueId
+        type: string
+        description: The clue ID that was created
+        required: true
+
+  - type: UPDATE_CLUE
+    name: Update Clue
+    description: >
+      Agent has updated a clue on the cloud. This action notifies the frontend to refresh the clue.
+    params:
+      - name: caseId
+        type: string
+        description: The case ID containing the clue
+        required: true
+      - name: clueId
+        type: string
+        description: The clue ID that was updated
+        required: true
+
+  - type: DELETE_CLUE
+    name: Delete Clue
+    description: >
+      Agent has deleted a clue from the cloud. This action notifies the frontend to remove it from the case.
+    params:
+      - name: caseId
+        type: string
+        description: The case ID containing the clue
+        required: true
+      - name: clueId
+        type: string
+        description: The clue ID to delete
+        required: true
+
+  - type: REFRESH_ARTICLES
+    name: Refresh Articles
+    description: >
+      Reload all articles from the cloud and refresh the UI.
+    params:
+      - name: navigateTo
+        type: string
+        description: Optional view to navigate to after refresh
+        required: false
+      - name: focusId
+        type: string
+        description: Optional article ID to focus after refresh
+        required: false
+
+  - type: REFRESH_CASES
+    name: Refresh Cases
+    description: >
+      Reload all cases from the cloud and refresh the UI.
+    params:
+      - name: navigateTo
+        type: string
+        description: Optional view to navigate to after refresh
+        required: false
+      - name: focusId
+        type: string
+        description: Optional case ID to focus after refresh
+        required: false
+
+  - type: SYNC_STATE
+    name: Sync State
+    description: >
+      Agent has modified state.json on the cloud. This action notifies the frontend to read the latest state and refresh the UI.
+    params:
+      - name: filePath
+        type: string
+        description: The state file path, fixed as /state.json
+        required: true

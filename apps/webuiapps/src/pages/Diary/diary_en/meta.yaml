@@ -1,0 +1,75 @@
+app_id: 4
+app_name: diary
+app_display_name: Diary
+version: "3.0.0"
+description: >
+  Diary app. Entries stored in entries/ directory, each entry as an independent JSON file.
+  Supports CREATE_ENTRY/UPDATE_ENTRY/DELETE_ENTRY mutation actions and SELECT_ENTRY/SELECT_DATE navigation actions.
+  This file only defines actions dispatched from Agent to frontend. User local operations are handled and reported by frontend code.
+displayDesc: >
+  A beautiful personal diary with calendar navigation, mood tracking, weather tags, page flip animations, and auto-save.
+
+# ============================================================
+# The following actions are only for Agent → Frontend command dispatch.
+# Before dispatching these actions, the Agent should have already completed
+# file writes/modifications/deletions on the cloud.
+# The purpose of dispatching actions is to notify the frontend to sync the latest data and refresh the UI.
+# ============================================================
+
+actions:
+  - type: CREATE_ENTRY
+    name: Create Entry
+    description: >
+      After the Agent has written a diary file (/entries/{id}.json) on the cloud, this action is dispatched to notify the frontend to sync.
+      The diary file must include a date field (YYYY-MM-DD format), and may optionally include mood and weather fields.
+      Upon receiving it, the frontend fetches the file from the cloud, updates the local file tree and calendar, and auto-navigates to that date.
+    params:
+      - name: filePath
+        type: string
+        description: The diary file path written by the Agent, e.g., /entries/{id}.json
+        required: true
+
+  - type: UPDATE_ENTRY
+    name: Update Entry
+    description: >
+      After the Agent has updated a diary file on the cloud, this action is dispatched to notify the frontend to sync.
+      Can update title, content, mood, weather, and other fields.
+      Upon receiving it, the frontend re-reads the file from the cloud, updates the local file tree and UI.
+    params:
+      - name: filePath
+        type: string
+        description: The diary file path updated by the Agent, e.g., /entries/{id}.json
+        required: true
+
+  - type: DELETE_ENTRY
+    name: Delete Entry
+    description: >
+      After the Agent has deleted a diary file on the cloud, this action is dispatched to notify the frontend to sync.
+      Upon receiving it, the frontend removes the entry from the local file tree and refreshes the calendar.
+    params:
+      - name: entryId
+        type: string
+        description: The ID of the diary entry to delete (corresponds to the filename without the .json extension)
+        required: true
+
+  - type: SELECT_ENTRY
+    name: Select Entry
+    description: >
+      Instructs the frontend to navigate the calendar to the date of the specified diary entry and display its content.
+      This action does not involve file operations — it only controls UI display.
+    params:
+      - name: entryId
+        type: string
+        description: The ID of the diary entry to select
+        required: true
+
+  - type: SELECT_DATE
+    name: Navigate to Date
+    description: >
+      Instructs the frontend to navigate the calendar to the specified date and display the corresponding diary entry (if one exists).
+      This action does not involve file operations — it only controls UI display.
+    params:
+      - name: date
+        type: string
+        description: Target date in YYYY-MM-DD format (e.g., 2026-02-12)
+        required: true

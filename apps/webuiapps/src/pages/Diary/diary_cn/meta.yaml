@@ -1,0 +1,74 @@
+app_id: 4
+app_name: diary
+app_display_name: 日记
+version: "3.0.0"
+description: >
+  日记应用。日记数据存储在 entries/ 目录，每篇日记为独立 JSON 文件。
+  支持 CREATE_ENTRY/UPDATE_ENTRY/DELETE_ENTRY 数据变更指令和 SELECT_ENTRY/SELECT_DATE 导航指令。
+  本文件仅定义 Agent 下发给前端的操作指令，用户本地操作由前端代码自行处理和上报。
+displayDesc: >
+  精美个人日记本，日历导航、心情记录、天气标记，配合翻页动画和自动保存，记录每一天的故事。
+
+# ============================================================
+# 以下 actions 仅用于 Agent → 前端 的指令下发。
+# Agent 在调用这些 action 之前，应当已经完成了云端文件的写入/修改/删除，
+# 下发 action 的目的是通知前端从云端同步最新数据并刷新 UI。
+# ============================================================
+
+actions:
+  - type: CREATE_ENTRY
+    name: 创建日记
+    description: >
+      Agent 已在云端写入日记文件（/entries/{id}.json）后，下发此 action 通知前端同步。
+      日记文件必须包含 date 字段（YYYY-MM-DD 格式），可选包含 mood 和 weather 字段。
+      前端收到后从云端拉取该文件，更新本地文件树和日历，并自动导航到该日期。
+    params:
+      - name: filePath
+        type: string
+        description: Agent 写入的日记文件路径，如 /entries/{id}.json
+        required: true
+
+  - type: UPDATE_ENTRY
+    name: 更新日记
+    description: >
+      Agent 已在云端更新日记文件后，下发此 action 通知前端同步。
+      可更新标题、内容、心情、天气等字段。
+      前端收到后从云端重新读取该文件，更新本地文件树和 UI。
+    params:
+      - name: filePath
+        type: string
+        description: Agent 更新的日记文件路径，如 /entries/{id}.json
+        required: true
+
+  - type: DELETE_ENTRY
+    name: 删除日记
+    description: >
+      Agent 已在云端删除日记文件后，下发此 action 通知前端同步。
+      前端收到后从本地文件树中移除该日记并刷新日历。
+    params:
+      - name: entryId
+        type: string
+        description: 要删除的日记 ID（对应文件名，不含 .json 后缀）
+        required: true
+
+  - type: SELECT_ENTRY
+    name: 选中日记
+    description: >
+      指示前端导航到指定日记对应的日期并展示内容。
+      此 action 不涉及文件操作，仅控制 UI 展示。
+    params:
+      - name: entryId
+        type: string
+        description: 要选中的日记 ID
+        required: true
+
+  - type: SELECT_DATE
+    name: 导航到日期
+    description: >
+      指示前端日历导航到指定日期并展示对应日记（若该日期有日记）。
+      此 action 不涉及文件操作，仅控制 UI 展示。
+    params:
+      - name: date
+        type: string
+        description: 目标日期，格式 YYYY-MM-DD（如 2026-02-12）
+        required: true

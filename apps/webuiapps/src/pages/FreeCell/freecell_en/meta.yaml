@@ -1,0 +1,42 @@
+app_id: 10
+app_name: freecell
+app_display_name: FreeCell
+version: "1.0.0"
+description: >
+  FreeCell solitaire card game. Game state stored in state.json, supporting bidirectional operations and state sync between user and Agent.
+  Supports SYNC_STATE (state sync) and NEW_GAME (start new game) actions.
+  This file only defines actions dispatched from Agent to frontend. User local operations are handled and reported by frontend code.
+displayDesc: >
+  Classic FreeCell solitaire — a strategic card challenge with 52 cards. Use 4 free cells wisely to sort all cards to the foundations.
+
+# ============================================================
+# The following actions are only for Agent → Frontend command dispatch.
+# Before dispatching these actions, the Agent should have already completed
+# writes/modifications to the cloud state.json.
+# The purpose of dispatching actions is to notify the frontend to sync the latest data and refresh the UI.
+# ============================================================
+
+actions:
+  - type: SYNC_STATE
+    name: Sync State
+    description: >
+      The Agent has modified state.json on the cloud (e.g., making moves on behalf of the user, adjusting game state, etc.).
+      This action is dispatched to notify the frontend to read the latest state from the cloud and refresh the UI.
+      Upon receiving it, the frontend calls initFromCloud() to reload /state.json.
+    params:
+      - name: filePath
+        type: string
+        description: The state file path written by the Agent, fixed as /state.json
+        required: true
+
+  - type: NEW_GAME
+    name: New Game
+    description: >
+      The Agent has written a new game's state.json on the cloud (containing complete initial game data).
+      This action is dispatched to notify the frontend to read the new game and refresh the UI.
+      Upon receiving it, the frontend calls initFromCloud() to load the new /state.json.
+    params:
+      - name: filePath
+        type: string
+        description: The state file path written by the Agent, fixed as /state.json
+        required: true

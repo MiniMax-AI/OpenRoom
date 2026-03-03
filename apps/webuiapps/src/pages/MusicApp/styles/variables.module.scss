@@ -1,0 +1,66 @@
+// MusicApp Design System Variables
+
+// Colors - Dark Theme
+$color-bg: #121212;
+$color-surface: #1e1e1e;
+$color-surface-hover: #282828;
+$color-border: #333;
+$color-text: #fff;
+$color-text-secondary: #a0a0a0;
+$color-text-muted: #666;
+
+// Primary - Green
+$color-primary-50: #ecfdf5;
+$color-primary-100: #d1fae5;
+$color-primary-500: #1db954;
+$color-primary-600: #1aa34a;
+$color-primary-900: #064e3b;
+
+// Functional
+$color-success: #22c55e;
+$color-warning: #f59e0b;
+$color-error: #ef4444;
+$color-info: #3b82f6;
+
+// Typography
+$font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+$font-size-xs: 11px;
+$font-size-sm: 13px;
+$font-size-base: 14px;
+$font-size-lg: 16px;
+$font-size-xl: 20px;
+$font-size-2xl: 24px;
+
+// Spacing
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+
+// Border Radius
+$radius-sm: 4px;
+$radius-md: 8px;
+$radius-lg: 12px;
+$radius-full: 9999px;
+
+// Animation
+$duration-fast: 150ms;
+$duration-normal: 250ms;
+$easing: ease-out;
+
+// Layout
+$sidebar-width: 240px;
+$player-bar-height: 80px;
+
+:export {
+  colorBg: $color-bg;
+  colorSurface: $color-surface;
+  colorSurfaceHover: $color-surface-hover;
+  colorBorder: $color-border;
+  colorText: $color-text;
+  colorTextSecondary: $color-text-secondary;
+  colorPrimary500: $color-primary-500;
+  sidebarWidth: $sidebar-width;
+  playerBarHeight: $player-bar-height;
+}

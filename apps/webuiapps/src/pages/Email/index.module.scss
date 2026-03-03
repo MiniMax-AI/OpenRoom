@@ -1,0 +1,480 @@
+// Email page styles
+// Dark theme - dark background, blue accent
+
+// Color scheme - Dark theme
+$email-blue: #58a6ff;
+$email-blue-hover: #79c0ff;
+$email-blue-light: rgba(88, 166, 255, 0.12);
+
+$bg-primary: #0d1117;
+$bg-secondary: #161b22;
+$bg-hover: rgba(255, 255, 255, 0.06);
+$bg-selected: rgba(88, 166, 255, 0.1);
+
+$border-color: #30363d;
+$border-light: #21262d;
+
+$text-primary: #e6edf3;
+$text-secondary: #8b949e;
+$text-muted: #6e7681;
+
+$star-color: #e3b341;
+$star-bg: rgba(227, 179, 65, 0.15);
+$delete-color: #f85149;
+$delete-bg: rgba(248, 81, 73, 0.12);
+$read-dot: #58a6ff;
+
+// Global container
+.email {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: $bg-primary;
+  color: $text-primary;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  overflow: hidden;
+}
+
+// Back button (used in detail view)
+.backBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: none;
+  color: $text-secondary;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background-color 0.15s;
+
+  &:hover {
+    background: $bg-hover;
+  }
+}
+
+// Folder tabs
+.folderTabs {
+  display: flex;
+  padding: 0 16px;
+  border-bottom: 1px solid $border-light;
+  background: $bg-primary;
+  flex-shrink: 0;
+  overflow-x: auto;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.folderTab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: $text-secondary;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+
+  &:hover {
+    color: $email-blue;
+    background: $email-blue-light;
+  }
+
+  &.active {
+    color: $email-blue;
+    border-bottom-color: $email-blue;
+  }
+}
+
+.folderIcon {
+  display: flex;
+  align-items: center;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.folderBadge {
+  font-size: 11px;
+  font-weight: 600;
+  background: $email-blue;
+  color: #fff;
+  border-radius: 10px;
+  padding: 1px 6px;
+  min-width: 18px;
+  text-align: center;
+}
+
+// Email list
+.emailList {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+// Email item
+.emailItem {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-bottom: 1px solid $border-light;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  gap: 12px;
+  min-height: 52px;
+
+  &:hover {
+    background: $bg-hover;
+    box-shadow: inset 3px 0 0 $border-color;
+  }
+
+  &.selected {
+    background: $bg-selected;
+    box-shadow: inset 3px 0 0 $email-blue;
+  }
+
+  &.unread {
+    background: $bg-secondary;
+
+    .emailSender,
+    .emailSubject {
+      font-weight: 700;
+      color: $text-primary;
+    }
+  }
+}
+
+.unreadDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: $read-dot;
+  flex-shrink: 0;
+}
+
+.readPlaceholder {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+}
+
+.emailStarBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  color: $text-muted;
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: all 0.15s;
+
+  &:hover {
+    background: $star-bg;
+    color: $star-color;
+  }
+
+  &.starred {
+    color: $star-color;
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.emailContent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.emailTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.emailSender {
+  font-size: 14px;
+  font-weight: 500;
+  color: $text-primary;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.emailTime {
+  font-size: 12px;
+  color: $text-muted;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.emailBottomRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.emailSubject {
+  font-size: 13px;
+  color: $text-primary;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.emailSeparator {
+  color: $text-muted;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.emailPreview {
+  font-size: 13px;
+  color: $text-secondary;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.emailDeleteBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  color: $text-muted;
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: all 0.15s;
+
+  .emailItem:hover & {
+    opacity: 1;
+  }
+
+  &:hover {
+    background: $delete-bg;
+    color: $delete-color;
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+// ============ Email Detail View ============
+.detailView {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.detailToolbar {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-bottom: 1px solid $border-light;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.detailHeader {
+  padding: 16px 20px;
+  border-bottom: 1px solid $border-light;
+  flex-shrink: 0;
+}
+
+.detailSubject {
+  font-size: 20px;
+  font-weight: 600;
+  color: $text-primary;
+  margin: 0 0 12px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.detailMeta {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.detailAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: $email-blue-light;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: $email-blue;
+  flex-shrink: 0;
+}
+
+.detailSenderInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.detailSenderRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detailSenderName {
+  font-size: 14px;
+  font-weight: 600;
+  color: $text-primary;
+}
+
+.detailSenderAddress {
+  font-size: 13px;
+  color: $text-secondary;
+}
+
+.detailRecipients {
+  font-size: 13px;
+  color: $text-secondary;
+  margin-top: 2px;
+}
+
+.detailTime {
+  font-size: 12px;
+  color: $text-muted;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.detailBody {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.7;
+  color: $text-primary;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.readOnlyNotice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: $bg-secondary;
+  border-top: 1px solid $border-light;
+  flex-shrink: 0;
+
+  svg {
+    width: 16px;
+    height: 16px;
+    color: $text-muted;
+    flex-shrink: 0;
+  }
+}
+
+.noticeText {
+  font-size: 13px;
+  color: $text-secondary;
+}
+
+// ============ Empty State ============
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 48px 32px;
+  text-align: center;
+
+  p {
+    font-size: 14px;
+    margin: 8px 0 0;
+    color: $text-secondary;
+    line-height: 1.5;
+  }
+}
+
+.emptyIcon {
+  color: $text-muted;
+  margin-bottom: 8px;
+
+  svg {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+// Loading state
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid $border-color;
+  border-top-color: $email-blue;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Responsive design
+@media (max-width: 480px) {
+  .folderTabs {
+    padding: 0 12px;
+  }
+
+  .emailItem {
+    padding: 8px 12px;
+  }
+
+  .detailHeader {
+    padding: 12px 16px;
+  }
+
+  .detailBody {
+    padding: 16px;
+  }
+
+  .detailSubject {
+    font-size: 18px;
+  }
+}

@@ -1,0 +1,191 @@
+app_id: 3
+app_name: musicPlayer
+app_display_name: 音乐播放器
+version: "1.0.0"
+description: >
+  音乐播放器应用。歌曲存储在 songs/，播放列表存储在 playlists/，state.json 保存播放进度和模式。
+  支持 PLAY_SONG/PAUSE/RESUME/SEEK/SET_VOLUME 等操作类指令，歌曲与播放列表的 CRUD/REFRESH 指令，以及 SYNC_STATE 系统指令。
+  本文件仅定义 Agent 下发给前端的操作指令，用户本地操作由前端代码自行处理和上报。
+displayDesc: >
+  极简风格音乐播放器，支持歌曲管理、自定义播放列表和多种播放模式，打造沉浸式听歌体验。
+
+# ============================================================
+# 以下 actions 仅用于 Agent → 前端 的指令下发。
+# Agent 在调用这些 action 之前，应当已经完成了云端文件的写入/修改/删除，
+# 下发 action 的目的是通知前端从云端同步最新数据并刷新 UI。
+# ============================================================
+
+actions:
+  # ========== 操作类 Action ==========
+  # 直接执行 App 方法，数据不匹配时自动刷新相关 Repo 后重试一次，再失败返回 error
+
+  - type: PLAY_SONG
+    name: 播放歌曲
+    description: >
+      播放指定歌曲。如果 songId 在当前内存中找不到，会自动刷新歌曲 Repo 后重试。
+    params:
+      - name: songId
+        type: string
+        description: 歌曲 ID，如 song-001
+        required: true
+
+  - type: PAUSE
+    name: 暂停播放
+    description: >
+      暂停当前正在播放的歌曲。
+
+  - type: RESUME
+    name: 继续播放
+    description: >
+      继续播放当前暂停的歌曲。
+
+  - type: NEXT_SONG
+    name: 下一首
+    description: >
+      切换到下一首歌曲，根据当前播放模式决定下一首。
+
+  - type: PREV_SONG
+    name: 上一首
+    description: >
+      切换到上一首歌曲。
+
+  - type: SET_VOLUME
+    name: 设置音量
+    description: >
+      调整播放音量。
+    params:
+      - name: volume
+        type: number
+        description: 音量值，范围 0.0 - 1.0
+        required: true
+
+  - type: SEEK
+    name: 跳转进度
+    description: >
+      跳转到指定播放位置。
+    params:
+      - name: time
+        type: number
+        description: 目标时间（秒）
+        required: true
+
+  - type: SELECT_PLAYLIST
+    name: 选择播放列表
+    description: >
+      切换到指定播放列表视图。如果 playlistId 在当前内存中找不到，会自动刷新播放列表 Repo 后重试。
+    params:
+      - name: playlistId
+        type: string
+        description: 播放列表 ID，如 playlist-001
+        required: true
+
+  - type: SET_PLAY_MODE
+    name: 设置播放模式
+    description: >
+      切换播放模式。
+    params:
+      - name: mode
+        type: string
+        description: 播放模式，可选值为 "sequential"、"repeat-one"、"shuffle"
+        required: true
+
+  # ========== 数据变更类 Action ==========
+  # Agent 已完成数据写入，App 只需刷新对应 Repo 从云端拉取最新数据
+
+  - type: CREATE_SONG
+    name: 创建歌曲
+    description: >
+      Agent 已将新歌曲 JSON 写入 NAS /songs/ 目录，通知前端刷新歌曲 Repo 从云端同步最新数据。
+    params:
+      - name: filePath
+        type: string
+        description: Agent 写入的歌曲文件路径，如 /songs/song-006.json
+        required: true
+
+  - type: UPDATE_SONG
+    name: 更新歌曲
+    description: >
+      Agent 已更新 NAS 上的歌曲文件，通知前端刷新歌曲 Repo 从云端同步最新数据。
+    params:
+      - name: filePath
+        type: string
+        description: Agent 更新的歌曲文件路径，如 /songs/song-001.json
+        required: true
+
+  - type: DELETE_SONG
+    name: 删除歌曲
+    description: >
+      Agent 已删除 NAS 上的歌曲文件，通知前端刷新歌曲 Repo 移除对应数据。
+    params:
+      - name: songId
+        type: string
+        description: 被删除的歌曲 ID，如 song-001
+        required: true
+
+  - type: CREATE_PLAYLIST
+    name: 创建播放列表
+    description: >
+      Agent 已将新播放列表 JSON 写入 NAS /playlists/ 目录，通知前端刷新播放列表 Repo 从云端同步最新数据。
+    params:
+      - name: filePath
+        type: string
+        description: Agent 写入的播放列表文件路径，如 /playlists/playlist-003.json
+        required: true
+
+  - type: UPDATE_PLAYLIST
+    name: 更新播放列表
+    description: >
+      Agent 已更新 NAS 上的播放列表文件，通知前端刷新播放列表 Repo 从云端同步最新数据。
+    params:
+      - name: filePath
+        type: string
+        description: Agent 更新的播放列表文件路径，如 /playlists/playlist-001.json
+        required: true
+
+  - type: DELETE_PLAYLIST
+    name: 删除播放列表
+    description: >
+      Agent 已删除 NAS 上的播放列表文件，通知前端刷新播放列表 Repo 移除对应数据。
+    params:
+      - name: playlistId
+        type: string
+        description: 被删除的播放列表 ID，如 playlist-001
+        required: true
+
+  # ========== 刷新类 Action ==========
+  # 通知 App 重载指定 Repo 数据，支持 navigateTo 导航
+
+  - type: REFRESH_SONGS
+    name: 刷新歌曲列表
+    description: >
+      通知 App 重载歌曲数据，支持先导航到目标视图再刷新。
+    params:
+      - name: navigateTo
+        type: string
+        description: 刷新前先导航到的目标视图，如 "all-songs"
+        required: false
+      - name: focusId
+        type: string
+        description: 刷新后聚焦到的歌曲 ID
+        required: false
+
+  - type: REFRESH_PLAYLISTS
+    name: 刷新播放列表
+    description: >
+      通知 App 重载播放列表数据，支持先导航到目标视图再刷新。
+    params:
+      - name: navigateTo
+        type: string
+        description: 刷新前先导航到的目标视图，如 "playlist"
+        required: false
+      - name: focusId
+        type: string
+        description: 刷新后聚焦到的播放列表 ID
+        required: false
+
+  # ========== 系统类 Action ==========
+
+  - type: SYNC_STATE
+    name: 同步状态
+    description: >
+      Agent 写入 state.json 到 NAS 后，通知 App 调用 initFromCloud() 拉取最新状态文件并逐字段应用到内存。

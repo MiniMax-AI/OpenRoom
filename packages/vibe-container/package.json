@@ -1,0 +1,9 @@
+{
+  "name": "@gui/vibe-container",
+  "version": "0.0.1",
+  "description": "Vibe App communication SDK stub for open-source standalone mode",
+  "main": "./index.ts",
+  "module": "./index.ts",
+  "types": "./index.ts",
+  "license": "MIT"
+}

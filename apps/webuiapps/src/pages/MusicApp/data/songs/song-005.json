@@ -1,0 +1,10 @@
+{
+  "id": "song-005",
+  "title": "Forest Rain",
+  "artist": "Nature Sound",
+  "album": "Woodland Tales",
+  "duration": 285,
+  "coverColor": "#10B981",
+  "createdAt": 1707696000000,
+  "audioUrl": "/music/forest-rain.mp3"
+}

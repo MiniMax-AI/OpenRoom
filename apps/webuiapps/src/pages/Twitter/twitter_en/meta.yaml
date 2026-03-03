@@ -1,0 +1,84 @@
+app_id: 2
+app_name: twitter
+app_display_name: Twitter
+version: "3.0.0"
+description: >
+  Social media app. Posts stored as fine-grained files in posts/ directory, each post as an independent JSON file.
+  Supports CREATE_POST/UPDATE_POST/DELETE_POST/LIKE_POST/UNLIKE_POST/COMMENT_POST mutation actions.
+  This file only defines actions dispatched from Agent to frontend. User local operations are handled and reported by frontend code.
+displayDesc: >
+  Your personal social feed — share thoughts, like and comment, capture every moment of inspiration.
+
+# ============================================================
+# The following actions are only for Agent → Frontend command dispatch.
+# Before dispatching these actions, the Agent should have already completed
+# file writes/modifications/deletions on the cloud.
+# The purpose of dispatching actions is to notify the frontend to sync the latest data and refresh the UI.
+# ============================================================
+
+actions:
+  - type: CREATE_POST
+    name: Create Post
+    description: >
+      After the Agent has written a post file (/posts/{id}.json) on the cloud, this action is dispatched to notify the frontend to sync.
+      Upon receiving it, the frontend fetches the file from the cloud, updates the local file tree and UI. No local file creation is needed.
+    params:
+      - name: filePath
+        type: string
+        description: The post file path written by the Agent, e.g., /posts/{id}.json
+        required: true
+
+  - type: UPDATE_POST
+    name: Update Post
+    description: >
+      After the Agent has updated a post file on the cloud, this action is dispatched to notify the frontend to sync.
+      Upon receiving it, the frontend re-reads the file from the cloud, updates the local file tree and UI.
+    params:
+      - name: filePath
+        type: string
+        description: The post file path updated by the Agent, e.g., /posts/{id}.json
+        required: true
+
+  - type: DELETE_POST
+    name: Delete Post
+    description: >
+      After the Agent has deleted a post file on the cloud, this action is dispatched to notify the frontend to sync.
+      Upon receiving it, the frontend removes the post from the local file tree and refreshes the UI.
+    params:
+      - name: postId
+        type: string
+        description: The ID of the post to delete (corresponds to the filename without the .json extension)
+        required: true
+
+  - type: LIKE_POST
+    name: Like Post
+    description: >
+      After the Agent has updated the post file on the cloud (likes +1, isLiked set to true), this action is dispatched to notify the frontend to sync.
+      Upon receiving it, the frontend re-reads the post file from the cloud and refreshes the UI.
+    params:
+      - name: postId
+        type: string
+        description: The ID of the post to like
+        required: true
+
+  - type: UNLIKE_POST
+    name: Unlike Post
+    description: >
+      After the Agent has updated the post file on the cloud (likes -1, isLiked set to false), this action is dispatched to notify the frontend to sync.
+      Upon receiving it, the frontend re-reads the post file from the cloud and refreshes the UI.
+    params:
+      - name: postId
+        type: string
+        description: The ID of the post to unlike
+        required: true
+
+  - type: COMMENT_POST
+    name: Comment on Post
+    description: >
+      After the Agent has updated the post file on the cloud (appended a comment to the comments array), this action is dispatched to notify the frontend to sync.
+      Upon receiving it, the frontend re-reads the post file from the cloud and refreshes the UI.
+    params:
+      - name: postId
+        type: string
+        description: The ID of the post being commented on
+        required: true

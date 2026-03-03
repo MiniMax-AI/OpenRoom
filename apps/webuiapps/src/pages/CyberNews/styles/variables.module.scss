@@ -1,0 +1,46 @@
+// CyberNews Design System - Cyberpunk 2077 Style
+
+// Colors - Cyberpunk Dark Theme
+$color-bg: #121214;
+$color-surface: #1c1d20;
+$color-surface-elevated: #282a2a;
+// Primary - Yellow (Cyberpunk accent)
+$color-accent: #faea5f;
+$color-accent-dim: rgba(250, 234, 95, 0.1);
+$color-accent-muted: rgba(250, 234, 95, 0.4);
+
+// Functional
+$color-cyan: #2ea7ff;
+$color-red: #ff3f4d;
+// Text
+$color-text: rgba(255, 255, 255, 0.9);
+$color-text-secondary: rgba(255, 255, 255, 0.75);
+$color-text-tertiary: rgba(255, 255, 255, 0.6);
+$color-text-muted: rgba(255, 255, 255, 0.35);
+
+// Typography
+$font-family: 'Rajdhani', 'Segoe UI', system-ui, sans-serif;
+$font-size-xs: 11px;
+$font-size-sm: 12px;
+$font-size-base: 14px;
+$font-size-lg: 16px;
+$font-size-2xl: 28px;
+$font-size-3xl: 36px;
+
+// Spacing
+$spacing-2xs: 2px;
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 12px;
+$spacing-lg: 16px;
+$spacing-xl: 20px;
+$spacing-2xl: 24px;
+$spacing-3xl: 32px;
+
+// Layout
+$ticker-height: 36px;
+$case-sidebar-width: 240px;
+
+// Animation
+$duration-fast: 150ms;
+$duration-normal: 200ms;

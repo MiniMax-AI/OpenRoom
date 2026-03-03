@@ -1,0 +1,178 @@
+.shell {
+  height: 100vh;
+  width: 100vw;
+  background: #121214;
+  color: rgba(255, 255, 255, 0.9);
+  overflow: hidden;
+  position: relative;
+}
+
+.desktop {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: flex-start;
+  padding: 32px;
+}
+
+.iconGrid {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 16px;
+  max-height: calc(100vh - 64px);
+  align-content: flex-start;
+}
+
+.appIcon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.85);
+  transition: background 0.15s;
+  user-select: none;
+  width: 80px;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  &:active {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+.iconCircle {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.iconLabel {
+  font-size: 11px;
+  text-align: center;
+  line-height: 1.2;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.langToggle {
+  position: fixed;
+  right: 16px;
+  bottom: 112px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition: all 0.2s;
+  background: rgba(250, 234, 95, 0.15);
+  color: #faea5f;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+
+  &:hover {
+    transform: scale(1.1);
+    background: rgba(250, 234, 95, 0.25);
+  }
+
+  &.chatOpen {
+    right: 336px;
+  }
+}
+
+.reportToggle {
+  position: fixed;
+  right: 16px;
+  bottom: 64px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition: all 0.2s;
+
+  &.reportOn {
+    background: rgba(46, 167, 255, 0.15);
+    color: #2ea7ff;
+    box-shadow: 0 0 8px rgba(46, 167, 255, 0.3);
+
+    svg {
+      animation: pulse-radio 1.5s ease-in-out infinite;
+    }
+  }
+
+  &.reportOff {
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  &:hover {
+    transform: scale(1.1);
+  }
+
+  &.chatOpen {
+    right: 336px;
+  }
+}
+
+@keyframes pulse-radio {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.chatToggle {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #faea5f;
+  color: #121214;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+  &:hover {
+    transform: scale(1.05);
+  }
+
+  &.chatOpen {
+    right: 336px;
+  }
+}

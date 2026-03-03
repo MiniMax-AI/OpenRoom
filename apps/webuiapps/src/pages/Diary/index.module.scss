@@ -1,0 +1,1152 @@
+// Diary page styles
+// Warm journal style - paper background, calendar navigation, handwritten feel, doodle decorations
+
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&display=swap');
+
+// ========== Color Scheme - Warm Paper ==========
+$accent: #8b4513;
+$accent-hover: #6d3611;
+$accent-light: rgba(139, 69, 19, 0.08);
+
+$bg-primary: #f0e6d2;
+$bg-sidebar: rgba(255, 255, 255, 0.4);
+$bg-card: #ffffff;
+$bg-hover: rgba(139, 69, 19, 0.06);
+$bg-active: rgba(139, 69, 19, 0.12);
+
+$border-main: rgba(139, 69, 19, 0.15);
+$border-light: rgba(139, 69, 19, 0.08);
+$border-dashed: rgba(139, 69, 19, 0.2);
+
+$text-primary: #1f2937;
+$text-secondary: #5d4037;
+$text-muted: #a1887f;
+$text-placeholder: #c4a882;
+
+$danger: #ef4444;
+$danger-bg: rgba(239, 68, 68, 0.08);
+
+$shadow-paper:
+  5px 5px 15px rgba(0, 0, 0, 0.08),
+  -1px 0 3px rgba(0, 0, 0, 0.04);
+$shadow-btn: 2px 2px 0 rgba(139, 69, 19, 0.12);
+
+$font-handwriting: 'Caveat', 'Bradley Hand', 'Chalkboard SE', 'Comic Sans MS', cursive;
+$font-ui:
+  -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei',
+  sans-serif;
+
+$ruled-line-height: 32px;
+$margin-line-left: 50px;
+
+// ========== Root Container ==========
+.diary {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  background: $bg-primary;
+  color: $text-primary;
+  font-family: $font-ui;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.06;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+}
+
+// ========== Sidebar ==========
+.sidebar {
+  width: 290px;
+  min-width: 240px;
+  max-width: 320px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: $bg-sidebar;
+  backdrop-filter: blur(5px);
+  border-right: 2px solid $border-main;
+  flex-shrink: 0;
+  overflow: hidden;
+  z-index: 10;
+  padding: 0 14px;
+}
+
+.sidebarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 2px 8px;
+  flex-shrink: 0;
+}
+
+.sidebarTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bookIcon {
+  color: $accent;
+  display: flex;
+  align-items: center;
+  svg {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+.titleText {
+  font-family: $font-handwriting;
+  font-size: 24px;
+  font-weight: 700;
+  color: $text-secondary;
+  letter-spacing: 0.5px;
+}
+
+// ========== Month Navigation ==========
+.monthNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 2px;
+  border-bottom: 2px dashed $border-dashed;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.monthNavBtn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: $bg-card;
+  border: 2px solid $accent;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: $shadow-btn;
+  color: $accent;
+  transition: all 0.15s;
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+  &:hover {
+    background: $accent;
+    color: white;
+  }
+}
+
+.monthLabel {
+  font-size: 15px;
+  font-weight: 700;
+  color: $text-secondary;
+  font-family: $font-handwriting;
+}
+
+// ========== Weekday Headers ==========
+.weekdayHeaders {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+  font-size: 12px;
+  color: $accent;
+  font-weight: 600;
+  padding: 0 2px 6px;
+  flex-shrink: 0;
+}
+
+// ========== Calendar Grid ==========
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  padding: 0 2px;
+  flex: 1;
+  align-content: start;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar {
+    width: 3px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(139, 69, 19, 0.12);
+    border-radius: 2px;
+  }
+}
+
+.calendarDay {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  color: $text-muted;
+  font-size: 14px;
+  font-weight: 400;
+  position: relative;
+  font-family: $font-handwriting;
+  justify-self: center;
+  transition: background 0.12s;
+
+  &:hover {
+    background: $bg-hover;
+  }
+
+  &.hasEntry {
+    background: rgba(232, 245, 233, 0.7);
+    border-color: rgba(76, 175, 80, 0.3);
+    color: $text-secondary;
+    font-weight: 600;
+    box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.04);
+  }
+
+  &.selected {
+    background: $accent;
+    border-color: $accent;
+    border-radius: 50%;
+    color: white;
+    font-weight: 700;
+    box-shadow: none;
+  }
+
+  &.isToday {
+    border: 2px solid $accent;
+  }
+
+  &.selected.isToday {
+    border-color: $accent;
+  }
+}
+
+.dayMoodDot {
+  position: absolute;
+  bottom: 1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.dayEntryCount {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: $accent;
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 7px;
+  padding: 0 3px;
+  font-family: $font-ui;
+  line-height: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+// Sidebar actions (new entry button)
+.sidebarActions {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
+  flex-shrink: 0;
+}
+
+// ========== Calendar Toggle Button ==========
+.calendarToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed $border-dashed;
+  cursor: pointer;
+  color: $text-secondary;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: $font-handwriting;
+  width: 100%;
+  text-align: left;
+  flex-shrink: 0;
+  transition: background 0.15s;
+
+  &:hover {
+    background: $bg-hover;
+  }
+}
+
+.calendarToggleIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  transition: transform 0.25s ease;
+  color: $accent;
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.calendarToggleLabel {
+  flex: 1;
+}
+
+// ========== Diary List (Sidebar) ==========
+.diaryList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+  min-height: 0;
+
+  &::-webkit-scrollbar {
+    width: 3px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(139, 69, 19, 0.12);
+    border-radius: 2px;
+  }
+}
+
+.diaryListEmpty {
+  padding: 20px 8px;
+  text-align: center;
+  color: $text-muted;
+  font-size: 14px;
+  font-family: $font-handwriting;
+}
+
+.diaryListItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 8px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid $border-light;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.12s;
+
+  &:hover {
+    background: $bg-hover;
+  }
+
+  &.diaryListItemActive {
+    background: $accent-light;
+    border-left: 3px solid $accent;
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.diaryListItemDate {
+  font-size: 12px;
+  color: $text-muted;
+  font-family: $font-handwriting;
+  font-weight: 600;
+  white-space: nowrap;
+  padding-top: 2px;
+  min-width: 40px;
+}
+
+.diaryListItemContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.diaryListItemTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: $text-primary;
+  font-family: $font-handwriting;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.diaryListItemPreview {
+  font-size: 12px;
+  color: $text-muted;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+.diaryListItemMood {
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.newBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: $bg-card;
+  border: 2px solid $accent;
+  border-radius: 50%;
+  color: $accent;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  box-shadow: $shadow-btn;
+  &:hover {
+    background: $accent;
+    color: white;
+    transform: scale(1.08) rotate(5deg);
+  }
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.sidebarFooter {
+  padding: 8px 2px 12px;
+  font-size: 12px;
+  color: $text-muted;
+  border-top: 1px dashed $border-dashed;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.entryCount {
+  color: $text-secondary;
+  font-weight: 600;
+}
+
+// ========== Main Editor Area ==========
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  padding: 20px 28px;
+  z-index: 1;
+  overflow: hidden;
+  perspective: 1200px;
+}
+
+.editorBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: $bg-card;
+  border-radius: 2px 10px 10px 2px;
+  box-shadow: $shadow-paper;
+  position: relative;
+
+  // Red vertical margin line
+  &::after {
+    content: '';
+    position: absolute;
+    left: $margin-line-left;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: rgba(239, 68, 68, 0.18);
+    pointer-events: none;
+    z-index: 2;
+  }
+}
+
+.editorHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 3;
+  gap: 12px;
+  border-bottom: 1px dashed $border-dashed;
+  flex-wrap: wrap;
+}
+
+.editorMeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.editorDate {
+  font-size: 16px;
+  color: $text-secondary;
+  font-weight: 600;
+  font-family: $font-handwriting;
+}
+
+.editorStatus {
+  font-size: 12px;
+  color: $text-muted;
+  font-style: italic;
+}
+
+.editorIcons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  color: $text-muted;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: all 0.15s;
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+  &:hover {
+    background: $bg-hover;
+    color: $text-secondary;
+  }
+}
+
+.deleteBtn {
+  &:hover {
+    background: $danger-bg !important;
+    color: $danger !important;
+  }
+}
+
+// ========== Same-day Multiple Entries Tab ==========
+.entryTabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  flex-shrink: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid $border-light;
+  background: rgba(255, 248, 225, 0.3);
+
+  &::-webkit-scrollbar {
+    height: 2px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(139, 69, 19, 0.12);
+    border-radius: 1px;
+  }
+}
+
+.entryTab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: transparent;
+  border: 1.5px solid $border-light;
+  border-radius: 16px;
+  cursor: pointer;
+  color: $text-muted;
+  font-size: 14px;
+  font-family: $font-handwriting;
+  white-space: nowrap;
+  transition: all 0.15s;
+  flex-shrink: 0;
+
+  &:hover {
+    background: $bg-hover;
+    border-color: $border-main;
+    color: $text-secondary;
+  }
+
+  &.entryTabActive {
+    background: $accent;
+    border-color: $accent;
+    color: white;
+    font-weight: 700;
+    box-shadow: $shadow-btn;
+  }
+}
+
+.entryTabLabel {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.entryTabTime {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.entryTabAdd {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  border: 1.5px dashed $border-dashed;
+  border-radius: 50%;
+  cursor: pointer;
+  color: $text-muted;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+  &:hover {
+    background: $accent;
+    border-color: $accent;
+    border-style: solid;
+    color: white;
+  }
+}
+
+// ========== Mood/Weather Picker ==========
+.pickerWrapper {
+  position: relative;
+}
+
+.pickerDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: $bg-card;
+  border: 2px solid $accent;
+  border-radius: 10px;
+  box-shadow: 4px 4px 0 rgba(139, 69, 19, 0.12);
+  z-index: 100;
+  min-width: 140px;
+  padding: 4px 0;
+  overflow: hidden;
+}
+
+.pickerOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-size: 13px;
+  color: $text-secondary;
+  font-family: inherit;
+  transition: background 0.1s;
+
+  &:hover {
+    background: rgba(255, 248, 225, 0.8);
+  }
+
+  &.pickerActive {
+    background: rgba(255, 248, 225, 1);
+    font-weight: 600;
+  }
+}
+
+// ========== Title ==========
+.titleInput {
+  width: 100%;
+  padding: 16px 20px 8px;
+  padding-left: $margin-line-left + 18px;
+  background: transparent;
+  border: none;
+  font-size: 28px;
+  font-weight: 700;
+  color: $text-primary;
+  outline: none;
+  font-family: $font-handwriting;
+  line-height: 1.3;
+  letter-spacing: 0.5px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  resize: none;
+  overflow: hidden;
+  word-break: break-word;
+  position: relative;
+  z-index: 1;
+  &::placeholder {
+    color: $text-placeholder;
+  }
+}
+
+.titleDisplay {
+  padding: 16px 20px 8px;
+  padding-left: $margin-line-left + 18px;
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  color: $text-primary;
+  font-family: $font-handwriting;
+  line-height: 1.3;
+  position: relative;
+  z-index: 1;
+}
+
+// ========== Tiptap Editor ==========
+.contentArea {
+  flex: 1;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(139, 69, 19, 0.12);
+    border-radius: 2px;
+  }
+
+  :global(.tiptap) {
+    padding: 8px 20px 24px;
+    padding-left: $margin-line-left + 18px;
+    outline: none;
+    font-size: 17px;
+    color: $text-primary;
+    font-family: $font-handwriting;
+    line-height: $ruled-line-height;
+    min-height: 100%;
+    box-sizing: border-box;
+
+    background-image: linear-gradient(
+      transparent #{$ruled-line-height - 1},
+      rgba(180, 180, 180, 0.25) #{$ruled-line-height - 1}
+    );
+    background-size: 100% $ruled-line-height;
+    background-attachment: local;
+
+    > * + * {
+      margin-top: 0;
+    }
+
+    &:global(.is-editor-empty)::before {
+      content: attr(data-placeholder);
+      color: $text-placeholder;
+      float: left;
+      height: 0;
+      pointer-events: none;
+    }
+
+    p:global(.is-editor-empty):first-child::before {
+      content: attr(data-placeholder);
+      color: $text-placeholder;
+      float: left;
+      height: 0;
+      pointer-events: none;
+    }
+
+    h1 {
+      font-size: 1.7em;
+      font-weight: 700;
+      line-height: 1.3;
+      margin: 0.4em 0 0.2em;
+      &:first-child {
+        margin-top: 0;
+      }
+    }
+    h2 {
+      font-size: 1.4em;
+      font-weight: 700;
+      line-height: 1.35;
+      margin: 0.3em 0 0.15em;
+      &:first-child {
+        margin-top: 0;
+      }
+    }
+    h3 {
+      font-size: 1.15em;
+      font-weight: 600;
+      line-height: 1.4;
+      margin: 0.25em 0 0.1em;
+      color: $text-secondary;
+      &:first-child {
+        margin-top: 0;
+      }
+    }
+    h4 {
+      font-size: 1.05em;
+      font-weight: 600;
+      color: $text-muted;
+      &:first-child {
+        margin-top: 0;
+      }
+    }
+    p {
+      margin: 0;
+    }
+    strong {
+      font-weight: 700;
+    }
+    em {
+      font-style: italic;
+    }
+    s {
+      text-decoration: line-through;
+      color: $text-muted;
+    }
+
+    :global(.md-inline-code) {
+      background: rgba(139, 69, 19, 0.06);
+      color: $accent;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.85em;
+    }
+    :global(.md-code-block) {
+      background: rgba(139, 69, 19, 0.04);
+      border: 1px solid $border-main;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin: 0.5em 0;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.85em;
+      line-height: 1.6;
+      overflow-x: auto;
+      code {
+        background: none;
+        padding: 0;
+        border-radius: 0;
+        font-size: inherit;
+        color: inherit;
+      }
+    }
+    :global(.md-blockquote) {
+      border-left: 3px solid $accent;
+      padding: 4px 0 4px 16px;
+      margin: 0.4em 0;
+      color: $text-secondary;
+      font-style: italic;
+      p {
+        margin: 0;
+      }
+    }
+    :global(.md-bullet-list),
+    :global(.md-ordered-list) {
+      padding-left: 1.4em;
+      margin: 0.3em 0;
+      li {
+        margin-bottom: 0.1em;
+        p {
+          margin: 0;
+        }
+      }
+    }
+    :global(.md-hr) {
+      border: none;
+      border-top: 2px dashed $border-dashed;
+      margin: 0.8em 0;
+    }
+    a {
+      color: $accent;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      cursor: pointer;
+    }
+  }
+}
+
+// ========== Read Mode Content ==========
+.readContent {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 20px 24px;
+  padding-left: $margin-line-left + 18px;
+  font-size: 17px;
+  color: $text-primary;
+  font-family: $font-handwriting;
+  line-height: $ruled-line-height;
+  white-space: pre-wrap;
+  word-break: break-word;
+  position: relative;
+  z-index: 1;
+
+  background-image: linear-gradient(
+    transparent #{$ruled-line-height - 1},
+    rgba(180, 180, 180, 0.25) #{$ruled-line-height - 1}
+  );
+  background-size: 100% $ruled-line-height;
+  background-attachment: local;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(139, 69, 19, 0.12);
+    border-radius: 2px;
+  }
+}
+
+.emptyContent {
+  color: $text-placeholder;
+  font-style: italic;
+}
+
+// ========== No Entry State ==========
+.noEntryState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 40px;
+}
+
+.noEntryText {
+  font-size: 20px;
+  color: $text-muted;
+  font-family: $font-handwriting;
+  transform: rotate(-2deg);
+  margin: 0;
+}
+
+.createBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  background: $accent;
+  border: none;
+  border-radius: 20px;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: $font-handwriting;
+  cursor: pointer;
+  box-shadow: 2px 3px 0 rgba(139, 69, 19, 0.2);
+  transition: box-shadow 0.15s;
+  &:hover {
+    box-shadow: 3px 4px 0 rgba(139, 69, 19, 0.25);
+  }
+}
+
+.createBtnIcon {
+  display: flex;
+  align-items: center;
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+// ========== Decorations ==========
+.penDecoration {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  color: $text-muted;
+  opacity: 0.25;
+  transform: rotate(-15deg);
+  z-index: 1;
+  pointer-events: none;
+  svg {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+.wordCount {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 20px;
+  font-size: 12px;
+  color: $text-muted;
+  flex-shrink: 0;
+  border-top: 1px dashed $border-dashed;
+  position: relative;
+  z-index: 1;
+}
+
+// ========== Empty State / Loading ==========
+.emptyState {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $text-muted;
+  font-size: 18px;
+  font-family: $font-handwriting;
+  p {
+    margin: 0;
+    text-align: center;
+    line-height: 1.5;
+    transform: rotate(-2deg);
+  }
+}
+
+.loadingState {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid $border-main;
+  border-top-color: $accent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// ========== Compact Layout ==========
+.compactCalendarView {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: $bg-primary;
+  overflow: hidden;
+  padding: 0 12px;
+}
+
+.compactCalendarToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 2px;
+  flex-shrink: 0;
+}
+
+.compactEditorView {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: $bg-primary;
+
+  .editorBody::after {
+    display: none;
+  }
+}
+
+.compactEditorHeader {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 2px solid $border-main;
+  flex-shrink: 0;
+  background: $bg-sidebar;
+  backdrop-filter: blur(5px);
+  gap: 8px;
+}
+
+.backBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  color: $accent;
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+  &:hover {
+    background: $accent-light;
+  }
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.compactEditorTitle {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+  color: $text-secondary;
+  word-break: break-word;
+  line-height: 1.4;
+  font-family: $font-handwriting;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// ========== Responsive ==========
+@media (max-width: 600px) {
+  .sidebar {
+    width: 240px;
+    min-width: 200px;
+    padding: 0 10px;
+  }
+
+  .main {
+    padding: 12px 16px;
+  }
+
+  .titleInput,
+  .titleDisplay {
+    font-size: 22px;
+    padding-left: $margin-line-left + 12px;
+  }
+
+  .contentArea :global(.tiptap),
+  .readContent {
+    padding-left: $margin-line-left + 12px;
+    font-size: 15px;
+  }
+
+  .editorHeader {
+    padding: 10px 16px;
+  }
+
+  .wordCount {
+    padding: 6px 16px;
+  }
+}

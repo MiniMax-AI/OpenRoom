@@ -1,0 +1,53 @@
+app_id: 11
+app_name: email
+app_display_name: 邮箱
+version: "1.0.0"
+description: >
+  邮箱应用。邮件数据以细粒度文件存储在 emails/ 目录，每封邮件为独立 JSON 文件。
+  用户仅可浏览、阅读、加星标和删除；撰写/回复/发送由 Agent 完成。
+  支持 COMPOSE_EMAIL/DELETE_EMAIL/MARK_READ 数据变更指令。
+  本文件仅定义 Agent 下发给前端的操作指令，用户本地操作由前端代码自行处理和上报。
+displayDesc: >
+  智能邮箱客户端，轻松浏览和管理邮件，AI 助手帮你撰写和回复，让沟通更高效。
+
+# ============================================================
+# 以下 actions 仅用于 Agent → 前端 的指令下发。
+# Agent 在调用这些 action 之前，应当已经完成了云端文件的写入/修改/删除，
+# 下发 action 的目的是通知前端从云端同步最新数据并刷新 UI。
+# ============================================================
+
+actions:
+  - type: COMPOSE_EMAIL
+    name: 撰写邮件
+    description: >
+      Agent 已在云端写入邮件文件（/emails/{id}.json）后，下发此 action 通知前端同步。
+      前端收到后从云端拉取该文件，更新本地文件树和 UI，无需本地再次创建文件。
+      邮件文件应包含完整的 Email JSON 结构，包括 from、to、cc、subject、content、
+      timestamp、isRead、isStarred、folder 等字段。
+    params:
+      - name: filePath
+        type: string
+        description: Agent 写入的邮件文件路径，如 /emails/{id}.json
+        required: true
+
+  - type: DELETE_EMAIL
+    name: 删除邮件
+    description: >
+      Agent 已在云端删除邮件文件后，下发此 action 通知前端同步。
+      前端收到后从本地文件树中移除该邮件并刷新 UI。
+    params:
+      - name: emailId
+        type: string
+        description: 要删除的邮件 ID（对应文件名，不含 .json 后缀）
+        required: true
+
+  - type: MARK_READ
+    name: 标记已读
+    description: >
+      Agent 已在云端更新邮件文件（isRead 设为 true）后，下发此 action 通知前端同步。
+      前端收到后从云端重新读取该邮件文件并刷新 UI。
+    params:
+      - name: emailId
+        type: string
+        description: 要标记为已读的邮件 ID
+        required: true

@@ -1,0 +1,22 @@
+app_id: 8
+app_name: album
+app_display_name: 相册
+version: "1.0.0"
+description: >
+  相册应用，只读浏览模式。图片数据存储在云端 images/ 目录。
+  仅支持 REFRESH 指令通知前端重新从云端同步图片列表，无写入类 Action。
+displayDesc: >
+  精美相册浏览器，以网格形式展示照片，点击即可大图预览，轻松回顾美好时光。
+
+# ============================================================
+# 以下 actions 仅用于 Agent → 前端 的指令下发。
+# Agent 在云端新增/删除图片文件后，可下发 REFRESH 通知前端重新从云端同步。
+# ============================================================
+
+actions:
+  - type: REFRESH
+    name: 刷新相册
+    description: >
+      Agent 已在云端新增或删除图片文件后，下发此 action 通知前端重新从云端同步并刷新列表。
+      前端收到后调用 initFromCloud 并重新加载 /images 下的所有图片元数据。
+    params: []

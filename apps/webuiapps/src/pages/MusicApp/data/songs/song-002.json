@@ -1,0 +1,10 @@
+{
+  "id": "song-002",
+  "title": "Ocean Waves",
+  "artist": "Azure Mind",
+  "album": "Deep Blue",
+  "duration": 198,
+  "coverColor": "#0EA5E9",
+  "createdAt": 1707436800000,
+  "audioUrl": "/music/ocean-waves.mp3"
+}

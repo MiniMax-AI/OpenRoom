@@ -1,0 +1,475 @@
+@use './styles/variables.module' as *;
+
+// ============ App Container ============
+.gomokuApp {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  background: $bg-1;
+  color: $text-primary;
+  font-family: $font-family;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  user-select: none;
+  position: relative;
+}
+
+// ============ Loading ============
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid $grouped-4;
+  border-top-color: $color-yellow;
+  border-radius: $radius-full;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// ============ Start Screen ============
+.startScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-2xl;
+  animation: fadeIn $duration-slow $easing;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.startSubtitle {
+  font-size: $font-size-base;
+  color: $text-secondary;
+}
+
+.colorSelection {
+  display: flex;
+  gap: $spacing-2xl;
+  margin-top: $spacing-md;
+}
+
+.colorOption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-md;
+  padding: $spacing-lg $spacing-2xl;
+  border: 2px solid $grouped-4;
+  border-radius: $radius-xl;
+  background: $bg-2;
+  cursor: pointer;
+  transition: all $duration-normal $easing;
+  min-width: 140px;
+
+  &:hover {
+    border-color: $color-yellow;
+    background: $bg-3;
+    transform: translateY(-2px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.stonePreview {
+  width: 56px;
+  height: 56px;
+  border-radius: $radius-full;
+  position: relative;
+
+  &.black {
+    background: radial-gradient(circle at 35% 35%, #555, $color-stone-black 60%);
+    box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.5);
+  }
+
+  &.white {
+    background: radial-gradient(circle at 35% 35%, #fff, $color-stone-white 60%);
+    box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.3);
+  }
+}
+
+.colorLabel {
+  font-size: $font-size-lg;
+  font-weight: 500;
+  color: $text-secondary;
+}
+
+.colorHint {
+  font-size: $font-size-xs;
+  color: $text-tertiary;
+}
+
+// ============ Game Layout ============
+.gameLayout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-md;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: $spacing-md;
+  animation: fadeIn $duration-normal $easing;
+}
+
+// ============ Status Bar ============
+.statusBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 640px;
+  padding: $spacing-sm $spacing-md;
+  flex-shrink: 0;
+}
+
+.playerIndicator {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-xs $spacing-md;
+  border-radius: $radius-full;
+  background: $bg-2;
+  border: 1px solid $grouped-4;
+  font-size: $font-size-sm;
+  color: $text-secondary;
+  transition: all $duration-normal $easing;
+
+  &.active {
+    border-color: $color-yellow;
+    color: $text-primary;
+    box-shadow: 0 0 12px $color-yellow-10;
+  }
+}
+
+.indicatorStone {
+  width: 16px;
+  height: 16px;
+  border-radius: $radius-full;
+  flex-shrink: 0;
+
+  &.black {
+    background: radial-gradient(circle at 35% 35%, #555, $color-stone-black 60%);
+  }
+
+  &.white {
+    background: radial-gradient(circle at 35% 35%, #fff, $color-stone-white 60%);
+    border: 1px solid $fill-black-10;
+  }
+}
+
+.turnLabel {
+  font-size: $font-size-sm;
+  color: $color-yellow;
+  font-weight: 500;
+}
+
+.moveCount {
+  font-size: $font-size-xs;
+  color: $text-tertiary;
+}
+
+// ============ Board ============
+.boardContainer {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+
+.board {
+  position: relative;
+  background: $color-board;
+  border-radius: $radius-md;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 $fill-white-10;
+  background-image:
+    linear-gradient(45deg, $fill-black-10 25%, transparent 25%),
+    linear-gradient(-45deg, $fill-black-10 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, $fill-black-10 75%),
+    linear-gradient(-45deg, transparent 75%, $fill-black-10 75%);
+  background-size: 4px 4px;
+  background-color: $color-board;
+}
+
+.boardSvg {
+  display: block;
+}
+
+.gridLine {
+  stroke: $color-board-line;
+  stroke-width: 0.8;
+}
+
+.starPoint {
+  fill: $color-board-line;
+}
+
+// ============ Stones ============
+.stone {
+  cursor: default;
+  transition: filter $duration-fast $easing;
+}
+
+.stoneBlack {
+  fill: url(#blackStoneGrad);
+  stroke: rgba(0, 0, 0, 0.3);
+  stroke-width: 0.5;
+}
+
+.stoneWhite {
+  fill: url(#whiteStoneGrad);
+  stroke: $fill-black-15;
+  stroke-width: 0.5;
+}
+
+.lastMove {
+  filter: drop-shadow(0 0 4px rgba(250, 234, 95, 0.5));
+}
+
+// ============ Win Highlight ============
+.winStone {
+  animation: winPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes winPulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 6px $color-win-glow);
+  }
+  50% {
+    filter: drop-shadow(0 0 14px $color-win-glow);
+  }
+}
+
+.winLine {
+  stroke: rgba(250, 234, 95, 0.7);
+  stroke-width: 3;
+  stroke-linecap: round;
+  animation: drawLine 0.5s $easing forwards;
+}
+
+@keyframes drawLine {
+  from {
+    stroke-dasharray: 0 1000;
+  }
+  to {
+    stroke-dasharray: 1000 0;
+  }
+}
+
+// ============ Hover ============
+.hoverStone {
+  opacity: 0.35;
+  cursor: pointer;
+  pointer-events: none;
+}
+
+.clickTarget {
+  fill: transparent;
+  cursor: pointer;
+
+  &:hover {
+    fill: $fill-white-2;
+  }
+}
+
+// ============ Stone Place Animation ============
+.stonePlaced {
+  animation: placeStone $duration-normal $easing;
+}
+
+@keyframes placeStone {
+  0% {
+    r: 0;
+    opacity: 0;
+  }
+  60% {
+    r: 16;
+    opacity: 1;
+  }
+  80% {
+    r: 13;
+  }
+  100% {
+    r: 14;
+  }
+}
+
+// ============ Controls ============
+.controls {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-sm 0;
+  flex-shrink: 0;
+}
+
+.controlBtn {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  padding: $spacing-xs $spacing-md;
+  border: 1px solid $grouped-4;
+  border-radius: $radius-md;
+  background: $bg-2;
+  color: $text-secondary;
+  font-size: $font-size-sm;
+  font-family: $font-family;
+  cursor: pointer;
+  transition: all $duration-fast $easing;
+
+  &:hover {
+    background: $bg-3;
+    color: $text-primary;
+    border-color: $color-yellow;
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+
+    &:hover {
+      background: $bg-2;
+      color: $text-secondary;
+      border-color: $grouped-4;
+    }
+  }
+}
+
+.controlBtnDanger {
+  &:hover {
+    border-color: $color-red;
+    color: $color-red;
+  }
+}
+
+// ============ Result Overlay ============
+.resultOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: $mask-heavy;
+  backdrop-filter: blur(8px);
+  z-index: 10;
+  animation: fadeIn $duration-normal $easing;
+}
+
+.resultCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-lg;
+  padding: $spacing-3xl;
+  background: $bg-2;
+  border: 1px solid $grouped-4;
+  border-radius: $radius-xl;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+  min-width: 280px;
+}
+
+.resultIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: $radius-full;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &.blackWin {
+    background: radial-gradient(circle at 35% 35%, #555, $color-stone-black 60%);
+    box-shadow: 0 0 20px $color-yellow-10;
+  }
+
+  &.whiteWin {
+    background: radial-gradient(circle at 35% 35%, #fff, $color-stone-white 60%);
+    box-shadow: 0 0 20px $color-yellow-10;
+  }
+
+  &.draw {
+    background: $bg-3;
+    border: 2px solid $grouped-4;
+  }
+}
+
+.resultTitle {
+  font-size: $font-size-2xl;
+  font-weight: 700;
+  color: $text-primary;
+}
+
+.resultSubtitle {
+  font-size: $font-size-sm;
+  color: $text-secondary;
+  margin-top: -$spacing-sm;
+}
+
+.resultActions {
+  display: flex;
+  gap: $spacing-md;
+  margin-top: $spacing-sm;
+}
+
+.resultBtn {
+  padding: $spacing-sm $spacing-2xl;
+  border: 1px solid $grouped-4;
+  border-radius: $radius-md;
+  background: $bg-2;
+  color: $text-primary;
+  font-size: $font-size-base;
+  font-family: $font-family;
+  cursor: pointer;
+  transition: all $duration-fast $easing;
+
+  &:hover {
+    background: $bg-3;
+    border-color: $color-yellow;
+  }
+}
+
+.resultBtnPrimary {
+  background: $color-yellow;
+  border-color: $color-yellow;
+  color: $text-btn-primary;
+  font-weight: 600;
+
+  &:hover {
+    background: $color-yellow-light;
+  }
+}

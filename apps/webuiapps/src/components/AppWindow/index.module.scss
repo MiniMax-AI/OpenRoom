@@ -1,0 +1,117 @@
+.window {
+  position: absolute;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-2, #1c1d20);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  min-width: 300px;
+  min-height: 200px;
+}
+
+.titleBar {
+  height: 36px;
+  background: var(--bg-3, #282a2a);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.title {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+}
+
+.actionBtn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
+
+.closeBtn {
+  &:hover {
+    background: #ff3f4d;
+    color: #fff;
+  }
+}
+
+.content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.contentInner {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  // transform creates a new containing block, making position:fixed
+  // children position relative to this container instead of viewport
+  transform: translateZ(0);
+
+  // Override 100vh used by child apps so it maps to container height
+  > * {
+    height: 100% !important;
+    max-height: 100%;
+  }
+}
+
+.resizeHandle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  z-index: 10;
+
+  &::after {
+    content: '';
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid rgba(255, 255, 255, 0.3);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+  }
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+}

@@ -1,0 +1,54 @@
+app_id: 11
+app_name: email
+app_display_name: Email
+version: "1.0.0"
+description: >
+  Email app. Emails stored as fine-grained files in emails/ directory, each email as an independent JSON file.
+  Users can only browse, read, star, and delete; composing/replying/sending is handled by Agent.
+  Supports COMPOSE_EMAIL/DELETE_EMAIL/MARK_READ mutation actions.
+  This file only defines actions dispatched from Agent to frontend. User local operations are handled and reported by frontend code.
+displayDesc: >
+  A smart email client — browse and manage emails effortlessly while AI assists with composing and replying.
+
+# ============================================================
+# The following actions are only for Agent → Frontend command dispatch.
+# Before dispatching these actions, the Agent should have already completed
+# file writes/modifications/deletions on the cloud.
+# The purpose of dispatching actions is to notify the frontend to sync the latest data and refresh the UI.
+# ============================================================
+
+actions:
+  - type: COMPOSE_EMAIL
+    name: Compose Email
+    description: >
+      After the Agent has written an email file (/emails/{id}.json) on the cloud, this action is dispatched to notify the frontend to sync.
+      Upon receiving it, the frontend fetches the file from the cloud, updates the local file tree and UI. No local file creation is needed.
+      The email file should contain a complete Email JSON structure, including from, to, cc, subject, content,
+      timestamp, isRead, isStarred, folder, and other fields.
+    params:
+      - name: filePath
+        type: string
+        description: The email file path written by the Agent, e.g., /emails/{id}.json
+        required: true
+
+  - type: DELETE_EMAIL
+    name: Delete Email
+    description: >
+      After the Agent has deleted an email file on the cloud, this action is dispatched to notify the frontend to sync.
+      Upon receiving it, the frontend removes the email from the local file tree and refreshes the UI.
+    params:
+      - name: emailId
+        type: string
+        description: The ID of the email to delete (corresponds to the filename without the .json extension)
+        required: true
+
+  - type: MARK_READ
+    name: Mark as Read
+    description: >
+      After the Agent has updated the email file on the cloud (isRead set to true), this action is dispatched to notify the frontend to sync.
+      Upon receiving it, the frontend re-reads the email file from the cloud and refreshes the UI.
+    params:
+      - name: emailId
+        type: string
+        description: The ID of the email to mark as read
+        required: true

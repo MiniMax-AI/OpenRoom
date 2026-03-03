@@ -1,0 +1,491 @@
+// Twitter page styles
+// Twitter/X dark theme - dark background, blue accent
+
+// Color scheme - Twitter dark theme
+$twitter-blue: #1d9bf0;
+$twitter-blue-hover: #1a8cd8;
+$twitter-blue-light: rgba(29, 155, 240, 0.12);
+
+$bg-primary: #0d1117;
+$bg-secondary: #161b22;
+$bg-hover: rgba(255, 255, 255, 0.06);
+
+$border-color: #30363d;
+$border-dark: #21262d;
+
+$text-primary: #e6edf3;
+$text-secondary: #8b949e;
+$text-muted: #6e7681;
+
+$like-color: #f91880;
+$like-bg: rgba(249, 24, 128, 0.15);
+$retweet-color: #00ba7c;
+$retweet-bg: rgba(0, 186, 124, 0.15);
+
+// Global container
+:global(html),
+:global(body),
+:global(#root) {
+  background: $bg-primary;
+}
+
+.twitter {
+  min-height: 100vh;
+  background: $bg-primary;
+  color: $text-primary;
+  max-width: 600px;
+  margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  border-left: 1px solid $border-color;
+  border-right: 1px solid $border-color;
+}
+
+// Post form styles
+.createPostForm {
+  padding: 12px 16px;
+  background: $bg-primary;
+  border-bottom: 1px solid $border-color;
+}
+
+.formHeader {
+  display: flex;
+  gap: 12px;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: $twitter-blue-light;
+  color: $twitter-blue;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.avatarImg {
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: $text-primary;
+  font-size: 20px;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  line-height: 1.4;
+  padding: 8px 0;
+  min-height: 52px;
+
+  &::placeholder {
+    color: $text-secondary;
+  }
+}
+
+.formFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid $border-color;
+  margin-left: 52px;
+}
+
+.charCount {
+  font-size: 13px;
+  color: $text-muted;
+}
+
+.submitBtn {
+  background: #ffffff;
+  color: #000000;
+  border: none;
+  padding: 0 16px;
+  height: 36px;
+  border-radius: 9999px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover:not(:disabled) {
+    background: $twitter-blue-hover;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// Divider
+.divider {
+  height: 4px;
+  background: $bg-secondary;
+  border-top: 1px solid $border-color;
+  border-bottom: 1px solid $border-color;
+}
+
+// Post feed
+.feed {
+  min-height: 200px;
+}
+
+// Post card styles
+.postCard {
+  padding: 12px 16px;
+  background: $bg-primary;
+  border-bottom: 1px solid $border-color;
+  transition: background-color 0.2s;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+
+  &:hover {
+    background: $bg-hover;
+  }
+}
+
+.postBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.postHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.authorInfo {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.authorName {
+  font-weight: 700;
+  font-size: 15px;
+  color: $text-primary;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.authorUsername {
+  color: $text-secondary;
+  font-size: 15px;
+}
+
+.postTime {
+  color: $text-secondary;
+  font-size: 15px;
+}
+
+.deleteBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: transparent;
+  border: none;
+  color: $text-secondary;
+  cursor: pointer;
+  border-radius: 50%;
+  font-size: 14px;
+  transition: all 0.2s;
+  margin: -8px -8px 0 0;
+  opacity: 0;
+
+  .postCard:hover & {
+    opacity: 1;
+  }
+
+  &:hover {
+    background: $like-bg;
+    color: $like-color;
+  }
+}
+
+.postContent {
+  font-size: 15px;
+  line-height: 1.5;
+  margin-top: 4px;
+  margin-bottom: 12px;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  color: $text-primary;
+}
+
+.postActions {
+  display: flex;
+  max-width: 425px;
+  justify-content: space-between;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: $text-secondary;
+  cursor: pointer;
+  padding: 0;
+  font-size: 13px;
+  transition: color 0.2s;
+  min-width: 50px;
+
+  .icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    font-size: 16px;
+    transition: background-color 0.2s;
+  }
+
+  &:hover {
+    color: $twitter-blue;
+
+    .icon {
+      background: $twitter-blue-light;
+    }
+  }
+
+  .count {
+    font-size: 13px;
+    min-width: 20px;
+  }
+}
+
+.likeBtn {
+  &:hover {
+    color: $like-color;
+
+    .icon {
+      background: $like-bg;
+    }
+  }
+
+  &.liked {
+    color: $like-color;
+  }
+}
+
+// Comment button highlight
+.commentBtn {
+  &.active {
+    color: $twitter-blue;
+  }
+
+  &:hover {
+    color: $twitter-blue;
+
+    .icon {
+      background: $twitter-blue-light;
+    }
+  }
+}
+
+// Comment section
+.commentSection {
+  margin-top: 8px;
+  border-top: 1px solid $border-color;
+  padding-top: 8px;
+}
+
+.commentList {
+  display: flex;
+  flex-direction: column;
+}
+
+.commentItem {
+  display: flex;
+  gap: 8px;
+  padding: 8px 0;
+
+  & + & {
+    border-top: 1px solid $border-color;
+  }
+}
+
+.commentAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: $twitter-blue-light;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+  color: $twitter-blue;
+  font-weight: 600;
+}
+
+.commentBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.commentHeader {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.2;
+  flex-wrap: wrap;
+}
+
+.commentAuthorName {
+  font-weight: 700;
+  font-size: 13px;
+  color: $text-primary;
+}
+
+.commentAuthorUsername {
+  font-size: 13px;
+  color: $text-secondary;
+}
+
+.commentTime {
+  font-size: 13px;
+  color: $text-secondary;
+}
+
+.commentContent {
+  font-size: 14px;
+  line-height: 1.4;
+  color: $text-primary;
+  margin-top: 2px;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+// Comment input
+.commentForm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 4px;
+  border-top: 1px solid $border-color;
+  margin-top: 4px;
+}
+
+.commentInputAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: $twitter-blue-light;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+  color: $twitter-blue;
+  font-weight: 600;
+}
+
+.commentInput {
+  flex: 1;
+  background: $bg-secondary;
+  border: 1px solid $border-color;
+  border-radius: 9999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: $text-primary;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s;
+
+  &::placeholder {
+    color: $text-muted;
+  }
+
+  &:focus {
+    border-color: $twitter-blue;
+    background: $bg-primary;
+  }
+}
+
+.commentSendBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  color: $twitter-blue;
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background-color 0.2s;
+
+  &:hover:not(:disabled) {
+    background: $twitter-blue-light;
+  }
+
+  &:disabled {
+    color: $text-muted;
+    cursor: not-allowed;
+  }
+}
+
+// Empty state
+.emptyState {
+  text-align: center;
+  padding: 48px 32px;
+  background: $bg-primary;
+
+  p {
+    font-size: 15px;
+    margin: 0;
+    color: $text-secondary;
+  }
+}
+
+// Loading state
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid $border-color;
+  border-top-color: $twitter-blue;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Responsive design
+@media (max-width: 600px) {
+  .twitter {
+    border-left: none;
+    border-right: none;
+  }
+
+  .formFooter {
+    margin-left: 0;
+  }
+}

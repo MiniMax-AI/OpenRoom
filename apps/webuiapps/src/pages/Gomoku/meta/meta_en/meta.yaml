@@ -1,0 +1,106 @@
+app_id: 9
+app_name: gomoku
+app_display_name: Gomoku
+version: "1.0.0"
+description: >
+  Gomoku game app. Game records stored in history/ directory, state.json holds statistics and current game state.
+  Supports PLACE_STONE/UNDO_MOVE/NEW_GAME/SURRENDER operation actions, plus CRUD and REFRESH mutation actions.
+  This file only defines action commands sent from Agent to frontend. User local operations are handled and reported by frontend code.
+displayDesc: >
+  Classic Five in a Row — challenge the AI on a 15x15 board. Choose black or white at the start, with undo support and match history.
+
+# ============================================================
+# The following actions are only used for Agent → Frontend commands.
+# Before calling these actions, Agent has already completed writing/modifying/deleting cloud files.
+# The purpose of sending actions is to notify the frontend to sync latest data from cloud and refresh UI.
+# ============================================================
+
+actions:
+  # ========== Operation Actions ==========
+  # Directly execute App methods, return error if conditions not met
+
+  - type: PLACE_STONE
+    name: Place Stone
+    description: >
+      Agent places a stone at the specified board position. Only valid during the Agent's turn.
+      Returns error if it's not the Agent's turn or the position is already occupied.
+      The frontend automatically checks for win/draw conditions and switches turns after placement.
+    params:
+      - name: row
+        type: string
+        description: Row number, range 0-14, e.g. "7"
+        required: true
+      - name: col
+        type: string
+        description: Column number, range 0-14, e.g. "7"
+        required: true
+
+  - type: UNDO_MOVE
+    name: Undo Move
+    description: >
+      Undo the last pair of moves (one human + one agent move, two total).
+      Only valid when the game is in progress and at least two moves have been made.
+
+  - type: NEW_GAME
+    name: New Game
+    description: >
+      Reset the current game and return to the color selection screen.
+      The user will need to choose black or white again.
+
+  - type: SURRENDER
+    name: Surrender
+    description: >
+      Agent surrenders on behalf of one side, immediately ending the game with the other side winning.
+    params:
+      - name: color
+        type: string
+        description: The color of the surrendering side, either "black" or "white"
+        required: true
+
+  # ========== Mutation Actions ==========
+  # Agent has completed data writing, App only needs to refresh corresponding Repo
+
+  - type: CREATE_GAME
+    name: Create Game Record
+    description: >
+      Agent has written a game record file to NAS (/history/{id}.json), notifying the frontend to refresh history.
+    params:
+      - name: filePath
+        type: string
+        description: Path to the game record file written by Agent, e.g. /history/{id}.json
+        required: true
+
+  - type: UPDATE_GAME
+    name: Update Game Record
+    description: >
+      Agent has updated a game record file on NAS, notifying the frontend to refresh history.
+    params:
+      - name: filePath
+        type: string
+        description: Path to the game record file updated by Agent, e.g. /history/{id}.json
+        required: true
+
+  - type: DELETE_GAME
+    name: Delete Game Record
+    description: >
+      Agent has deleted a game record file from NAS, notifying the frontend to refresh history.
+    params:
+      - name: gameId
+        type: string
+        description: ID of the deleted game record
+        required: true
+
+  # ========== Refresh Actions ==========
+  # Notify App to reload specified Repo data
+
+  - type: REFRESH_HISTORY
+    name: Refresh Game History
+    description: >
+      Notify the frontend to reload all game records from the /history/ directory on cloud.
+
+  # ========== System Actions ==========
+
+  - type: SYNC_STATE
+    name: Sync State
+    description: >
+      After Agent writes state.json to NAS, notify the App to pull the latest state file from cloud and apply it to memory.

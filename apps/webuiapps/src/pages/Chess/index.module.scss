@@ -1,0 +1,376 @@
+// Chess styles - Immersive fullscreen layout
+
+// ============ Variables ============
+$accent: #faea5f;
+$gold: #ffd700;
+$text-primary: rgba(255, 255, 255, 0.92);
+$text-secondary: rgba(255, 255, 255, 0.6);
+$text-tertiary: rgba(255, 255, 255, 0.38);
+$glass-bg: rgba(0, 0, 0, 0.45);
+$glass-border: rgba(255, 255, 255, 0.1);
+
+// ============ Root Container - Fullscreen ============
+.container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei',
+    sans-serif;
+  // Dark ambient background (chess room atmosphere)
+  background:
+    // Dark corner vignette
+    radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.7) 100%),
+    // Warm light accents
+    radial-gradient(ellipse at 20% 20%, rgba(120, 80, 30, 0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 30%, rgba(100, 60, 20, 0.2) 0%, transparent 50%),
+    // Wood grain texture simulation
+    repeating-linear-gradient(
+        87deg,
+        rgba(60, 30, 10, 0.08) 0px,
+        rgba(40, 20, 8, 0.04) 2px,
+        transparent 4px,
+        transparent 12px
+      ),
+    // Base color gradient
+    linear-gradient(180deg, #1a1410 0%, #0f0c08 40%, #0a0806 100%);
+}
+
+// ============ Fullscreen 3D Canvas ============
+.boardCanvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.boardLoading {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+// ============ Overlay Common ============
+%overlay-panel {
+  position: absolute;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+// ============ Top-left Menu ============
+.topLeft {
+  @extend %overlay-panel;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.menuBtn {
+  padding: 6px 16px;
+  background: $glass-bg;
+  border: 1px solid $glass-border;
+  border-radius: 8px;
+  color: $text-primary;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.6);
+    border-color: rgba(255, 215, 0, 0.2);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+.statusHint {
+  font-size: 13px;
+  font-weight: 500;
+  color: $text-secondary;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+}
+
+// ============ Top-right NPC Info ============
+.topRight {
+  @extend %overlay-panel;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.npcInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 6px 6px;
+  background: $glass-bg;
+  border: 1px solid $glass-border;
+  border-radius: 28px;
+  backdrop-filter: blur(12px);
+}
+
+.playerInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 6px 6px;
+  background: $glass-bg;
+  border: 1px solid $glass-border;
+  border-radius: 28px;
+  backdrop-filter: blur(12px);
+}
+
+.avatarWrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 215, 0, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  background: #222;
+}
+
+.avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatarFallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.7);
+  background: linear-gradient(135deg, #2a2520, #1a1510);
+}
+
+.nameBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nameText {
+  font-size: 14px;
+  font-weight: 600;
+  color: $text-primary;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+}
+
+// ============ Captured Pieces Row ============
+.capturedRow {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  padding: 0 4px;
+}
+
+.capturedPiece {
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.7;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+
+// ============ Bottom-left Player Info ============
+.bottomLeft {
+  @extend %overlay-panel;
+  bottom: 16px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+// ============ Thinking Animation ============
+.thinkingDots {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+
+  span {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: $accent;
+    animation: chess-pulse 1.2s ease-in-out infinite;
+
+    &:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    &:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+  }
+}
+
+@keyframes chess-pulse {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.7);
+  }
+
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+// ============ Game Over Overlay ============
+.endOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+.endBox {
+  text-align: center;
+  padding: 28px 40px;
+  background: rgba(15, 12, 8, 0.9);
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  border-radius: 16px;
+  box-shadow:
+    0 0 30px rgba(255, 215, 0, 0.05),
+    0 12px 40px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(16px);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 15%;
+    right: 15%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, $gold, transparent);
+  }
+}
+
+.endTitle {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  color: $accent;
+}
+
+.endSub {
+  margin: 0 0 18px;
+  font-size: 13px;
+  color: $text-secondary;
+}
+
+.endBtn {
+  padding: 10px 28px;
+  background: $accent;
+  border: none;
+  border-radius: 8px;
+  color: #121210;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    opacity: 0.88;
+    box-shadow: 0 0 16px rgba(255, 215, 0, 0.25);
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+// ============ Loading State ============
+.loadingState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.12);
+  border-top-color: $accent;
+  border-radius: 50%;
+  animation: chess-spin 0.8s linear infinite;
+}
+
+@keyframes chess-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.errorText {
+  color: $text-primary;
+  font-size: 14px;
+}
+
+// ============ Responsive ============
+@media (max-width: 600px) {
+  .topLeft {
+    top: 10px;
+    left: 10px;
+    gap: 8px;
+  }
+
+  .topRight {
+    top: 10px;
+    right: 10px;
+  }
+
+  .bottomLeft {
+    bottom: 10px;
+    left: 10px;
+  }
+
+  .avatarWrap {
+    width: 30px;
+    height: 30px;
+  }
+
+  .nameText {
+    font-size: 12px;
+  }
+
+  .menuBtn {
+    padding: 5px 12px;
+    font-size: 12px;
+  }
+}
