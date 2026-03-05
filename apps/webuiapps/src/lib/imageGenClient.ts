@@ -29,7 +29,7 @@ const DEFAULT_CONFIGS: Record<ImageGenProvider, Omit<ImageGenConfig, 'apiKey'>> 
   gemini: {
     provider: 'gemini',
     baseUrl: 'https://generativelanguage.googleapis.com',
-    model: 'gemini-2.0-flash-exp',
+    model: 'gemini-3.1-flash-image-preview',
   },
 };
 
@@ -126,7 +126,7 @@ async function generateImageGemini(
   prompt: string,
   config: ImageGenConfig,
 ): Promise<ImageGenResult> {
-  const targetUrl = `${config.baseUrl}/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`;
+  const targetUrl = `${config.baseUrl}/v1beta/models/${config.model}:generateContent`;
   const body = {
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
@@ -138,6 +138,7 @@ async function generateImageGemini(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'x-goog-api-key': config.apiKey,
       'X-LLM-Target-URL': targetUrl,
       ...parseCustomHeaders(config.customHeaders),
     },

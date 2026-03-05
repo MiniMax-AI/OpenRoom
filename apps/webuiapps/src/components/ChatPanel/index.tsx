@@ -508,22 +508,22 @@ const SettingsModal: React.FC<{
   onSave: (_config: LLMConfig, _igConfig: ImageGenConfig | null) => void;
   onClose: () => void;
 }> = ({ config, imageGenConfig, onSave, onClose }) => {
-  const [provider, setProvider] = useState<LLMProvider>(config?.provider || 'openai');
+  const [provider, setProvider] = useState<LLMProvider>(config?.provider || 'minimax');
   const [apiKey, setApiKey] = useState(config?.apiKey || '');
-  const [baseUrl, setBaseUrl] = useState(config?.baseUrl || getDefaultConfig('openai').baseUrl);
-  const [model, setModel] = useState(config?.model || getDefaultConfig('openai').model);
+  const [baseUrl, setBaseUrl] = useState(config?.baseUrl || getDefaultConfig('minimax').baseUrl);
+  const [model, setModel] = useState(config?.model || getDefaultConfig('minimax').model);
   const [customHeaders, setCustomHeaders] = useState(config?.customHeaders || '');
 
   // Image generation settings
   const [igProvider, setIgProvider] = useState<ImageGenProvider>(
-    imageGenConfig?.provider || 'openai',
+    imageGenConfig?.provider || 'gemini',
   );
   const [igApiKey, setIgApiKey] = useState(imageGenConfig?.apiKey || '');
   const [igBaseUrl, setIgBaseUrl] = useState(
-    imageGenConfig?.baseUrl || getDefaultImageGenConfig('openai').baseUrl,
+    imageGenConfig?.baseUrl || getDefaultImageGenConfig('gemini').baseUrl,
   );
   const [igModel, setIgModel] = useState(
-    imageGenConfig?.model || getDefaultImageGenConfig('openai').model,
+    imageGenConfig?.model || getDefaultImageGenConfig('gemini').model,
   );
   const [igCustomHeaders, setIgCustomHeaders] = useState(imageGenConfig?.customHeaders || '');
 
@@ -612,7 +612,7 @@ const SettingsModal: React.FC<{
             onChange={(e) => handleIgProviderChange(e.target.value as ImageGenProvider)}
           >
             <option value="openai">OpenAI (DALL-E)</option>
-            <option value="gemini">Gemini</option>
+            <option value="gemini">Gemini (nano-banana-2)</option>
           </select>
         </div>
 
@@ -643,6 +643,9 @@ const SettingsModal: React.FC<{
             value={igModel}
             onChange={(e) => setIgModel(e.target.value)}
           />
+          {igProvider === 'gemini' && igModel === 'gemini-3.1-flash-image-preview' && (
+            <span className={styles.modelHint}>nano-banana-2</span>
+          )}
         </div>
 
         <div className={styles.field}>

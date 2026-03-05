@@ -75,7 +75,11 @@ const DEFAULT_CONFIGS: Record<LLMProvider, Omit<LLMConfig, 'apiKey'>> = {
     baseUrl: 'https://api.anthropic.com',
     model: 'claude-sonnet-4-20250514',
   },
-  minimax: { provider: 'minimax', baseUrl: 'https://api.minimax.chat', model: 'MiniMax-M1-80k' },
+  minimax: {
+    provider: 'minimax',
+    baseUrl: 'https://api.minimax.io/anthropic',
+    model: 'MiniMax-M2.5',
+  },
 };
 
 export function getDefaultConfig(provider: LLMProvider): Omit<LLMConfig, 'apiKey'> {
@@ -111,7 +115,7 @@ export async function chat(
     'messages:',
     messages.length,
   );
-  if (config.provider === 'anthropic') {
+  if (config.provider === 'anthropic' || config.provider === 'minimax') {
     return chatAnthropic(messages, tools, config);
   }
   return chatOpenAI(messages, tools, config);

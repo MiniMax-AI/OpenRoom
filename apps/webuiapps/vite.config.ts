@@ -24,15 +24,16 @@ function llmProxyPlugin(): Plugin {
         req.on('end', async () => {
           try {
             const body = Buffer.concat(chunks).toString();
-            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-            // Forward auth-related headers and custom headers
-            const forwardKeys = ['authorization', 'x-api-key', 'anthropic-version'];
+            const headers: Record<string, string> = {};
+            // Forward all headers except host/connection/internal ones
+            const skipKeys = new Set(['host', 'connection', 'content-length', 'x-llm-target-url']);
             for (const [key, val] of Object.entries(req.headers)) {
               if (typeof val !== 'string') continue;
-              if (forwardKeys.includes(key)) {
-                headers[key] = val;
-              } else if (key.startsWith('x-custom-')) {
+              if (skipKeys.has(key)) continue;
+              if (key.startsWith('x-custom-')) {
                 headers[key.replace('x-custom-', '')] = val;
+              } else {
+                headers[key] = val;
               }
             }
 
