@@ -12,6 +12,7 @@ import { join } from 'path';
 import { generateLogFileName, createLogMiddleware } from './src/lib/logPlugin';
 
 const LLM_CONFIG_FILE = resolve(os.homedir(), '.openroom', 'config.json');
+const CHAT_HISTORY_FILE = resolve(os.homedir(), '.openroom', 'history', 'chat.json');
 
 /** LLM config persistence plugin — reads/writes config to ~/.openroom/config.json */
 function llmConfigPlugin(): Plugin {
@@ -55,6 +56,72 @@ function llmConfigPlugin(): Plugin {
               res.end(JSON.stringify({ error: String(err) }));
             }
           });
+          return;
+        }
+
+        res.writeHead(405);
+        res.end(JSON.stringify({ error: 'Method not allowed' }));
+      });
+    },
+  };
+}
+
+/** Chat history persistence plugin — reads/writes to ~/.openroom/history/chat.json */
+function chatHistoryPlugin(): Plugin {
+  return {
+    name: 'chat-history',
+    configureServer(server) {
+      server.middlewares.use('/api/chat-history', (req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+
+        if (req.method === 'GET') {
+          try {
+            if (fs.existsSync(CHAT_HISTORY_FILE)) {
+              const content = fs.readFileSync(CHAT_HISTORY_FILE, 'utf-8');
+              res.writeHead(200);
+              res.end(content);
+            } else {
+              res.writeHead(404);
+              res.end(JSON.stringify({ error: 'No history file found' }));
+            }
+          } catch (err) {
+            res.writeHead(500);
+            res.end(JSON.stringify({ error: String(err) }));
+          }
+          return;
+        }
+
+        if (req.method === 'POST') {
+          const chunks: Buffer[] = [];
+          req.on('data', (chunk: Buffer) => chunks.push(chunk));
+          req.on('end', () => {
+            try {
+              const body = Buffer.concat(chunks).toString();
+              JSON.parse(body);
+              const dir = resolve(os.homedir(), '.openroom', 'history');
+              fs.mkdirSync(dir, { recursive: true });
+              fs.writeFileSync(CHAT_HISTORY_FILE, body, 'utf-8');
+              res.writeHead(200);
+              res.end(JSON.stringify({ ok: true }));
+            } catch (err) {
+              res.writeHead(500);
+              res.end(JSON.stringify({ error: String(err) }));
+            }
+          });
+          return;
+        }
+
+        if (req.method === 'DELETE') {
+          try {
+            if (fs.existsSync(CHAT_HISTORY_FILE)) {
+              fs.unlinkSync(CHAT_HISTORY_FILE);
+            }
+            res.writeHead(200);
+            res.end(JSON.stringify({ ok: true }));
+          } catch (err) {
+            res.writeHead(500);
+            res.end(JSON.stringify({ error: String(err) }));
+          }
           return;
         }
 
@@ -174,6 +241,7 @@ const config = ({ mode }: ConfigEnv): UserConfigExport => {
   const skipLegacy = env.VITE_SKIP_LEGACY === 'true';
   const plugins: PluginOption[] = [
     llmConfigPlugin(),
+    chatHistoryPlugin(),
     logServerPlugin(),
     llmProxyPlugin(),
     react(),
