@@ -120,3 +120,29 @@ Detection rules:
 - The user is clearly asking questions, chatting, or making fine-grained code modifications (e.g., "change this button color to red")
 - The user used the `/vibe` command (already handled by the command mechanism)
 - The user requests resuming or re-running from a specific stage (must explicitly use `/vibe {AppName}` or `/vibe {AppName} --from=XX`)
+
+## Testing
+
+### Unit Tests (Vitest)
+
+Run from the webuiapps package:
+
+```bash
+cd apps/webuiapps && pnpm test        # single run
+cd apps/webuiapps && pnpm test:watch  # watch mode
+```
+
+### E2E Tests (Playwright)
+
+Run from the repo root. The dev server starts automatically.
+
+```bash
+pnpm test:e2e          # headless, Chromium only
+pnpm test:e2e:ui       # interactive UI mode
+```
+
+- Config: `playwright.config.ts` (root)
+- Tests: `e2e/` directory
+- The web server (`pnpm dev`) is auto-launched on port 3000 and reused if already running.
+- Only Chromium is configured by default; add projects in `playwright.config.ts` for Firefox/WebKit.
+- After completing code changes that affect UI or routing, run `pnpm test:e2e` and report pass/fail.

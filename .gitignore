@@ -88,6 +88,9 @@ xcuserdata
 # Test & Coverage
 coverage/
 *.tsbuildinfo
+test-results/
+playwright-report/
+blob-report/
 
 # pnpm
 .pnpm-store/

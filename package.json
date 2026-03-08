@@ -13,7 +13,13 @@
   "bugs": {
     "url": "https://github.com/MiniMax-AI/OpenRoom/issues"
   },
-  "keywords": ["vibe-coding", "react", "ai-agent", "desktop-environment", "micro-frontend"],
+  "keywords": [
+    "vibe-coding",
+    "react",
+    "ai-agent",
+    "desktop-environment",
+    "micro-frontend"
+  ],
   "scripts": {
     "commitlint": "commitlint --config .commitlintrc -e -V",
     "lint-staged": "lint-staged",
@@ -23,21 +29,24 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "clean": "turbo run clean",
-    "release": "echo 'Configure your own release pipeline'"
+    "release": "echo 'Configure your own release pipeline'",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.8.0",
     "@commitlint/config-conventional": "^17.8.0",
+    "@playwright/test": "^1.58.2",
     "@sentry/vite-plugin": "^2.21.1",
     "@types/node": "^20.8.7",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
+    "@types/three": "^0.170.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "@vitejs/plugin-legacy": "5.4.1",
     "@vitejs/plugin-react-swc": "^3.6.0",
     "autoprefixer": "^10.4.16",
-    "@types/three": "^0.170.0",
     "css-loader": "^6.7.3",
     "eslint": "^8.51.0",
     "eslint-config-prettier": "^9.0.0",
