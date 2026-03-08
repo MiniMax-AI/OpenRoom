@@ -218,3 +218,5 @@ We'd love your help. Whether it's fixing a bug, building a new app, or improving
 ## License
 
 [MIT](LICENSE) — Copyright (c) 2025 MiniMax
+
+<!-- CI test: verify MiniMax M2.5 PR review workflow -->
