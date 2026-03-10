@@ -16,7 +16,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "framer-motion": "^12.34.0"
+    "framer-motion": "^12.35.2"
   },
   "devDependencies": {
     "@vitest/coverage-istanbul": "^1.6.1",
