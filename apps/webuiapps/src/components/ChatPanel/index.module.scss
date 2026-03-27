@@ -596,3 +596,37 @@
     max-width: 85%;
   }
 }
+
+/* ====================================================================
+   Mobile Landscape: Chaturbate/Twitch-style — video left, chat right
+   ==================================================================== */
+@media (max-width: 768px) and (orientation: landscape) {
+  .panel {
+    flex-direction: row;
+  }
+
+  .avatarSide {
+    position: relative;
+    inset: unset;
+    width: 55%;
+    height: 100%;
+  }
+
+  .chatSide {
+    width: 45%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+  }
+
+  .messages {
+    background: transparent;
+  }
+
+  .header {
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  .inputArea {
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+  }
+}

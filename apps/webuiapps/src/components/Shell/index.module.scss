@@ -637,3 +637,28 @@
     opacity: 1; /* always visible on touch devices */
   }
 }
+
+/* Mobile Landscape */
+@media (max-width: 768px) and (orientation: landscape) {
+  .bottomBar {
+    bottom: 4px;
+    padding: 4px 10px;
+    gap: 8px;
+  }
+
+  .barBtn {
+    width: 30px;
+    height: 30px;
+  }
+
+  .chatBtn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .addBtn {
+    bottom: 40px;
+    width: 34px;
+    height: 34px;
+  }
+}
