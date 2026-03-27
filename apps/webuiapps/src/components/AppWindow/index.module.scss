@@ -115,3 +115,31 @@
   color: rgba(255, 255, 255, 0.5);
   font-size: 13px;
 }
+
+/* ====================================================================
+   Mobile AppWindow — fullscreen, no drag/resize
+   ==================================================================== */
+@media (max-width: 768px) {
+  .window {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    min-width: unset;
+    min-height: unset;
+    border-radius: 0;
+    z-index: 100000 !important;
+  }
+
+  .titleBar {
+    cursor: default;
+    height: 40px;
+    padding: 0 12px;
+    /* Safe area for notch/status bar */
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .resizeHandle {
+    display: none;
+  }
+}

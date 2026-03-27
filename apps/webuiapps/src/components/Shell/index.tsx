@@ -42,6 +42,7 @@ import type { ModConfig } from '@/lib/modManager';
 import i18next from 'i18next';
 import { seedMetaFiles } from '@/lib/seedMeta';
 import { logger } from '@/lib/logger';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import styles from './index.module.scss';
 
 function useWindows() {
@@ -85,6 +86,7 @@ function isVideoUrl(url: string): boolean {
 }
 
 const Shell: React.FC = () => {
+  const isMobile = useIsMobile();
   const [chatOpen, setChatOpen] = useState(true);
   const [reportEnabled, setReportEnabled] = useState(true);
   const [lang, setLang] = useState<'en' | 'zh'>('en');
@@ -230,27 +232,36 @@ const Shell: React.FC = () => {
 
   useEffect(() => {
     if (!pipPos && barRef.current) {
-      const bar = barRef.current.getBoundingClientRect();
-      const barCenterX = bar.left + bar.width / 2;
-      setPipPos({
-        x: barCenterX - PIP_W / 2,
-        y: bar.top - PIP_H - 16,
-      });
+      if (isMobile) {
+        setPipPos({
+          x: (window.innerWidth - 140) / 2,
+          y: 60,
+        });
+      } else {
+        const bar = barRef.current.getBoundingClientRect();
+        const barCenterX = bar.left + bar.width / 2;
+        setPipPos({
+          x: barCenterX - PIP_W / 2,
+          y: bar.top - PIP_H - 16,
+        });
+      }
     }
-  }, [pipPos]);
+  }, [pipPos, isMobile]);
 
   const handlePipMouseDown = useCallback(
     (e: React.MouseEvent) => {
       if ((e.target as HTMLElement).closest('button') || !pipPos) return;
       e.preventDefault();
       dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pipPos.x, origY: pipPos.y };
+      const pipW = isMobile ? 140 : PIP_W;
+      const pipH = isMobile ? 196 : PIP_H;
       const onMove = (ev: MouseEvent) => {
         if (!dragRef.current) return;
         const dx = ev.clientX - dragRef.current.startX;
         const dy = ev.clientY - dragRef.current.startY;
         setPipPos({
-          x: Math.max(0, Math.min(window.innerWidth - PIP_W, dragRef.current.origX + dx)),
-          y: Math.max(0, Math.min(window.innerHeight - PIP_H, dragRef.current.origY + dy)),
+          x: Math.max(0, Math.min(window.innerWidth - pipW, dragRef.current.origX + dx)),
+          y: Math.max(0, Math.min(window.innerHeight - pipH, dragRef.current.origY + dy)),
         });
       };
       const onUp = () => {
@@ -261,7 +272,41 @@ const Shell: React.FC = () => {
       window.addEventListener('mousemove', onMove);
       window.addEventListener('mouseup', onUp);
     },
-    [pipPos],
+    [pipPos, isMobile],
+  );
+
+  const handlePipTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if ((e.target as HTMLElement).closest('button') || !pipPos) return;
+      const touch = e.touches[0];
+      dragRef.current = {
+        startX: touch.clientX,
+        startY: touch.clientY,
+        origX: pipPos.x,
+        origY: pipPos.y,
+      };
+      const pipW = isMobile ? 140 : PIP_W;
+      const pipH = isMobile ? 196 : PIP_H;
+      const onMove = (ev: TouchEvent) => {
+        if (!dragRef.current) return;
+        ev.preventDefault();
+        const t = ev.touches[0];
+        const dx = t.clientX - dragRef.current.startX;
+        const dy = t.clientY - dragRef.current.startY;
+        setPipPos({
+          x: Math.max(0, Math.min(window.innerWidth - pipW, dragRef.current.origX + dx)),
+          y: Math.max(0, Math.min(window.innerHeight - pipH, dragRef.current.origY + dy)),
+        });
+      };
+      const onEnd = () => {
+        dragRef.current = null;
+        window.removeEventListener('touchmove', onMove);
+        window.removeEventListener('touchend', onEnd);
+      };
+      window.addEventListener('touchmove', onMove, { passive: false });
+      window.addEventListener('touchend', onEnd);
+    },
+    [pipPos, isMobile],
   );
 
   const handleToggleReport = useCallback(() => {
@@ -316,6 +361,7 @@ const Shell: React.FC = () => {
           className={styles.videoPip}
           style={{ left: pipPos.x, top: pipPos.y, bottom: 'auto' }}
           onMouseDown={handlePipMouseDown}
+          onTouchStart={handlePipTouchStart}
           data-testid="video-pip"
         >
           <video src={wallpaper} autoPlay loop muted playsInline />
@@ -324,31 +370,49 @@ const Shell: React.FC = () => {
           </button>
         </div>
       )}
-      {/* Desktop with app icons */}
-      <div className={styles.desktop} data-testid="desktop">
-        <div className={styles.iconGrid}>
-          {DESKTOP_APPS.map((app) => (
-            <button
-              key={app.appId}
-              className={styles.appIcon}
-              data-testid={`app-icon-${app.appId}`}
-              onDoubleClick={() => {
-                openWindow(app.appId);
-                reportUserOsAction('OPEN_APP', { app_id: String(app.appId) });
-              }}
-              title={`Double-click to open ${app.displayName}`}
-            >
-              <div
-                className={styles.iconCircle}
-                style={{ background: `${app.color}22`, borderColor: `${app.color}44` }}
+      {/* Desktop with app icons — hidden when chat is open on mobile */}
+      {(!isMobile || !chatOpen) && (
+        <div className={styles.desktop} data-testid="desktop">
+          <div className={styles.iconGrid}>
+            {DESKTOP_APPS.map((app) => (
+              <button
+                key={app.appId}
+                className={styles.appIcon}
+                data-testid={`app-icon-${app.appId}`}
+                onClick={
+                  isMobile
+                    ? () => {
+                        openWindow(app.appId);
+                        reportUserOsAction('OPEN_APP', { app_id: String(app.appId) });
+                      }
+                    : undefined
+                }
+                onDoubleClick={
+                  !isMobile
+                    ? () => {
+                        openWindow(app.appId);
+                        reportUserOsAction('OPEN_APP', { app_id: String(app.appId) });
+                      }
+                    : undefined
+                }
+                title={
+                  isMobile
+                    ? `Tap to open ${app.displayName}`
+                    : `Double-click to open ${app.displayName}`
+                }
               >
-                <app.IconComp size={24} color={app.color} />
-              </div>
-              <span className={styles.iconLabel}>{app.displayName}</span>
-            </button>
-          ))}
+                <div
+                  className={styles.iconCircle}
+                  style={{ background: `${app.color}22`, borderColor: `${app.color}44` }}
+                >
+                  <app.IconComp size={isMobile ? 20 : 24} color={app.color} />
+                </div>
+                <span className={styles.iconLabel}>{app.displayName}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* App windows */}
       {windows.map((win) => (

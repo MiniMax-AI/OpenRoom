@@ -16,23 +16,25 @@
 
 Stores all diary entry data. Each entry is saved as an independent JSON file, named by entry ID.
 
-- On startup, the frontend reads all files from this directory to render the calendar and diary content
+- On startup, the frontend reads all files from this directory to render the calendar and diary
+  content
 - When the Agent creates a diary entry, it writes a new file directly
-- When a user creates or edits a diary entry, the frontend creates/updates the file and syncs to the cloud
+- When a user creates or edits a diary entry, the frontend creates/updates the file and syncs to the
+  cloud
 - Each date can have at most one entry; entries are browsed by date via the calendar navigator
 
 #### Diary Entry File `{entryId}.json`
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| id | string | Yes | Unique diary entry identifier, matches the filename (without `.json` extension) |
-| date | string | Yes | Date in YYYY-MM-DD format (e.g., `2026-02-12`), at most one entry per day |
-| title | string | Yes | Diary title, can be an empty string |
-| content | string | Yes | Diary content, supports Markdown and special markup syntax, can be an empty string |
-| mood | string | No | Mood tag: `happy` / `sad` / `neutral` / `excited` / `tired` / `anxious` / `hopeful` / `angry` |
-| weather | string | No | Weather tag: `sunny` / `cloudy` / `rainy` / `snowy` / `windy` / `foggy` |
-| createdAt | integer | Yes | Creation timestamp (milliseconds) |
-| updatedAt | integer | Yes | Last updated timestamp (milliseconds) |
+| Field     | Type    | Required | Description                                                                                   |
+| --------- | ------- | -------- | --------------------------------------------------------------------------------------------- |
+| id        | string  | Yes      | Unique diary entry identifier, matches the filename (without `.json` extension)               |
+| date      | string  | Yes      | Date in YYYY-MM-DD format (e.g., `2026-02-12`), at most one entry per day                     |
+| title     | string  | Yes      | Diary title, can be an empty string                                                           |
+| content   | string  | Yes      | Diary content, supports Markdown and special markup syntax, can be an empty string            |
+| mood      | string  | No       | Mood tag: `happy` / `sad` / `neutral` / `excited` / `tired` / `anxious` / `hopeful` / `angry` |
+| weather   | string  | No       | Weather tag: `sunny` / `cloudy` / `rainy` / `snowy` / `windy` / `foggy`                       |
+| createdAt | integer | Yes      | Creation timestamp (milliseconds)                                                             |
+| updatedAt | integer | Yes      | Last updated timestamp (milliseconds)                                                         |
 
 Example:
 
@@ -51,21 +53,23 @@ Example:
 
 #### Special Content Markup
 
-Diary content supports the following hand-drawn effect markups. In preview mode, they render as animated SVG decorations:
+Diary content supports the following hand-drawn effect markups. In preview mode, they render as
+animated SVG decorations:
 
-| Markup | Effect | Description |
-|--------|--------|-------------|
-| `{{strike}}text{{/strike}}` | Hand-drawn strikethrough | Red wavy line through text |
-| `{{scribble}}text{{/scribble}}` | Scribble cross-out | Double dark strikethrough lines |
-| `{{messy}}text{{/messy}}` | Messy scribble | Zigzag scribble covering text |
+| Markup                          | Effect                   | Description                     |
+| ------------------------------- | ------------------------ | ------------------------------- |
+| `{{strike}}text{{/strike}}`     | Hand-drawn strikethrough | Red wavy line through text      |
+| `{{scribble}}text{{/scribble}}` | Scribble cross-out       | Double dark strikethrough lines |
+| `{{messy}}text{{/messy}}`       | Messy scribble           | Zigzag scribble covering text   |
 
 ### State File `/state.json`
 
-Stores the app's runtime state for restoring the session on startup. The frontend automatically saves and syncs to the cloud when the selected date changes.
+Stores the app's runtime state for restoring the session on startup. The frontend automatically
+saves and syncs to the cloud when the selected date changes.
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| selectedDate | string \| null | Yes | Currently selected date (YYYY-MM-DD), null when nothing is selected |
+| Field        | Type           | Required | Description                                                         |
+| ------------ | -------------- | -------- | ------------------------------------------------------------------- |
+| selectedDate | string \| null | Yes      | Currently selected date (YYYY-MM-DD), null when nothing is selected |
 
 Example:
 
@@ -79,14 +83,18 @@ Example:
 
 ### Agent Operations (Agent → Frontend)
 
-The Agent completes file writes/modifications/deletions on the cloud, then dispatches Actions to notify the frontend to sync and refresh.
-After receiving an Action, the frontend only reads the latest data from the cloud — it does not create files locally.
+The Agent completes file writes/modifications/deletions on the cloud, then dispatches Actions to
+notify the frontend to sync and refresh. After receiving an Action, the frontend only reads the
+latest data from the cloud — it does not create files locally.
 
 **Agent Creates a Diary Entry**:
 
-1. The Agent writes the file `/entries/{id}.json` on the cloud (containing the complete diary entry JSON, must include `date` field)
-2. The Agent dispatches the `CREATE_ENTRY` Action with `filePath` in params (e.g., `/entries/{id}.json`)
-3. The frontend reads the file from the cloud, updates the local file tree and calendar, and auto-navigates to that date
+1. The Agent writes the file `/entries/{id}.json` on the cloud (containing the complete diary entry
+   JSON, must include `date` field)
+2. The Agent dispatches the `CREATE_ENTRY` Action with `filePath` in params (e.g.,
+   `/entries/{id}.json`)
+3. The frontend reads the file from the cloud, updates the local file tree and calendar, and
+   auto-navigates to that date
 
 **Agent Updates a Diary Entry**:
 
@@ -112,12 +120,14 @@ After receiving an Action, the frontend only reads the latest data from the clou
 
 ### User Operations (Frontend → Cloud)
 
-User operations on the frontend are handled by the frontend code. The flow is: local operation → sync to cloud → report Action.
+User operations on the frontend are handled by the frontend code. The flow is: local operation →
+sync to cloud → report Action.
 
 **User Creates a Diary Entry**:
 
 1. User selects a date on the calendar and clicks the "Write one" button
-2. The frontend generates diary data (including `date` field) and writes it to the local file system at `/entries/{id}.json`
+2. The frontend generates diary data (including `date` field) and writes it to the local file system
+   at `/entries/{id}.json`
 3. The frontend syncs the file to the cloud
 4. The frontend reports the `CREATE_ENTRY` Action
 
@@ -136,7 +146,8 @@ User operations on the frontend are handled by the frontend code. The flow is: l
 **User Deletes a Diary Entry**:
 
 1. User clicks the delete button
-2. The frontend removes `/entries/{id}.json` from the local file system and syncs the deletion to the cloud
+2. The frontend removes `/entries/{id}.json` from the local file system and syncs the deletion to
+   the cloud
 3. The calendar marker for that date disappears
 4. The frontend reports the `DELETE_ENTRY` Action
 
@@ -144,5 +155,6 @@ User operations on the frontend are handled by the frontend code. The flow is: l
 
 1. The frontend calls `initFromCloud()` to fetch all files
 2. Reads all diary files under `/entries/`, builds a date index for each entry
-3. Reads `/state.json` to restore the previously selected date, and navigates the calendar to that month
+3. Reads `/state.json` to restore the previously selected date, and navigates the calendar to that
+   month
 4. If no saved state, defaults to today

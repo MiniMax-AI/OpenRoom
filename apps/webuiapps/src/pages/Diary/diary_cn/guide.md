@@ -23,16 +23,16 @@
 
 #### 日记文件 `{entryId}.json`
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| id | string | 是 | 日记唯一标识，与文件名一致（不含 `.json` 后缀） |
-| date | string | 是 | 日期，格式 YYYY-MM-DD（如 `2026-02-12`），每天最多一条 |
-| title | string | 是 | 日记标题，可为空字符串 |
-| content | string | 是 | 日记内容，支持 Markdown 和特殊标记语法，可为空字符串 |
-| mood | string | 否 | 心情标签：`happy` / `sad` / `neutral` / `excited` / `tired` / `anxious` / `hopeful` / `angry` |
-| weather | string | 否 | 天气标签：`sunny` / `cloudy` / `rainy` / `snowy` / `windy` / `foggy` |
-| createdAt | integer | 是 | 创建时间戳（毫秒） |
-| updatedAt | integer | 是 | 最后更新时间戳（毫秒） |
+| 字段      | 类型    | 必填 | 说明                                                                                          |
+| --------- | ------- | ---- | --------------------------------------------------------------------------------------------- |
+| id        | string  | 是   | 日记唯一标识，与文件名一致（不含 `.json` 后缀）                                               |
+| date      | string  | 是   | 日期，格式 YYYY-MM-DD（如 `2026-02-12`），每天最多一条                                        |
+| title     | string  | 是   | 日记标题，可为空字符串                                                                        |
+| content   | string  | 是   | 日记内容，支持 Markdown 和特殊标记语法，可为空字符串                                          |
+| mood      | string  | 否   | 心情标签：`happy` / `sad` / `neutral` / `excited` / `tired` / `anxious` / `hopeful` / `angry` |
+| weather   | string  | 否   | 天气标签：`sunny` / `cloudy` / `rainy` / `snowy` / `windy` / `foggy`                          |
+| createdAt | integer | 是   | 创建时间戳（毫秒）                                                                            |
+| updatedAt | integer | 是   | 最后更新时间戳（毫秒）                                                                        |
 
 示例：
 
@@ -53,19 +53,19 @@
 
 日记内容支持以下手绘效果标记，在预览模式下会渲染为 SVG 动画装饰：
 
-| 标记 | 效果 | 说明 |
-|------|------|------|
-| `{{strike}}文字{{/strike}}` | 手绘删除线 | 红色波浪线划过文字 |
-| `{{scribble}}文字{{/scribble}}` | 涂鸦划掉 | 双重深色删除线 |
-| `{{messy}}文字{{/messy}}` | 凌乱涂黑 | 锯齿形涂鸦遮盖文字 |
+| 标记                            | 效果       | 说明               |
+| ------------------------------- | ---------- | ------------------ |
+| `{{strike}}文字{{/strike}}`     | 手绘删除线 | 红色波浪线划过文字 |
+| `{{scribble}}文字{{/scribble}}` | 涂鸦划掉   | 双重深色删除线     |
+| `{{messy}}文字{{/messy}}`       | 凌乱涂黑   | 锯齿形涂鸦遮盖文字 |
 
 ### 状态文件 `/state.json`
 
 存储应用运行时状态，用于启动时恢复现场。前端在选中日期变更时自动保存并同步到云端。
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| selectedDate | string \| null | 是 | 当前选中的日期（YYYY-MM-DD），无选中时为 null |
+| 字段         | 类型           | 必填 | 说明                                          |
+| ------------ | -------------- | ---- | --------------------------------------------- |
+| selectedDate | string \| null | 是   | 当前选中的日期（YYYY-MM-DD），无选中时为 null |
 
 示例：
 
@@ -79,8 +79,7 @@
 
 ### Agent 操作（Agent → 前端）
 
-Agent 负责在云端完成文件的写入/修改/删除，完成后通过下发 Action 通知前端同步刷新。
-前端收到 Action 后仅从云端读取最新数据，不再进行本地文件创建。
+Agent 负责在云端完成文件的写入/修改/删除，完成后通过下发 Action 通知前端同步刷新。前端收到 Action 后仅从云端读取最新数据，不再进行本地文件创建。
 
 **Agent 创建日记**:
 
