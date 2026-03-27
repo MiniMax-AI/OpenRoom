@@ -104,7 +104,7 @@ function getAnthropicMessagesPath(baseUrl: string): string {
   return hasVersionSuffix(baseUrl) ? 'messages' : 'v1/messages';
 }
 
-function parseCustomHeaders(raw?: string): Record<string, string> {
+function parseCustomHeaders(raw?: string, prefixed = true): Record<string, string> {
   if (!raw) return {};
   const headers: Record<string, string> = {};
   for (const line of raw.split('\n')) {
@@ -114,10 +114,61 @@ function parseCustomHeaders(raw?: string): Record<string, string> {
     if (idx > 0) {
       const key = trimmed.slice(0, idx).trim().toLowerCase();
       const val = trimmed.slice(idx + 1).trim();
-      headers[`x-custom-${key}`] = val;
+      headers[prefixed ? `x-custom-${key}` : key] = val;
     }
   }
   return headers;
+}
+
+/**
+ * Check if the dev-server LLM proxy is available.
+ * Cached after first check to avoid repeated round-trips.
+ */
+let proxyAvailable: boolean | null = null;
+async function isProxyAvailable(): Promise<boolean> {
+  if (proxyAvailable !== null) return proxyAvailable;
+  try {
+    const res = await fetch('/api/llm-proxy', { method: 'OPTIONS' });
+    proxyAvailable = res.ok || res.status === 405; // server exists even if OPTIONS not handled
+  } catch {
+    proxyAvailable = false;
+  }
+  return proxyAvailable;
+}
+
+/**
+ * Fetch from LLM API — uses dev-server proxy if available, otherwise calls provider directly.
+ * Direct mode works for providers with permissive CORS (e.g. OpenRouter: access-control-allow-origin: *).
+ */
+async function llmFetch(
+  targetUrl: string,
+  headers: Record<string, string>,
+  body: string,
+  customHeaders?: string,
+): Promise<Response> {
+  const useProxy = await isProxyAvailable();
+
+  if (useProxy) {
+    return fetch('/api/llm-proxy', {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'X-LLM-Target-URL': targetUrl,
+        ...parseCustomHeaders(customHeaders, true),
+      },
+      body,
+    });
+  }
+
+  // Direct mode — call provider URL, pass custom headers unprefixed
+  return fetch(targetUrl, {
+    method: 'POST',
+    headers: {
+      ...headers,
+      ...parseCustomHeaders(customHeaders, false),
+    },
+    body,
+  });
 }
 
 export async function chat(
@@ -162,16 +213,15 @@ async function chatOpenAI(
     messageCount: messages.length,
     toolCount: tools.length,
   });
-  const res = await fetch('/api/llm-proxy', {
-    method: 'POST',
-    headers: {
+  const res = await llmFetch(
+    targetUrl,
+    {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${config.apiKey}`,
-      'X-LLM-Target-URL': targetUrl,
-      ...parseCustomHeaders(config.customHeaders),
     },
-    body: JSON.stringify(body),
-  });
+    JSON.stringify(body),
+    config.customHeaders,
+  );
 
   logger.info('LLM', 'Response status:', res.status);
   const text = await res.text();
@@ -267,17 +317,16 @@ async function chatAnthropic(
     messageCount: anthropicMessages.length,
     toolCount: anthropicTools.length,
   });
-  const res = await fetch('/api/llm-proxy', {
-    method: 'POST',
-    headers: {
+  const res = await llmFetch(
+    targetUrl,
+    {
       'Content-Type': 'application/json',
       'x-api-key': config.apiKey,
       'anthropic-version': '2023-06-01',
-      'X-LLM-Target-URL': targetUrl,
-      ...parseCustomHeaders(config.customHeaders),
     },
-    body: JSON.stringify(body),
-  });
+    JSON.stringify(body),
+    config.customHeaders,
+  );
 
   logger.info('LLM', 'Anthropic Response status:', res.status);
   if (!res.ok) {
