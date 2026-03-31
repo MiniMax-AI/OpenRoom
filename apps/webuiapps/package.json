@@ -23,11 +23,11 @@
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.2.72",
-    "@vitest/coverage-istanbul": "^1.6.1",
-    "@vitest/coverage-v8": "^1.6.1",
-    "happy-dom": "^14.0.0",
-    "jsdom": "^25.0.0",
-    "vitest": "^1.6.1"
+    "@anthropic-ai/claude-agent-sdk": "^0.2.88",
+    "@vitest/coverage-istanbul": "^4.1.2",
+    "@vitest/coverage-v8": "^4.1.2",
+    "happy-dom": "^20.8.9",
+    "jsdom": "^29.0.1",
+    "vitest": "^4.1.2"
   }
 }
