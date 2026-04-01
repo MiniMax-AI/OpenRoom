@@ -6,7 +6,13 @@
  * the engine itself pure and testable.
  */
 
-import { useCallback, useRef, type Dispatch, type SetStateAction, type MutableRefObject } from 'react';
+import {
+  useCallback,
+  useRef,
+  type Dispatch,
+  type SetStateAction,
+  type MutableRefObject,
+} from 'react';
 import { chat, type ChatMessage, type ToolCall } from '@/lib/llmClient';
 import type { LLMConfig } from '@/lib/llmModels';
 import type { ImageGenConfig } from '@/lib/imageGenClient';
@@ -312,11 +318,18 @@ async function executeToolCall(
         ctx.sessionPathRef.current,
         params as Record<string, string>,
       );
-      loadMemories(ctx.sessionPathRef.current)
-        .then(ctx.callbacks.setMemories)
+      const capturedSession = ctx.sessionPathRef.current;
+      loadMemories(capturedSession)
+        .then((mems) => {
+          if (ctx.sessionPathRef.current === capturedSession) {
+            ctx.callbacks.setMemories(mems);
+          }
+        })
         .catch((err) => {
           console.warn('Failed to reload memories after save:', err);
-          ctx.callbacks.setMemories([]);
+          if (ctx.sessionPathRef.current === capturedSession) {
+            ctx.callbacks.setMemories([]);
+          }
         });
       return toolResult(result);
     } catch (err) {

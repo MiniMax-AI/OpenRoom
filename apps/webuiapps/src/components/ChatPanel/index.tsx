@@ -102,14 +102,10 @@ const ChatPanel: React.FC<{
 
   // Session key for chat history isolation (derived, not state)
   const sessionPath = buildSessionPath(charCollection.activeId, modCollection.activeId);
-  const sessionPathRef_forSet = useRef(sessionPath);
 
   // Keep the module-level session path in sync — must run as an effect, not
   // during render, to avoid side effects during React's render phase.
   useEffect(() => {
-    if (sessionPath !== sessionPathRef_forSet.current) {
-      sessionPathRef_forSet.current = sessionPath;
-    }
     setSessionPath(sessionPath);
   }, [sessionPath]);
 
