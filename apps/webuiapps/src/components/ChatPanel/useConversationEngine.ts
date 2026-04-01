@@ -12,7 +12,6 @@ import type { LLMConfig } from '@/lib/llmModels';
 import type { ImageGenConfig } from '@/lib/imageGenClient';
 import type { CharacterConfig } from '@/lib/characterManager';
 import { clearEmotionVideoCache } from '@/lib/characterManager';
-import type { ModManager } from '@/lib/modManager';
 import type { MemoryEntry } from '@/lib/memoryManager';
 import { loadMemories } from '@/lib/memoryManager';
 import {
@@ -31,7 +30,7 @@ import {
   executeImageGenTool,
 } from '@/lib/imageGenTools';
 import { getMemoryToolDefinitions, isMemoryTool, executeMemoryTool } from '@/lib/memoryManager';
-import { ModManager, saveModCollection } from '@/lib/modManager';
+import { type ModManager, saveModCollection } from '@/lib/modManager';
 import {
   getRespondToUserToolDef,
   getFinishTargetToolDef,
