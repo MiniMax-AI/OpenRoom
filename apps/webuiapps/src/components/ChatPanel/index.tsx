@@ -188,9 +188,16 @@ const ChatPanel: React.FC<{
     const snapReplies = suggestedReplies;
     saveTimerRef.current = setTimeout(() => {
       saveChatHistory(snapPath, snapMessages, snapHistory, snapReplies);
+      saveTimerRef.current = null;
     }, 500);
     return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      // Flush pending save instead of discarding, so rapid session switches
+      // don't silently lose the last batch of messages.
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveChatHistory(snapPath, snapMessages, snapHistory, snapReplies);
+        saveTimerRef.current = null;
+      }
     };
   }, [messages, chatHistory, suggestedReplies, sessionPath]);
 
@@ -349,7 +356,7 @@ const ChatPanel: React.FC<{
 
     seedPrologue();
     await seedMetaFiles();
-  }, [modCollection, seedPrologue]);
+  }, [seedPrologue]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
