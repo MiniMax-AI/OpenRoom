@@ -180,24 +180,23 @@ const ChatPanel: React.FC<{
 
   // Debounced save
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sessionPathRef2 = useRef(sessionPath);
-  sessionPathRef2.current = sessionPath;
 
   useEffect(() => {
     if (messages.length === 0 && chatHistory.length === 0) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    // Snapshot current values at scheduling time to avoid mixing
+    // session/data if a session switch occurs during the debounce window.
+    const snapPath = sessionPath;
+    const snapMessages = messages;
+    const snapHistory = chatHistory;
+    const snapReplies = suggestedReplies;
     saveTimerRef.current = setTimeout(() => {
-      saveChatHistory(
-        sessionPathRef2.current,
-        messagesRef.current,
-        chatHistoryRef.current,
-        suggestedRepliesRef.current,
-      );
+      saveChatHistory(snapPath, snapMessages, snapHistory, snapReplies);
     }, 500);
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [messages, chatHistory, suggestedReplies]);
+  }, [messages, chatHistory, suggestedReplies, sessionPath]);
 
   /** Seed prologue and opening replies from active mod */
   const seedPrologue = useCallback(() => {
@@ -251,8 +250,12 @@ const ChatPanel: React.FC<{
       }
       if (cancelled) return;
       loadMemories(sessionPath)
-        .then(setMemories)
-        .catch(() => setMemories([]));
+        .then((mems) => {
+          if (!cancelled) setMemories(mems);
+        })
+        .catch(() => {
+          if (!cancelled) setMemories([]);
+        });
     };
     load();
     return () => {

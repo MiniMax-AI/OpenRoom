@@ -128,7 +128,15 @@ export const CharacterAvatar: React.FC<{
       // If the URL already exists (possibly inactive), reactivate it
       const existing = prev.find((l) => l.url === media.url);
       if (existing) {
-        return prev.map((l) => (l.url === media.url ? { ...l, active: true } : l));
+        // Cancel any pending cleanup that might remove this layer
+        if (cleanupRef.current) {
+          clearTimeout(cleanupRef.current);
+          cleanupRef.current = null;
+        }
+        return prev.map((l) => ({
+          ...l,
+          active: l.url === media.url,
+        }));
       }
       return [...prev, { url: media.url, type: media.type, active: false }];
     });

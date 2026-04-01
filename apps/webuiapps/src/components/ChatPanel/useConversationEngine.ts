@@ -166,10 +166,10 @@ export function useConversationEngine(deps: ConversationEngineDeps) {
           callbacks: callbacksRef.current,
         });
         currentMessages = [...currentMessages, result];
-        // respond_to_user is terminal — no further model round-trips needed
+        // Mark respond_to_user as terminal — still execute remaining tool calls
+        // (e.g. finish_target) but skip the next model round-trip afterward
         if (tc.function.name === 'respond_to_user') {
           stopLoop = true;
-          break;
         }
       }
 
