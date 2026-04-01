@@ -6,7 +6,7 @@
  * the engine itself pure and testable.
  */
 
-import { useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import { chat, type ChatMessage, type ToolCall } from '@/lib/llmClient';
 import type { LLMConfig } from '@/lib/llmModels';
 import type { ImageGenConfig } from '@/lib/imageGenClient';
@@ -86,8 +86,11 @@ export function useConversationEngine(deps: ConversationEngineDeps) {
   /**
    * Core conversation loop — sends messages to LLM, executes tool calls,
    * and loops until the model responds via respond_to_user or produces plain text.
+   *
+   * Stabilized with useCallback — all inputs are refs, so this identity never
+   * changes, preventing unsubscribe/subscribe churn in the onUserAction listener.
    */
-  const runConversation = async (history: ChatMessage[], cfg: LLMConfig) => {
+  const runConversation = useCallback(async (history: ChatMessage[], cfg: LLMConfig) => {
     await seedMetaFiles();
     await loadActionsFromMeta();
     const hasImageGen = !!imageGenConfigRef.current?.apiKey;
@@ -163,7 +166,7 @@ export function useConversationEngine(deps: ConversationEngineDeps) {
       // Update chat history (skip system message)
       callbacks.setChatHistory(currentMessages.slice(1));
     }
-  };
+  }, []);
 
   return { runConversation, pendingToolCallsRef };
 }
