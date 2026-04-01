@@ -163,7 +163,7 @@ const ChatPanel: React.FC<{
   sessionPathRef.current = sessionPath;
 
   // Conversation engine
-  const { runConversation } = useConversationEngine({
+  const { runConversation, abortRef } = useConversationEngine({
     imageGenConfigRef,
     modManagerRef,
     characterRef,
@@ -420,16 +420,25 @@ const ChatPanel: React.FC<{
       ];
       setChatHistory(newHistory);
       setLoading(true);
+
+      // Cancel any previous conversation
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       try {
-        await runConversation(newHistory, cfg);
+        await runConversation(newHistory, cfg, controller.signal);
       } catch (err) {
-        logger.error('ChatPanel', 'User action error:', err);
+        if ((err as Error).name !== 'AbortError') {
+          logger.error('ChatPanel', 'User action error:', err);
+        }
       } finally {
+        if (abortRef.current === controller) abortRef.current = null;
         setLoading(false);
       }
     }
     processingRef.current = false;
-  }, [runConversation]);
+  }, [runConversation, abortRef]);
 
   // Listen for user actions from apps
   useEffect(() => {
@@ -482,24 +491,37 @@ const ChatPanel: React.FC<{
       };
       addMessage(userDisplay);
 
-      const newHistory: ChatMessage[] = [...chatHistory, { role: 'user', content: text }];
+      // Use chatHistoryRef to avoid stale closure over chatHistory state
+      const newHistory: ChatMessage[] = [
+        ...chatHistoryRef.current,
+        { role: 'user', content: text },
+      ];
       setChatHistory(newHistory);
 
       setLoading(true);
+
+      // Cancel any previous conversation
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       try {
-        await runConversation(newHistory, config);
+        await runConversation(newHistory, config, controller.signal);
       } catch (err) {
-        logger.error('ChatPanel', 'Error:', err);
-        addMessage({
-          id: String(Date.now()),
-          role: 'assistant',
-          content: `Error: ${err instanceof Error ? err.message : String(err)}`,
-        });
+        if ((err as Error).name !== 'AbortError') {
+          logger.error('ChatPanel', 'Error:', err);
+          addMessage({
+            id: String(Date.now()),
+            role: 'assistant',
+            content: `Error: ${err instanceof Error ? err.message : String(err)}`,
+          });
+        }
       } finally {
+        if (abortRef.current === controller) abortRef.current = null;
         setLoading(false);
       }
     },
-    [input, loading, config, chatHistory, addMessage, runConversation],
+    [input, loading, config, addMessage, runConversation, abortRef],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

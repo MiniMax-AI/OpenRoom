@@ -2,14 +2,19 @@
 
 ## Important: Mailbox Ownership
 
-This mailbox belongs to the **User**. All emails are viewed from the User's perspective. The `folder` field must be set accordingly:
+This mailbox belongs to the **User**. All emails are viewed from the User's perspective. The
+`folder` field must be set accordingly:
 
-- **`inbox`**: Emails received by the User. Emails sent by a Character to the User should be placed in `inbox`, because from the User's perspective, it is a received email.
-- **`sent`**: Emails sent by the User. Only emails actively sent by the User should be placed in `sent`.
+- **`inbox`**: Emails received by the User. Emails sent by a Character to the User should be placed
+  in `inbox`, because from the User's perspective, it is a received email.
+- **`sent`**: Emails sent by the User. Only emails actively sent by the User should be placed in
+  `sent`.
 - **`drafts`**: The User's drafts.
 - **`trash`**: Emails deleted by the User.
 
-> **Common Mistake**: When a Character sends an email to the User, do NOT set `folder` to `sent`. Although the Character "sent" the email, from the User's perspective it is a **received email** and should be set to `inbox`.
+> **Common Mistake**: When a Character sends an email to the User, do NOT set `folder` to `sent`.
+> Although the Character "sent" the email, from the User's perspective it is a **received email**
+> and should be set to `inbox`.
 
 ## Folder Structure
 
@@ -34,27 +39,27 @@ Stores all email data. Each email is saved as an independent JSON file, named by
 
 #### Email File `{emailId}.json`
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| id | string | Yes | Unique email identifier, matches the filename (without `.json` extension) |
-| from | object | Yes | Sender information |
-| from.name | string | Yes | Sender name |
-| from.address | string | Yes | Sender email address |
-| to | array | Yes | Recipient list, each item is an EmailAddress object |
-| cc | array | Yes | CC list, each item is an EmailAddress object, can be an empty array |
-| subject | string | Yes | Email subject |
-| content | string | Yes | Email body content |
-| timestamp | integer | Yes | Send/receive timestamp (milliseconds) |
-| isRead | boolean | Yes | Whether the email has been read |
-| isStarred | boolean | Yes | Whether the email is starred |
-| folder | string | Yes | Folder name, one of: `inbox`, `sent`, `drafts`, `trash` |
+| Field        | Type    | Required | Description                                                               |
+| ------------ | ------- | -------- | ------------------------------------------------------------------------- |
+| id           | string  | Yes      | Unique email identifier, matches the filename (without `.json` extension) |
+| from         | object  | Yes      | Sender information                                                        |
+| from.name    | string  | Yes      | Sender name                                                               |
+| from.address | string  | Yes      | Sender email address                                                      |
+| to           | array   | Yes      | Recipient list, each item is an EmailAddress object                       |
+| cc           | array   | Yes      | CC list, each item is an EmailAddress object, can be an empty array       |
+| subject      | string  | Yes      | Email subject                                                             |
+| content      | string  | Yes      | Email body content                                                        |
+| timestamp    | integer | Yes      | Send/receive timestamp (milliseconds)                                     |
+| isRead       | boolean | Yes      | Whether the email has been read                                           |
+| isStarred    | boolean | Yes      | Whether the email is starred                                              |
+| folder       | string  | Yes      | Folder name, one of: `inbox`, `sent`, `drafts`, `trash`                   |
 
 **EmailAddress Object Structure:**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| name | string | Yes | Name |
-| address | string | Yes | Email address |
+| Field   | Type   | Required | Description   |
+| ------- | ------ | -------- | ------------- |
+| name    | string | Yes      | Name          |
+| address | string | Yes      | Email address |
 
 Example:
 
@@ -83,12 +88,13 @@ Example:
 
 ### State File `/state.json`
 
-Stores the app's runtime state for restoring the session on startup. The frontend automatically saves and syncs to the cloud when state changes.
+Stores the app's runtime state for restoring the session on startup. The frontend automatically
+saves and syncs to the cloud when state changes.
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| selectedEmailId | string\|null | No | Currently selected email ID, null when none is selected |
-| currentFolder | string | Yes | Current folder, one of: `inbox`, `sent`, `drafts`, `trash` |
+| Field           | Type         | Required | Description                                                |
+| --------------- | ------------ | -------- | ---------------------------------------------------------- |
+| selectedEmailId | string\|null | No       | Currently selected email ID, null when none is selected    |
+| currentFolder   | string       | Yes      | Current folder, one of: `inbox`, `sent`, `drafts`, `trash` |
 
 Example:
 
@@ -103,13 +109,16 @@ Example:
 
 ### Agent Operations (Agent → Frontend)
 
-The Agent completes email file writes/deletions on the cloud, then dispatches Actions to notify the frontend to sync and refresh.
-After receiving an Action, the frontend only reads the latest data from the cloud — it does not create files locally.
+The Agent completes email file writes/deletions on the cloud, then dispatches Actions to notify the
+frontend to sync and refresh. After receiving an Action, the frontend only reads the latest data
+from the cloud — it does not create files locally.
 
 **Agent Composes an Email**:
 
-1. The Agent writes the email file `/emails/{id}.json` on the cloud (containing the complete email JSON)
-2. The Agent dispatches the `COMPOSE_EMAIL` Action with `filePath` in params (e.g., `/emails/{id}.json`)
+1. The Agent writes the email file `/emails/{id}.json` on the cloud (containing the complete email
+   JSON)
+2. The Agent dispatches the `COMPOSE_EMAIL` Action with `filePath` in params (e.g.,
+   `/emails/{id}.json`)
 3. The frontend reads the file from the cloud, updates the local file tree and UI
 
 **Agent Deletes an Email**:
@@ -126,7 +135,8 @@ After receiving an Action, the frontend only reads the latest data from the clou
 
 ### User Operations (Frontend → Cloud)
 
-User operations on the frontend are in read-only mode — composing, replying, and sending emails are not available. The operations users can perform are:
+User operations on the frontend are in read-only mode — composing, replying, and sending emails are
+not available. The operations users can perform are:
 
 **User Reads an Email**:
 

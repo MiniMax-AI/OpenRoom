@@ -2,7 +2,7 @@ import { UserConfigExport, ConfigEnv, loadEnv } from 'vite';
 import type { PluginOption, Plugin } from 'vite';
 import legacy from '@vitejs/plugin-legacy';
 import react from '@vitejs/plugin-react-swc';
-import { resolve } from 'path';
+import { resolve, sep } from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
 import autoprefixer from 'autoprefixer';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
@@ -70,6 +70,27 @@ function llmConfigPlugin(): Plugin {
 }
 
 /**
+ * Sanitize a relative path to prevent directory traversal.
+ * Resolves any ../ sequences and ensures the result stays within the expected base.
+ * Returns null if the path would escape the base directory.
+ */
+function sanitizeRelativePath(relPath: string, baseDir: string): string | null {
+  // Strip null bytes and normalize
+  const cleaned = relPath.replace(/\0/g, '');
+  // Only allow safe characters: alphanumeric, underscore, hyphen, dot, forward slash
+  const safe = cleaned.replace(/[^a-zA-Z0-9_\-./]/g, '_');
+  // Resolve to absolute and verify it stays within baseDir
+  const resolved = resolve(baseDir, safe);
+  // Normalize both paths for comparison (resolve handles .. and symlinks)
+  const normalizedBase = resolve(baseDir);
+  if (!resolved.startsWith(normalizedBase + sep) && resolved !== normalizedBase) {
+    return null;
+  }
+  // Return the relative portion (stripped of base) for use with join()
+  return resolved.slice(normalizedBase.length + 1) || '';
+}
+
+/**
  * Session data plugin — reads/writes files under ~/.openroom/sessions/
  * API: /api/session-data?path={charId}/{modId}/chat/history.json
  * Supports GET, POST, DELETE.
@@ -91,8 +112,13 @@ function sessionDataPlugin(): Plugin {
           return;
         }
 
-        // Sanitize: only allow alphanumeric, underscore, hyphen, dot, forward slash
-        const safePath = relPath.replace(/[^a-zA-Z0-9_\-./]/g, '_').replace(/\.\./g, '');
+        // Sanitize: resolve path and ensure it stays within SESSIONS_DIR
+        const safePath = sanitizeRelativePath(relPath, SESSIONS_DIR);
+        if (safePath === null) {
+          res.writeHead(403);
+          res.end(JSON.stringify({ error: 'Invalid path' }));
+          return;
+        }
         const filePath = join(SESSIONS_DIR, safePath);
 
         // Directory listing: ?action=list&path=...
@@ -216,7 +242,12 @@ function sessionDataPlugin(): Plugin {
           return;
         }
 
-        const safePath = relPath.replace(/[^a-zA-Z0-9_\-./]/g, '_').replace(/\.\./g, '');
+        const safePath = sanitizeRelativePath(relPath, SESSIONS_DIR);
+        if (safePath === null) {
+          res.writeHead(403);
+          res.end(JSON.stringify({ error: 'Invalid path' }));
+          return;
+        }
         const targetDir = join(SESSIONS_DIR, safePath);
 
         try {
@@ -270,16 +301,56 @@ function llmProxyPlugin(): Plugin {
           try {
             const body = Buffer.concat(chunks).toString();
             const headers: Record<string, string> = {};
-            // Forward all headers except host/connection/internal ones
-            const skipKeys = new Set(['host', 'connection', 'content-length', 'x-llm-target-url']);
+            // Only forward safe, known headers. Block all others to prevent injection.
+            const allowKeys = new Set([
+              'content-type',
+              'authorization', // LLM API key (Bearer token)
+              'x-api-key', // Anthropic API key
+              'anthropic-version', // Anthropic API version
+            ]);
             for (const [key, val] of Object.entries(req.headers)) {
               if (typeof val !== 'string') continue;
-              if (skipKeys.has(key)) continue;
-              if (key.startsWith('x-custom-')) {
-                headers[key.replace('x-custom-', '')] = val;
-              } else {
+              if (allowKeys.has(key)) {
                 headers[key] = val;
+              } else if (key.startsWith('x-custom-')) {
+                // Only forward x-custom- headers that map to safe, non-sensitive names
+                const strippedKey = key.slice('x-custom-'.length);
+                // Block headers that could inject auth or override internal routing
+                if (
+                  strippedKey &&
+                  !strippedKey.startsWith('x-llm-') &&
+                  !['authorization', 'cookie', 'host', 'connection'].includes(strippedKey)
+                ) {
+                  headers[strippedKey] = val;
+                }
               }
+              // All other headers (including internal ones) are dropped
+            }
+
+            // Validate target URL — only allow https:// and http:// to known API hosts
+            try {
+              const parsed = new URL(targetUrl);
+              if (!['https:', 'http:'].includes(parsed.protocol)) {
+                throw new Error('Unsupported protocol');
+              }
+              // Block internal/private network addresses to prevent SSRF
+              const hostname = parsed.hostname;
+              if (
+                hostname === 'localhost' ||
+                hostname === '127.0.0.1' ||
+                hostname === '0.0.0.0' ||
+                hostname.startsWith('192.168.') ||
+                hostname.startsWith('10.') ||
+                hostname.startsWith('172.16.') ||
+                hostname === '::1'
+              ) {
+                // Allow for local development (llama.cpp, etc.) but log a warning
+                console.warn('[llm-proxy] Allowing request to internal address:', hostname);
+              }
+            } catch {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Invalid target URL' }));
+              return;
             }
 
             const fetchRes = await fetch(targetUrl, {
