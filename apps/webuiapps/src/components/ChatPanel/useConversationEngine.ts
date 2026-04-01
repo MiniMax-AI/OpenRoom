@@ -36,7 +36,7 @@ import {
   executeImageGenTool,
 } from '@/lib/imageGenTools';
 import { getMemoryToolDefinitions, isMemoryTool, executeMemoryTool } from '@/lib/memoryManager';
-import { type ModManager, saveModCollection } from '@/lib/modManager';
+import { ModManager, saveModCollection } from '@/lib/modManager';
 import {
   getRespondToUserToolDef,
   getFinishTargetToolDef,
@@ -209,7 +209,7 @@ async function executeToolCall(
   try {
     params = JSON.parse(tc.function.arguments);
   } catch (e) {
-    console.warn('Failed to parse tool call arguments:', tc.function.arguments, e);
+    console.warn('Failed to parse tool call arguments for tool:', tc.function.name, e);
   }
 
   const toolResult = (content: string): ChatMessage => ({

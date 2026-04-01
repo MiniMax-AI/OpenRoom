@@ -218,7 +218,7 @@ const ChatPanel: React.FC<{
         saveTimerRef.current = null;
       }
     };
-  }, [messages, chatHistory, suggestedReplies, sessionPath]);
+  }, [messages, chatHistory, suggestedReplies]);
 
   // Flush any pending save when the session path changes (character/mod switch)
   // or when the component unmounts, so no data is silently lost.
