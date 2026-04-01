@@ -9,7 +9,7 @@
  *   - useConversationEngine.ts (conversation loop + tool dispatch)
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { Settings, Trash2, RotateCcw, Minus, Maximize2 } from 'lucide-react';
 import { loadConfig, loadConfigSync, saveConfig, type ChatMessage } from '@/lib/llmClient';
 import type { LLMConfig } from '@/lib/llmModels';
@@ -103,9 +103,10 @@ const ChatPanel: React.FC<{
   // Session key for chat history isolation (derived, not state)
   const sessionPath = buildSessionPath(charCollection.activeId, modCollection.activeId);
 
-  // Keep the module-level session path in sync — must run as an effect, not
-  // during render, to avoid side effects during React's render phase.
-  useEffect(() => {
+  // Keep the module-level session path in sync synchronously after DOM
+  // mutations so tool execution always reads the latest path, even within the
+  // same paint cycle as a character/mod switch.
+  useLayoutEffect(() => {
     setSessionPath(sessionPath);
   }, [sessionPath]);
 
@@ -174,32 +175,64 @@ const ChatPanel: React.FC<{
     },
   });
 
-  // Debounced save
+  // Debounced save — tracks the most recent snapshot to be persisted.
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSaveRef = useRef<{
+    path: string;
+    messages: CharacterDisplayMessage[];
+    history: ChatMessage[];
+    replies: string[];
+  } | null>(null);
 
+  // Reschedule the debounce timer on every data change.  Never flush
+  // synchronously here — flushing is handled by the session-switch effect below
+  // so that rapid updates (e.g. streaming tokens) are genuinely batched.
   useEffect(() => {
-    if (messages.length === 0 && chatHistory.length === 0) return;
+    if (messages.length === 0 && chatHistory.length === 0) {
+      pendingSaveRef.current = null;
+      return;
+    }
+    pendingSaveRef.current = {
+      path: sessionPath,
+      messages,
+      history: chatHistory,
+      replies: suggestedReplies,
+    };
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    // Snapshot current values at scheduling time to avoid mixing
-    // session/data if a session switch occurs during the debounce window.
-    const snapPath = sessionPath;
-    const snapMessages = messages;
-    const snapHistory = chatHistory;
-    const snapReplies = suggestedReplies;
     saveTimerRef.current = setTimeout(() => {
-      saveChatHistory(snapPath, snapMessages, snapHistory, snapReplies);
+      if (pendingSaveRef.current) {
+        const { path, messages: m, history: h, replies: r } = pendingSaveRef.current;
+        saveChatHistory(path, m, h, r);
+        pendingSaveRef.current = null;
+      }
       saveTimerRef.current = null;
     }, 500);
     return () => {
-      // Flush pending save instead of discarding, so rapid session switches
-      // don't silently lose the last batch of messages.
+      // Cancel the timer so the next render's effect can reschedule it.
+      // Do NOT flush here — that would fire a POST on every state update,
+      // defeating the debounce.
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
-        saveChatHistory(snapPath, snapMessages, snapHistory, snapReplies);
         saveTimerRef.current = null;
       }
     };
   }, [messages, chatHistory, suggestedReplies, sessionPath]);
+
+  // Flush any pending save when the session path changes (character/mod switch)
+  // or when the component unmounts, so no data is silently lost.
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      if (pendingSaveRef.current) {
+        const { path, messages: m, history: h, replies: r } = pendingSaveRef.current;
+        saveChatHistory(path, m, h, r);
+        pendingSaveRef.current = null;
+      }
+    };
+  }, [sessionPath]);
 
   /** Seed prologue and opening replies from active mod */
   const seedPrologue = useCallback(() => {
