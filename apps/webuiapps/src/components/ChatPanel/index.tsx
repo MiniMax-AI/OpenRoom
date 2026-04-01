@@ -100,9 +100,18 @@ const ChatPanel: React.FC<{
     return new ModManager(entry.config, entry.state);
   });
 
-  // Session key for chat history isolation
+  // Session key for chat history isolation (derived, not state)
   const sessionPath = buildSessionPath(charCollection.activeId, modCollection.activeId);
-  setSessionPath(sessionPath);
+  const sessionPathRef_forSet = useRef(sessionPath);
+
+  // Keep the module-level session path in sync — must run as an effect, not
+  // during render, to avoid side effects during React's render phase.
+  useEffect(() => {
+    if (sessionPath !== sessionPathRef_forSet.current) {
+      sessionPathRef_forSet.current = sessionPath;
+    }
+    setSessionPath(sessionPath);
+  }, [sessionPath]);
 
   // Chat state
   const [messages, setMessages] = useState<CharacterDisplayMessage[]>(() => {
@@ -213,7 +222,10 @@ const ChatPanel: React.FC<{
 
   // Reload chat history when session changes
   useEffect(() => {
-    loadChatHistory(sessionPath).then((data) => {
+    let cancelled = false;
+    const load = async () => {
+      const data = await loadChatHistory(sessionPath);
+      if (cancelled) return;
       const loadedMessages = (data?.messages ?? []) as CharacterDisplayMessage[];
       const loadedHistory = data?.chatHistory ?? [];
       if (loadedMessages.length === 0 && loadedHistory.length === 0) {
@@ -237,9 +249,19 @@ const ChatPanel: React.FC<{
         }
         setCurrentEmotion(undefined);
       }
-    });
-    loadMemories(sessionPath).then(setMemories);
-  }, [sessionPath, modCollection, seedPrologue]);
+      if (cancelled) return;
+      loadMemories(sessionPath)
+        .then(setMemories)
+        .catch(() => setMemories([]));
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+    // sessionPath is derived from charCollection.activeId + modCollection.activeId,
+    // so it already captures session changes. seedPrologue reads modCollection via
+    // closure but we only want to trigger on session identity change.
+  }, [sessionPath]);
 
   // Load configs from file (async override)
   useEffect(() => {

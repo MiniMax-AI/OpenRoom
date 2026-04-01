@@ -4,7 +4,7 @@
  * Extracted from ChatPanel for maintainability.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Pencil, List } from 'lucide-react';
 import { PROVIDER_MODELS, getDefaultProviderConfig, type LLMProvider } from '@/lib/llmModels';
 import type { LLMConfig } from '@/lib/llmModels';
@@ -53,6 +53,28 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     imageGenConfig?.model || getDefaultImageGenConfig('gemini').model,
   );
   const [igCustomHeaders, setIgCustomHeaders] = useState(imageGenConfig?.customHeaders || '');
+
+  // Sync local state when parent props change (e.g. async config load while modal is open)
+  useEffect(() => {
+    if (!config) return;
+    setProvider(config.provider);
+    setApiKey(config.apiKey);
+    setBaseUrl(config.baseUrl || getDefaultProviderConfig(config.provider).baseUrl);
+    setModel(config.model || getDefaultProviderConfig(config.provider).model);
+    setCustomHeaders(config.customHeaders || '');
+    setManualModelMode(false);
+  }, [config]);
+
+  useEffect(() => {
+    if (!imageGenConfig) return;
+    setIgProvider(imageGenConfig.provider);
+    setIgApiKey(imageGenConfig.apiKey);
+    setIgBaseUrl(
+      imageGenConfig.baseUrl || getDefaultImageGenConfig(imageGenConfig.provider).baseUrl,
+    );
+    setIgModel(imageGenConfig.model || getDefaultImageGenConfig(imageGenConfig.provider).model);
+    setIgCustomHeaders(imageGenConfig.customHeaders || '');
+  }, [imageGenConfig]);
 
   const handleProviderChange = (p: LLMProvider) => {
     setProvider(p);

@@ -4,7 +4,7 @@
  * StageIndicator, ActionsTaken, CharacterAvatar, renderMessageContent
  */
 
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo, useRef } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { CharacterConfig } from '@/lib/characterManager';
 import { resolveEmotionMedia } from '@/lib/characterManager';
@@ -110,6 +110,7 @@ export const CharacterAvatar: React.FC<{
     media ? [{ url: media.url, type: media.type, active: true }] : [],
   );
   const activeUrl = layers.find((l) => l.active)?.url;
+  const cleanupRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!media) {
@@ -118,7 +119,11 @@ export const CharacterAvatar: React.FC<{
     }
     if (media.url === activeUrl) return;
     setLayers((prev) => {
-      if (prev.some((l) => l.url === media.url)) return prev;
+      // If the URL already exists (possibly inactive), reactivate it
+      const existing = prev.find((l) => l.url === media.url);
+      if (existing) {
+        return prev.map((l) => (l.url === media.url ? { ...l, active: true } : l));
+      }
       return [...prev, { url: media.url, type: media.type, active: false }];
     });
   }, [media?.url, activeUrl]);
@@ -126,7 +131,8 @@ export const CharacterAvatar: React.FC<{
   const handleMediaReady = useCallback((readyUrl: string) => {
     setLayers((prev) => {
       const staleUrls = prev.filter((l) => l.url !== readyUrl).map((l) => l.url);
-      setTimeout(() => {
+      if (cleanupRef.current) clearTimeout(cleanupRef.current);
+      cleanupRef.current = setTimeout(() => {
         setLayers((curr) => curr.filter((l) => !staleUrls.includes(l.url)));
       }, 300);
       return prev.map((l) => ({ ...l, active: l.url === readyUrl }));

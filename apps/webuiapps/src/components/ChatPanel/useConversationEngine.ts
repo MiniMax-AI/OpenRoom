@@ -78,8 +78,12 @@ export interface ConversationEngineDeps {
 // ---------------------------------------------------------------------------
 
 export function useConversationEngine(deps: ConversationEngineDeps) {
-  const { imageGenConfigRef, modManagerRef, characterRef, memoriesRef, sessionPathRef, callbacks } =
-    deps;
+  const { imageGenConfigRef, modManagerRef, characterRef, memoriesRef, sessionPathRef } = deps;
+
+  // Keep callbacks in a ref so the stabilized runConversation always reads the
+  // latest versions without needing them in its dependency array.
+  const callbacksRef = useRef(deps.callbacks);
+  callbacksRef.current = deps.callbacks;
 
   const pendingToolCallsRef = useRef<string[]>([]);
 
@@ -125,14 +129,14 @@ export function useConversationEngine(deps: ConversationEngineDeps) {
       if (response.toolCalls.length === 0) {
         // No tool calls — fallback plain text
         if (response.content) {
-          callbacks.addMessage({
+          callbacksRef.current.addMessage({
             id: String(Date.now()),
             role: 'assistant',
             content: response.content,
             toolCalls:
               pendingToolCallsRef.current.length > 0 ? [...pendingToolCallsRef.current] : undefined,
           });
-          callbacks.setChatHistory((prev) => [
+          callbacksRef.current.setChatHistory((prev) => [
             ...prev,
             { role: 'assistant', content: response.content },
           ]);
@@ -150,6 +154,7 @@ export function useConversationEngine(deps: ConversationEngineDeps) {
       currentMessages = [...currentMessages, assistantMsg];
 
       // Execute each tool call
+      let stopLoop = false;
       for (const tc of response.toolCalls) {
         const result = await executeToolCall(tc, {
           mm,
@@ -158,13 +163,20 @@ export function useConversationEngine(deps: ConversationEngineDeps) {
           sessionPathRef,
           imageGenConfigRef,
           characterRef,
-          callbacks,
+          callbacks: callbacksRef.current,
         });
         currentMessages = [...currentMessages, result];
+        // respond_to_user is terminal — no further model round-trips needed
+        if (tc.function.name === 'respond_to_user') {
+          stopLoop = true;
+          break;
+        }
       }
 
       // Update chat history (skip system message)
-      callbacks.setChatHistory(currentMessages.slice(1));
+      callbacksRef.current.setChatHistory(currentMessages.slice(1));
+
+      if (stopLoop) break;
     }
   }, []);
 
@@ -190,8 +202,8 @@ async function executeToolCall(
   let params: Record<string, unknown> = {};
   try {
     params = JSON.parse(tc.function.arguments);
-  } catch {
-    // ignore parse errors
+  } catch (e) {
+    console.warn('Failed to parse tool call arguments:', tc.function.arguments, e);
   }
 
   const toolResult = (content: string): ChatMessage => ({
@@ -300,7 +312,12 @@ async function executeToolCall(
         ctx.sessionPathRef.current,
         params as Record<string, string>,
       );
-      loadMemories(ctx.sessionPathRef.current).then(ctx.callbacks.setMemories);
+      loadMemories(ctx.sessionPathRef.current)
+        .then(ctx.callbacks.setMemories)
+        .catch((err) => {
+          console.warn('Failed to reload memories after save:', err);
+          ctx.callbacks.setMemories([]);
+        });
       return toolResult(result);
     } catch (err) {
       return toolResult(`error: ${err instanceof Error ? err.message : String(err)}`);

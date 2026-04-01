@@ -43,7 +43,8 @@ export function getRespondToUserToolDef() {
               },
               emotion: {
                 type: 'string',
-                description: 'Character emotion: happy, shy, peaceful, depressing, angry',
+                description:
+                  "Character emotion — use one of the active character's defined emotion keys",
               },
             },
             required: ['content'],
