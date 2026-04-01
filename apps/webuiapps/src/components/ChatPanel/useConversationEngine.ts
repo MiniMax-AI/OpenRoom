@@ -160,7 +160,9 @@ export function useConversationEngine(deps: ConversationEngineDeps) {
       currentMessages = [...currentMessages, assistantMsg];
 
       // Execute each tool call
-      let stopLoop = false;
+      const hasRespondToUser = response.toolCalls.some(
+        (tc) => tc.function.name === 'respond_to_user',
+      );
       for (const tc of response.toolCalls) {
         const result = await executeToolCall(tc, {
           mm,
@@ -172,17 +174,15 @@ export function useConversationEngine(deps: ConversationEngineDeps) {
           callbacks: callbacksRef.current,
         });
         currentMessages = [...currentMessages, result];
-        // Mark respond_to_user as terminal — still execute remaining tool calls
-        // (e.g. finish_target) but skip the next model round-trip afterward
-        if (tc.function.name === 'respond_to_user') {
-          stopLoop = true;
-        }
       }
 
       // Update chat history (skip system message)
       callbacksRef.current.setChatHistory(currentMessages.slice(1));
 
-      if (stopLoop) break;
+      // Only break when respond_to_user was the sole tool call — if other
+      // tools ran in the same batch the model may still need a follow-up
+      // round-trip (e.g. finish_target) to commit state updates.
+      if (hasRespondToUser && response.toolCalls.length === 1) break;
     }
   }, []);
 
