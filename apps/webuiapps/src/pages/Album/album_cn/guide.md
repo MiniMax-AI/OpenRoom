@@ -21,11 +21,11 @@
 
 #### 图片文件 `{id}.json`
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| id | string | 是 | 图片唯一标识，与文件名一致（不含 `.json` 后缀） |
-| src | string | 是 | 图片地址：data URL（如 `data:image/png;base64,...`）或 https URL |
-| createdAt | integer | 是 | 创建时间戳（毫秒） |
+| 字段      | 类型    | 必填 | 说明                                                             |
+| --------- | ------- | ---- | ---------------------------------------------------------------- |
+| id        | string  | 是   | 图片唯一标识，与文件名一致（不含 `.json` 后缀）                  |
+| src       | string  | 是   | 图片地址：data URL（如 `data:image/png;base64,...`）或 https URL |
+| createdAt | integer | 是   | 创建时间戳（毫秒）                                               |
 
 示例：
 
@@ -51,7 +51,8 @@
 
 ### Agent 操作（Agent → 前端）
 
-Agent 在云端新增或删除图片文件后，下发 `REFRESH` Action，前端收到后重新执行 `initFromCloud()` 并刷新列表。
+Agent 在云端新增或删除图片文件后，下发 `REFRESH` Action，前端收到后重新执行 `initFromCloud()`
+并刷新列表。
 
 ### 用户操作
 

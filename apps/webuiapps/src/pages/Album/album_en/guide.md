@@ -21,11 +21,11 @@ Stores metadata for all pre-stored images. Each image has a separate JSON file, 
 
 #### Image File `{id}.json`
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| id | string | Yes | Unique image identifier, matches the filename (without `.json` extension) |
-| src | string | Yes | Image URL: data URL (e.g., `data:image/png;base64,...`) or https URL |
-| createdAt | integer | Yes | Creation timestamp (milliseconds) |
+| Field     | Type    | Required | Description                                                               |
+| --------- | ------- | -------- | ------------------------------------------------------------------------- |
+| id        | string  | Yes      | Unique image identifier, matches the filename (without `.json` extension) |
+| src       | string  | Yes      | Image URL: data URL (e.g., `data:image/png;base64,...`) or https URL      |
+| createdAt | integer | Yes      | Creation timestamp (milliseconds)                                         |
 
 Example:
 
@@ -51,8 +51,10 @@ Or using an external link:
 
 ### Agent Operations (Agent → Frontend)
 
-After the Agent adds or deletes image files on the cloud, it dispatches the `REFRESH` Action. Upon receiving it, the frontend re-executes `initFromCloud()` and refreshes the list.
+After the Agent adds or deletes image files on the cloud, it dispatches the `REFRESH` Action. Upon
+receiving it, the frontend re-executes `initFromCloud()` and refreshes the list.
 
 ### User Operations
 
-The album is a read-only app. Users can only browse and click to view full-size images. No Actions are reported.
+The album is a read-only app. Users can only browse and click to view full-size images. No Actions
+are reported.

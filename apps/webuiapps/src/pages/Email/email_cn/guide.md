@@ -4,12 +4,14 @@
 
 本邮箱是**用户（User）的邮箱**，所有邮件的视角以用户为主。`folder` 字段的设置必须基于用户视角：
 
-- **`inbox`**：用户收到的邮件。Character 发送给用户的邮件应放在 `inbox`，因为对用户来说这是一封收到的邮件。
+- **`inbox`**：用户收到的邮件。Character 发送给用户的邮件应放在
+  `inbox`，因为对用户来说这是一封收到的邮件。
 - **`sent`**：用户发出的邮件。只有用户主动发送的邮件才应放在 `sent`。
 - **`drafts`**：用户的草稿。
 - **`trash`**：用户删除的邮件。
 
-> **常见错误**：Character 向用户发送邮件时，不应将 `folder` 设为 `sent`。虽然这封邮件是 Character "发送"的，但对于用户来说这是一封**收到的邮件**，应设为 `inbox`。
+> **常见错误**：Character 向用户发送邮件时，不应将 `folder` 设为 `sent`。虽然这封邮件是 Character
+> "发送"的，但对于用户来说这是一封**收到的邮件**，应设为 `inbox`。
 
 ## 文件夹结构
 
@@ -34,27 +36,27 @@
 
 #### 邮件文件 `{emailId}.json`
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| id | string | 是 | 邮件唯一标识，与文件名一致（不含 `.json` 后缀） |
-| from | object | 是 | 发件人信息 |
-| from.name | string | 是 | 发件人姓名 |
-| from.address | string | 是 | 发件人邮箱地址 |
-| to | array | 是 | 收件人列表，每项为 EmailAddress 对象 |
-| cc | array | 是 | 抄送列表，每项为 EmailAddress 对象，可为空数组 |
-| subject | string | 是 | 邮件主题 |
-| content | string | 是 | 邮件正文内容 |
-| timestamp | integer | 是 | 发送/接收时间戳（毫秒） |
-| isRead | boolean | 是 | 是否已读 |
-| isStarred | boolean | 是 | 是否已加星标 |
-| folder | string | 是 | 所属文件夹，可选值：`inbox`、`sent`、`drafts`、`trash` |
+| 字段         | 类型    | 必填 | 说明                                                   |
+| ------------ | ------- | ---- | ------------------------------------------------------ |
+| id           | string  | 是   | 邮件唯一标识，与文件名一致（不含 `.json` 后缀）        |
+| from         | object  | 是   | 发件人信息                                             |
+| from.name    | string  | 是   | 发件人姓名                                             |
+| from.address | string  | 是   | 发件人邮箱地址                                         |
+| to           | array   | 是   | 收件人列表，每项为 EmailAddress 对象                   |
+| cc           | array   | 是   | 抄送列表，每项为 EmailAddress 对象，可为空数组         |
+| subject      | string  | 是   | 邮件主题                                               |
+| content      | string  | 是   | 邮件正文内容                                           |
+| timestamp    | integer | 是   | 发送/接收时间戳（毫秒）                                |
+| isRead       | boolean | 是   | 是否已读                                               |
+| isStarred    | boolean | 是   | 是否已加星标                                           |
+| folder       | string  | 是   | 所属文件夹，可选值：`inbox`、`sent`、`drafts`、`trash` |
 
 **EmailAddress 对象结构：**
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| name | string | 是 | 姓名 |
-| address | string | 是 | 邮箱地址 |
+| 字段    | 类型   | 必填 | 说明     |
+| ------- | ------ | ---- | -------- |
+| name    | string | 是   | 姓名     |
+| address | string | 是   | 邮箱地址 |
 
 示例：
 
@@ -85,10 +87,10 @@
 
 存储应用运行时状态，用于启动时恢复现场。前端在状态变更时自动保存并同步到云端。
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| selectedEmailId | string\|null | 否 | 当前选中的邮件 ID，未选中时为 null |
-| currentFolder | string | 是 | 当前所在文件夹，可选值：`inbox`、`sent`、`drafts`、`trash` |
+| 字段            | 类型         | 必填 | 说明                                                       |
+| --------------- | ------------ | ---- | ---------------------------------------------------------- |
+| selectedEmailId | string\|null | 否   | 当前选中的邮件 ID，未选中时为 null                         |
+| currentFolder   | string       | 是   | 当前所在文件夹，可选值：`inbox`、`sent`、`drafts`、`trash` |
 
 示例：
 
@@ -103,8 +105,7 @@
 
 ### Agent 操作（Agent → 前端）
 
-Agent 负责在云端完成邮件文件的写入/删除，完成后通过下发 Action 通知前端同步刷新。
-前端收到 Action 后仅从云端读取最新数据，不再进行本地文件创建。
+Agent 负责在云端完成邮件文件的写入/删除，完成后通过下发 Action 通知前端同步刷新。前端收到 Action 后仅从云端读取最新数据，不再进行本地文件创建。
 
 **Agent 写邮件**:
 

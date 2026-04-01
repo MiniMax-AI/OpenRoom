@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import ChatPanel from '../ChatPanel';
 import AppWindow from '../AppWindow';
+import { ErrorBoundary } from '../ErrorBoundary';
 import { getWindows, subscribe, openWindow, claimZIndex } from '@/lib/windowManager';
 import { getDesktopApps } from '@/lib/appRegistry';
 import { reportUserOsAction, onOSEvent } from '@/lib/vibeContainerMock';
@@ -350,18 +351,22 @@ const Shell: React.FC = () => {
         </div>
       </div>
 
-      {/* App windows */}
+      {/* App windows — each wrapped in ErrorBoundary so a crash doesn't kill the Shell */}
       {windows.map((win) => (
-        <AppWindow key={win.appId} win={win} />
+        <ErrorBoundary key={win.appId} name={`App ${win.appId}`}>
+          <AppWindow win={win} />
+        </ErrorBoundary>
       ))}
 
       {/* Chat Panel — always mounted to preserve chat history */}
-      <ChatPanel
-        onClose={() => setChatOpen(false)}
-        visible={chatOpen}
-        zIndex={chatZIndex}
-        onFocus={() => setChatZIndex(claimZIndex())}
-      />
+      <ErrorBoundary name="Chat">
+        <ChatPanel
+          onClose={() => setChatOpen(false)}
+          visible={chatOpen}
+          zIndex={chatZIndex}
+          onFocus={() => setChatZIndex(claimZIndex())}
+        />
+      </ErrorBoundary>
 
       {/* Upload Modal */}
       {uploadOpen && (

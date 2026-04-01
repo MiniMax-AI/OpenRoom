@@ -93,100 +93,113 @@ export function useConversationEngine(deps: ConversationEngineDeps) {
 
   const pendingToolCallsRef = useRef<string[]>([]);
 
+  // Abort controller for the current conversation — allows cancellation when
+  // the user switches sessions or triggers a new request.
+  const abortRef = useRef<AbortController | null>(null);
+
   /**
    * Core conversation loop — sends messages to LLM, executes tool calls,
    * and loops until the model responds via respond_to_user or produces plain text.
    *
    * Stabilized with useCallback — all inputs are refs, so this identity never
    * changes, preventing unsubscribe/subscribe churn in the onUserAction listener.
+   *
+   * @param signal AbortSignal to cancel the conversation mid-loop
    */
-  const runConversation = useCallback(async (history: ChatMessage[], cfg: LLMConfig) => {
-    await seedMetaFiles();
-    await loadActionsFromMeta();
-    const hasImageGen = !!imageGenConfigRef.current?.apiKey;
-    const mm = modManagerRef.current;
-    const char = characterRef.current;
+  const runConversation = useCallback(
+    async (history: ChatMessage[], cfg: LLMConfig, signal?: AbortSignal) => {
+      await seedMetaFiles();
+      await loadActionsFromMeta();
+      const hasImageGen = !!imageGenConfigRef.current?.apiKey;
+      const mm = modManagerRef.current;
+      const char = characterRef.current;
 
-    const tools = [
-      getRespondToUserToolDef(),
-      getFinishTargetToolDef(),
-      getListAppsToolDefinition(),
-      getAppActionToolDefinition(),
-      ...getFileToolDefinitions(),
-      ...getMemoryToolDefinitions(),
-      ...(hasImageGen ? getImageGenToolDefinitions() : []),
-    ];
+      const tools = [
+        getRespondToUserToolDef(),
+        getFinishTargetToolDef(),
+        getListAppsToolDefinition(),
+        getAppActionToolDefinition(),
+        ...getFileToolDefinitions(),
+        ...getMemoryToolDefinitions(),
+        ...(hasImageGen ? getImageGenToolDefinitions() : []),
+      ];
 
-    const currentMemories = memoriesRef.current;
-    const fullMessages: ChatMessage[] = [
-      { role: 'system', content: buildSystemPrompt(char, mm, hasImageGen, currentMemories) },
-      ...history,
-    ];
+      const currentMemories = memoriesRef.current;
+      const fullMessages: ChatMessage[] = [
+        { role: 'system', content: buildSystemPrompt(char, mm, hasImageGen, currentMemories) },
+        ...history,
+      ];
 
-    let currentMessages = fullMessages;
-    let iterations = 0;
-    const maxIterations = 10;
-    pendingToolCallsRef.current = [];
+      let currentMessages = fullMessages;
+      let iterations = 0;
+      const maxIterations = 10;
+      pendingToolCallsRef.current = [];
 
-    while (iterations < maxIterations) {
-      iterations++;
-      const response = await chat(currentMessages, tools, cfg);
+      while (iterations < maxIterations) {
+        if (signal?.aborted) break;
+        iterations++;
+        const response = await chat(currentMessages, tools, cfg);
 
-      if (response.toolCalls.length === 0) {
-        // No tool calls — fallback plain text
-        if (response.content) {
-          callbacksRef.current.addMessage({
-            id: String(Date.now()),
-            role: 'assistant',
-            content: response.content,
-            toolCalls:
-              pendingToolCallsRef.current.length > 0 ? [...pendingToolCallsRef.current] : undefined,
-          });
-          callbacksRef.current.setChatHistory((prev) => [
-            ...prev,
-            { role: 'assistant', content: response.content },
-          ]);
-          pendingToolCallsRef.current = [];
+        if (response.toolCalls.length === 0) {
+          // No tool calls — fallback plain text
+          if (response.content) {
+            callbacksRef.current.addMessage({
+              id: String(Date.now()),
+              role: 'assistant',
+              content: response.content,
+              toolCalls:
+                pendingToolCallsRef.current.length > 0
+                  ? [...pendingToolCallsRef.current]
+                  : undefined,
+            });
+            callbacksRef.current.setChatHistory((prev) => [
+              ...prev,
+              { role: 'assistant', content: response.content },
+            ]);
+            pendingToolCallsRef.current = [];
+          }
+          break;
         }
-        break;
+
+        // Has tool calls — build assistant message
+        const assistantMsg: ChatMessage = {
+          role: 'assistant',
+          content: response.content,
+          tool_calls: response.toolCalls,
+        };
+        currentMessages = [...currentMessages, assistantMsg];
+
+        // Execute each tool call
+        const hasRespondToUser = response.toolCalls.some(
+          (tc) => tc.function.name === 'respond_to_user',
+        );
+        for (const tc of response.toolCalls) {
+          const result = await executeToolCall(tc, {
+            mm,
+            hasImageGen,
+            pendingToolCallsRef,
+            sessionPathRef,
+            imageGenConfigRef,
+            characterRef,
+            callbacks: callbacksRef.current,
+          });
+          currentMessages = [...currentMessages, result];
+        }
+
+        // Update chat history (skip system message)
+        callbacksRef.current.setChatHistory(currentMessages.slice(1));
+
+        // Only break when respond_to_user was the sole tool call — if other
+        // tools ran in the same batch the model may still need a follow-up
+        // round-trip (e.g. finish_target) to commit state updates.
+        if (hasRespondToUser && response.toolCalls.length === 1) break;
+        if (signal?.aborted) break;
       }
+    },
+    [],
+  );
 
-      // Has tool calls — build assistant message
-      const assistantMsg: ChatMessage = {
-        role: 'assistant',
-        content: response.content,
-        tool_calls: response.toolCalls,
-      };
-      currentMessages = [...currentMessages, assistantMsg];
-
-      // Execute each tool call
-      const hasRespondToUser = response.toolCalls.some(
-        (tc) => tc.function.name === 'respond_to_user',
-      );
-      for (const tc of response.toolCalls) {
-        const result = await executeToolCall(tc, {
-          mm,
-          hasImageGen,
-          pendingToolCallsRef,
-          sessionPathRef,
-          imageGenConfigRef,
-          characterRef,
-          callbacks: callbacksRef.current,
-        });
-        currentMessages = [...currentMessages, result];
-      }
-
-      // Update chat history (skip system message)
-      callbacksRef.current.setChatHistory(currentMessages.slice(1));
-
-      // Only break when respond_to_user was the sole tool call — if other
-      // tools ran in the same batch the model may still need a follow-up
-      // round-trip (e.g. finish_target) to commit state updates.
-      if (hasRespondToUser && response.toolCalls.length === 1) break;
-    }
-  }, []);
-
-  return { runConversation, pendingToolCallsRef };
+  return { runConversation, pendingToolCallsRef, abortRef };
 }
 
 // ---------------------------------------------------------------------------

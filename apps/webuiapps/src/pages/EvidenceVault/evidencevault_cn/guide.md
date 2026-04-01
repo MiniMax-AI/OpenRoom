@@ -19,22 +19,22 @@
 
 #### 档案文件 `{id}.json`
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| id | string | 是 | 档案唯一标识 |
-| title | string | 是 | 档案标题 |
-| description | string | 是 | 档案描述摘要 |
-| content | string | 是 | 档案正文内容 |
-| type | string | 是 | 档案类型：`video` / `log` / `transaction` / `document` / `image` / `audio` / `chat` / `email` / `contract` / `report` / `trace` / `relation` |
-| category | string | 是 | 所属分类：`identity` / `family` / `money` / `reputation` / `incident` / `secret` / `other` |
-| impact | string | 是 | 影响类型：`vindicate`（正面）/ `expose`（负面）/ `neutral`（中性）/ `mixed`（复合） |
-| source | string | 是 | 档案来源 |
-| timestamp | number | 是 | 档案时间戳（Unix 毫秒） |
-| credibility | number | 是 | 可信度（0-100） |
-| importance | number | 是 | 重要性（0-100） |
-| tags | string[] | 是 | 标签数组 |
-| vindicateText | string | 否 | 正面影响说明 |
-| exposeText | string | 否 | 负面影响说明 |
+| 字段          | 类型     | 必填 | 说明                                                                                                                                         |
+| ------------- | -------- | ---- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| id            | string   | 是   | 档案唯一标识                                                                                                                                 |
+| title         | string   | 是   | 档案标题                                                                                                                                     |
+| description   | string   | 是   | 档案描述摘要                                                                                                                                 |
+| content       | string   | 是   | 档案正文内容                                                                                                                                 |
+| type          | string   | 是   | 档案类型：`video` / `log` / `transaction` / `document` / `image` / `audio` / `chat` / `email` / `contract` / `report` / `trace` / `relation` |
+| category      | string   | 是   | 所属分类：`identity` / `family` / `money` / `reputation` / `incident` / `secret` / `other`                                                   |
+| impact        | string   | 是   | 影响类型：`vindicate`（正面）/ `expose`（负面）/ `neutral`（中性）/ `mixed`（复合）                                                          |
+| source        | string   | 是   | 档案来源                                                                                                                                     |
+| timestamp     | number   | 是   | 档案时间戳（Unix 毫秒）                                                                                                                      |
+| credibility   | number   | 是   | 可信度（0-100）                                                                                                                              |
+| importance    | number   | 是   | 重要性（0-100）                                                                                                                              |
+| tags          | string[] | 是   | 标签数组                                                                                                                                     |
+| vindicateText | string   | 否   | 正面影响说明                                                                                                                                 |
+| exposeText    | string   | 否   | 负面影响说明                                                                                                                                 |
 
 示例：
 
@@ -78,4 +78,5 @@
 
 ### 启动恢复
 
-前端启动时调用 `initFromCloud()` 从云端拉取 `/files/` 目录下的所有档案文件。若目录为空，则显示空状态。
+前端启动时调用 `initFromCloud()` 从云端拉取 `/files/`
+目录下的所有档案文件。若目录为空，则显示空状态。
