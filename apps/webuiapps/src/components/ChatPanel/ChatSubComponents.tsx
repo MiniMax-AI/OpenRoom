@@ -113,6 +113,12 @@ export const CharacterAvatar: React.FC<{
   const cleanupRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    return () => {
+      if (cleanupRef.current) clearTimeout(cleanupRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!media) {
       setLayers([]);
       return;

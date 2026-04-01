@@ -6,7 +6,7 @@
  * the engine itself pure and testable.
  */
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, type Dispatch, type SetStateAction, type MutableRefObject } from 'react';
 import { chat, type ChatMessage, type ToolCall } from '@/lib/llmClient';
 import type { LLMConfig } from '@/lib/llmModels';
 import type { ImageGenConfig } from '@/lib/imageGenClient';
@@ -43,12 +43,12 @@ import {
 
 export interface ConversationCallbacks {
   addMessage: (msg: ConversationDisplayMessage) => void;
-  setChatHistory: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
-  setSuggestedReplies: React.Dispatch<React.SetStateAction<string[]>>;
-  setCurrentEmotion: React.Dispatch<React.SetStateAction<string | undefined>>;
-  setModCollection: React.Dispatch<React.SetStateAction<import('@/lib/modManager').ModCollection>>;
-  setModManager: React.Dispatch<React.SetStateAction<ModManager | null>>;
-  setMemories: React.Dispatch<React.SetStateAction<MemoryEntry[]>>;
+  setChatHistory: Dispatch<SetStateAction<ChatMessage[]>>;
+  setSuggestedReplies: Dispatch<SetStateAction<string[]>>;
+  setCurrentEmotion: Dispatch<SetStateAction<string | undefined>>;
+  setModCollection: Dispatch<SetStateAction<import('@/lib/modManager').ModCollection>>;
+  setModManager: Dispatch<SetStateAction<ModManager | null>>;
+  setMemories: Dispatch<SetStateAction<MemoryEntry[]>>;
 }
 
 export interface ConversationDisplayMessage {
@@ -63,11 +63,11 @@ export interface ConversationDisplayMessage {
 
 export interface ConversationEngineDeps {
   /** Refs to current values (avoids stale closures) */
-  imageGenConfigRef: React.MutableRefObject<ImageGenConfig | null>;
-  modManagerRef: React.MutableRefObject<ModManager | null>;
-  characterRef: React.MutableRefObject<CharacterConfig>;
-  memoriesRef: React.MutableRefObject<MemoryEntry[]>;
-  sessionPathRef: React.MutableRefObject<string>;
+  imageGenConfigRef: MutableRefObject<ImageGenConfig | null>;
+  modManagerRef: MutableRefObject<ModManager | null>;
+  characterRef: MutableRefObject<CharacterConfig>;
+  memoriesRef: MutableRefObject<MemoryEntry[]>;
+  sessionPathRef: MutableRefObject<string>;
 
   /** Side-effect callbacks */
   callbacks: ConversationCallbacks;
@@ -192,10 +192,10 @@ async function executeToolCall(
   ctx: {
     mm: ModManager | null;
     hasImageGen: boolean;
-    pendingToolCallsRef: React.MutableRefObject<string[]>;
-    sessionPathRef: React.MutableRefObject<string>;
-    imageGenConfigRef: React.MutableRefObject<ImageGenConfig | null>;
-    characterRef: React.MutableRefObject<CharacterConfig>;
+    pendingToolCallsRef: MutableRefObject<string[]>;
+    sessionPathRef: MutableRefObject<string>;
+    imageGenConfigRef: MutableRefObject<ImageGenConfig | null>;
+    characterRef: MutableRefObject<CharacterConfig>;
     callbacks: ConversationCallbacks;
   },
 ): Promise<ChatMessage> {

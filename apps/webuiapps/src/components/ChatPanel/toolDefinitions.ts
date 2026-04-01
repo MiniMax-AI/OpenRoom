@@ -16,7 +16,9 @@ import type { LLMConfig } from '@/lib/llmModels';
 // ---------------------------------------------------------------------------
 
 export function hasUsableLLMConfig(config: LLMConfig | null | undefined): config is LLMConfig {
-  return !!config?.baseUrl.trim() && !!config.model.trim();
+  const baseUrl = typeof config?.baseUrl === 'string' ? config.baseUrl.trim() : '';
+  const model = typeof config?.model === 'string' ? config.model.trim() : '';
+  return !!baseUrl && !!model;
 }
 
 // ---------------------------------------------------------------------------
