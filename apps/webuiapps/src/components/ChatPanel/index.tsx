@@ -75,6 +75,13 @@ interface CharacterDisplayMessage extends DisplayMessage {
   toolCalls?: string[];
 }
 
+interface PendingSaveSnapshot {
+  path: string;
+  messages: CharacterDisplayMessage[];
+  history: ChatMessage[];
+  replies: string[];
+}
+
 // ---------------------------------------------------------------------------
 // ChatPanel
 // ---------------------------------------------------------------------------
@@ -177,12 +184,7 @@ const ChatPanel: React.FC<{
 
   // Debounced save — tracks the most recent snapshot to be persisted.
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingSaveRef = useRef<{
-    path: string;
-    messages: CharacterDisplayMessage[];
-    history: ChatMessage[];
-    replies: string[];
-  } | null>(null);
+  const pendingSaveRef = useRef<PendingSaveSnapshot | null>(null);
 
   // Reschedule the debounce timer on every data change.  Never flush
   // synchronously here — flushing is handled by the session-switch effect below
