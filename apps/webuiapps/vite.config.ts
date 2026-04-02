@@ -81,10 +81,7 @@ function mergeConfigSection(
   incoming: ServerConfigSection,
 ): ServerConfigSection {
   const merged: ServerConfigSection = { ...(existing || {}), ...incoming };
-  if (
-    !Object.prototype.hasOwnProperty.call(incoming, 'apiKey') &&
-    typeof existing?.apiKey === 'string'
-  ) {
+  if (!Object.hasOwn(incoming, 'apiKey') && typeof existing?.apiKey === 'string') {
     merged.apiKey = existing.apiKey;
   }
   delete merged.hasApiKey;
@@ -127,10 +124,7 @@ function llmConfigPlugin(): Plugin {
                 llm: mergeConfigSection(existingConfig?.llm, nextConfig.llm),
               };
 
-              if (
-                isObjectRecord(parsed) &&
-                Object.prototype.hasOwnProperty.call(parsed, 'imageGen')
-              ) {
+              if (isObjectRecord(parsed) && Object.hasOwn(parsed, 'imageGen')) {
                 if (parsed.imageGen !== null) {
                   if (!isObjectRecord(parsed.imageGen)) {
                     throw new Error('Invalid imageGen config payload');

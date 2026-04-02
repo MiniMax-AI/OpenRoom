@@ -107,11 +107,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const llmApiKeyPlaceholder = config?.hasApiKey
-    ? 'Configured on server. Enter a new key to replace it.'
+    ? 'Server key configured (enter to replace)'
     : 'Optional for local servers';
   const imageApiKeyPlaceholder = imageGenConfig?.hasApiKey
-    ? 'Configured on server. Enter a new key to replace it.'
+    ? 'Server key configured (enter to replace)'
     : 'API Key...';
+
+  const buildImageGenConfig = (): ImageGenConfigUpdate => ({
+    provider: igProvider,
+    baseUrl: igBaseUrl,
+    model: igModel,
+    ...(igCustomHeaders.trim() ? { customHeaders: igCustomHeaders } : {}),
+    ...(igApiKeyDirty ? { apiKey: igApiKey } : {}),
+  });
 
   return (
     <div className={styles.overlay} data-testid="settings-overlay">
@@ -302,22 +310,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               if (apiKeyDirty) {
                 llmCfg.apiKey = apiKey;
               }
+              const nextImageGenConfig = buildImageGenConfig();
               const igCfg: ImageGenConfigUpdate | null = imageGenConfig
-                ? {
-                    provider: igProvider,
-                    baseUrl: igBaseUrl,
-                    model: igModel,
-                    ...(igCustomHeaders.trim() ? { customHeaders: igCustomHeaders } : {}),
-                    ...(igApiKeyDirty ? { apiKey: igApiKey } : {}),
-                  }
+                ? nextImageGenConfig
                 : igApiKey.trim()
-                  ? {
-                      provider: igProvider,
-                      apiKey: igApiKey,
-                      baseUrl: igBaseUrl,
-                      model: igModel,
-                      ...(igCustomHeaders.trim() ? { customHeaders: igCustomHeaders } : {}),
-                    }
+                  ? { ...nextImageGenConfig, apiKey: igApiKey }
                   : null;
               try {
                 await onSave(llmCfg, igCfg);
