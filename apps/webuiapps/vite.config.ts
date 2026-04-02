@@ -283,7 +283,65 @@ function logServerPlugin(): Plugin {
   };
 }
 
-/** LLM API proxy plugin — resolves browser CORS restrictions */
+/** Load server-side LLM config for API key injection */
+function loadServerConfig(): Record<string, unknown> | null {
+  try {
+    if (fs.existsSync(LLM_CONFIG_FILE)) {
+      return JSON.parse(fs.readFileSync(LLM_CONFIG_FILE, 'utf-8'));
+    }
+  } catch {
+    // Config file missing or malformed
+  }
+  return null;
+}
+
+/** Determine provider type from target URL or X-LLM-Provider hint header */
+function inferProvider(
+  targetUrl: string,
+  hint?: string,
+): 'openai' | 'anthropic' | 'minimax' | 'gemini' | 'unknown' {
+  if (hint === 'anthropic' || hint === 'minimax') return hint;
+  const parsed = new URL(targetUrl);
+  const host = parsed.hostname.toLowerCase();
+  if (host.includes('anthropic')) return 'anthropic';
+  if (host.includes('minimax')) return 'minimax';
+  if (host.includes('google') || host.includes('generativelanguage')) return 'gemini';
+  return 'openai'; // default: OpenAI-compatible (also covers openrouter, deepseek, kimi, z.ai, etc.)
+}
+
+/** Inject API key from server-side config into proxy request headers */
+function injectServerApiKey(
+  headers: Record<string, string>,
+  targetUrl: string,
+  providerHint?: string,
+): void {
+  const config = loadServerConfig();
+  if (!config) return;
+
+  const provider = inferProvider(targetUrl, providerHint);
+
+  // Try LLM config first, then imageGen config
+  const llmConfig = (config.llm || {}) as Record<string, unknown>;
+  const igConfig = (config.imageGen || {}) as Record<string, unknown>;
+
+  const apiKey =
+    (typeof llmConfig.apiKey === 'string' && llmConfig.apiKey.trim() ? llmConfig.apiKey : null) ||
+    (typeof igConfig.apiKey === 'string' && igConfig.apiKey.trim() ? igConfig.apiKey : null);
+
+  if (!apiKey) return;
+
+  if (provider === 'anthropic' || provider === 'minimax') {
+    headers['x-api-key'] = apiKey;
+  } else if (provider === 'gemini') {
+    headers['x-goog-api-key'] = apiKey;
+  } else {
+    headers['authorization'] = `Bearer ${apiKey}`;
+  }
+}
+
+/** LLM API proxy plugin — resolves browser CORS restrictions
+ *  API keys are now injected server-side from ~/.openroom/config.json.
+ *  The browser never sends or sees API keys. */
 function llmProxyPlugin(): Plugin {
   return {
     name: 'llm-proxy',
@@ -301,12 +359,11 @@ function llmProxyPlugin(): Plugin {
           try {
             const body = Buffer.concat(chunks).toString();
             const headers: Record<string, string> = {};
-            // Only forward safe, known headers. Block all others to prevent injection.
+            // Only forward safe, non-sensitive headers from the browser.
+            // API keys are NO LONGER accepted from the client — they come from server config.
             const allowKeys = new Set([
               'content-type',
-              'authorization', // LLM API key (Bearer token)
-              'x-api-key', // Anthropic API key
-              'anthropic-version', // Anthropic API version
+              'anthropic-version', // Anthropic API version (not a secret)
             ]);
             for (const [key, val] of Object.entries(req.headers)) {
               if (typeof val !== 'string') continue;
@@ -324,8 +381,11 @@ function llmProxyPlugin(): Plugin {
                   headers[strippedKey] = val;
                 }
               }
-              // All other headers (including internal ones) are dropped
+              // All other headers (including authorization and x-api-key) are dropped
             }
+
+            // Inject API key from server-side config
+            injectServerApiKey(headers, targetUrl, req.headers['x-llm-provider'] as string);
 
             // Validate target URL — only allow https:// and http:// to known API hosts
             try {
