@@ -3,7 +3,7 @@
  * Supports OpenAI-compatible / Anthropic-compatible formats
  */
 
-import type { LLMConfig } from './llmModels';
+import type { LLMConfig, LLMConfigUpdate } from './llmModels';
 
 import { logger } from './logger';
 import { loadPersistedConfig, savePersistedConfig } from './configPersistence';
@@ -23,14 +23,13 @@ export async function loadConfig(): Promise<LLMConfig | null> {
 }
 
 export async function saveConfig(
-  config: LLMConfig,
-  imageGenConfig?: import('./imageGenClient').ImageGenConfig | null,
+  config: LLMConfigUpdate,
+  imageGenConfig?: import('./imageGenClient').ImageGenConfigUpdate | null,
 ): Promise<void> {
-  // Persist to server-side config (keys never touch localStorage)
-  const persisted: import('./configPersistence').PersistedConfig = {
+  const persisted: import('./configPersistence').PersistedConfigUpdate = {
     llm: config,
   };
-  if (imageGenConfig) {
+  if (imageGenConfig !== undefined) {
     persisted.imageGen = imageGenConfig;
   }
 
@@ -219,6 +218,7 @@ async function chatOpenAI(
   });
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'X-LLM-Config-Scope': 'llm',
     'X-LLM-Target-URL': targetUrl,
     // API key injected server-side by the proxy — never sent from browser
     ...parseCustomHeaders(config.customHeaders),
@@ -329,6 +329,7 @@ async function chatAnthropic(
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'anthropic-version': '2023-06-01',
+    'X-LLM-Config-Scope': 'llm',
     'X-LLM-Target-URL': targetUrl,
     // API key injected server-side by the proxy — never sent from browser
     ...parseCustomHeaders(config.customHeaders),

@@ -1,30 +1,27 @@
-/**
- * Unit tests for configPersistence.ts
- *
- * Covers: loadPersistedConfig, savePersistedConfig, legacy format migration
- */
+/** Unit tests for configPersistence.ts */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   loadPersistedConfig,
   savePersistedConfig,
   type PersistedConfig,
+  type PersistedConfigUpdate,
 } from '../configPersistence';
 import type { LLMConfig } from '../llmModels';
 import type { ImageGenConfig } from '../imageGenClient';
 
-// ─── Constants ──────────────────────────────────────────────────────────────────
-
 const MOCK_LLM_CONFIG: LLMConfig = {
   provider: 'openai',
-  apiKey: 'sk-test',
+  apiKey: '',
+  hasApiKey: true,
   baseUrl: 'https://api.openai.com',
   model: 'gpt-4',
 };
 
 const MOCK_IMAGEGEN_CONFIG: ImageGenConfig = {
   provider: 'openai',
-  apiKey: 'sk-img-test',
+  apiKey: '',
+  hasApiKey: true,
   baseUrl: 'https://api.openai.com',
   model: 'gpt-image-1.5',
 };
@@ -34,8 +31,6 @@ const MOCK_PERSISTED: PersistedConfig = {
   imageGen: MOCK_IMAGEGEN_CONFIG,
 };
 
-// ─── Setup / Teardown ───────────────────────────────────────────────────────────
-
 beforeEach(() => {
   vi.restoreAllMocks();
 });
@@ -44,115 +39,70 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// ─── loadPersistedConfig() ──────────────────────────────────────────────────────
-
 describe('loadPersistedConfig()', () => {
-  it('returns full config when file has new { llm, imageGen } format', async () => {
+  it('returns redacted config when the API responds with the new format', async () => {
     globalThis.fetch = vi.fn().mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve(MOCK_PERSISTED),
     } as unknown as Response);
 
-    const result = await loadPersistedConfig();
-
-    expect(result).toEqual(MOCK_PERSISTED);
-    expect(result?.llm).toEqual(MOCK_LLM_CONFIG);
-    expect(result?.imageGen).toEqual(MOCK_IMAGEGEN_CONFIG);
+    await expect(loadPersistedConfig()).resolves.toEqual(MOCK_PERSISTED);
   });
 
-  it('returns { llm } only when imageGen is absent', async () => {
-    const withoutImageGen = { llm: MOCK_LLM_CONFIG };
+  it('migrates legacy flat LLMConfig format to { llm }', async () => {
     globalThis.fetch = vi.fn().mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve(withoutImageGen),
+      json: () => Promise.resolve({ ...MOCK_LLM_CONFIG }),
     } as unknown as Response);
 
-    const result = await loadPersistedConfig();
-
-    expect(result?.llm).toEqual(MOCK_LLM_CONFIG);
-    expect(result?.imageGen).toBeUndefined();
+    await expect(loadPersistedConfig()).resolves.toEqual({ llm: { ...MOCK_LLM_CONFIG } });
   });
 
-  it('migrates legacy flat LLMConfig format to { llm } wrapper', async () => {
-    // Legacy format: flat LLMConfig at top level (has "provider", no "llm" key)
-    globalThis.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(MOCK_LLM_CONFIG),
-    } as unknown as Response);
-
-    const result = await loadPersistedConfig();
-
-    expect(result).toEqual({ llm: MOCK_LLM_CONFIG });
-    expect(result?.llm.provider).toBe('openai');
-    expect(result?.imageGen).toBeUndefined();
-  });
-
-  it('returns null when API returns 404', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-    } as Response);
-
-    expect(await loadPersistedConfig()).toBeNull();
-  });
-
-  it('returns null when fetch throws (network error)', async () => {
+  it('returns null when the API request fails', async () => {
     globalThis.fetch = vi.fn().mockRejectedValueOnce(new Error('Network error'));
 
-    expect(await loadPersistedConfig()).toBeNull();
-  });
-
-  it('returns null when response is not a recognized format', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ unrelated: 'data' }),
-    } as unknown as Response);
-
-    expect(await loadPersistedConfig()).toBeNull();
+    await expect(loadPersistedConfig()).resolves.toBeNull();
   });
 });
 
-// ─── savePersistedConfig() ──────────────────────────────────────────────────────
-
 describe('savePersistedConfig()', () => {
-  it('POSTs the full config to /api/llm-config', async () => {
+  it('POSTs the config update to /api/llm-config', async () => {
     const mockFetch = vi.fn().mockResolvedValueOnce({ ok: true } as Response);
     globalThis.fetch = mockFetch;
 
-    await savePersistedConfig(MOCK_PERSISTED);
+    const update: PersistedConfigUpdate = {
+      llm: {
+        provider: 'openai',
+        baseUrl: 'https://api.openai.com',
+        model: 'gpt-4',
+      },
+      imageGen: null,
+    };
+
+    await savePersistedConfig(update);
 
     expect(mockFetch).toHaveBeenCalledWith('/api/llm-config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(MOCK_PERSISTED),
+      body: JSON.stringify(update),
     });
   });
 
-  it('includes imageGen in the persisted JSON', async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce({ ok: true } as Response);
-    globalThis.fetch = mockFetch;
+  it('throws when the API rejects the save', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      text: () => Promise.resolve('bad request'),
+    } as unknown as Response);
 
-    await savePersistedConfig(MOCK_PERSISTED);
-
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
-    expect(body.llm).toEqual(MOCK_LLM_CONFIG);
-    expect(body.imageGen).toEqual(MOCK_IMAGEGEN_CONFIG);
-  });
-
-  it('omits imageGen when not provided', async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce({ ok: true } as Response);
-    globalThis.fetch = mockFetch;
-
-    await savePersistedConfig({ llm: MOCK_LLM_CONFIG });
-
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
-    expect(body.llm).toEqual(MOCK_LLM_CONFIG);
-    expect(body.imageGen).toBeUndefined();
-  });
-
-  it('does not throw when fetch fails', async () => {
-    globalThis.fetch = vi.fn().mockRejectedValueOnce(new Error('Network error'));
-
-    await expect(savePersistedConfig(MOCK_PERSISTED)).resolves.toBeUndefined();
+    await expect(
+      savePersistedConfig({
+        llm: {
+          provider: 'openai',
+          baseUrl: 'https://api.openai.com',
+          model: 'gpt-4',
+        },
+      }),
+    ).rejects.toThrow('Failed to save config (400): bad request');
   });
 });

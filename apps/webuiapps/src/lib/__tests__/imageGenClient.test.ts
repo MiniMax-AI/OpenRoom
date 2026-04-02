@@ -1,6 +1,4 @@
-/**
- * Unit tests for imageGenClient.ts — config loading/saving
- */
+/** Unit tests for imageGenClient.ts */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
@@ -8,10 +6,10 @@ import {
   loadImageGenConfigSync,
   saveImageGenConfig,
   getDefaultImageGenConfig,
+  hasUsableImageGenConfig,
+  generateImage,
   type ImageGenConfig,
 } from '../imageGenClient';
-
-const CONFIG_KEY = 'webuiapps-imagegen-config';
 
 const MOCK_IG_CONFIG: ImageGenConfig = {
   provider: 'openai',
@@ -20,15 +18,7 @@ const MOCK_IG_CONFIG: ImageGenConfig = {
   model: 'gpt-image-1.5',
 };
 
-const MOCK_LLM_CONFIG = {
-  provider: 'openai',
-  apiKey: 'sk-llm',
-  baseUrl: 'https://api.openai.com',
-  model: 'gpt-4',
-};
-
 beforeEach(() => {
-  localStorage.clear();
   vi.restoreAllMocks();
 });
 
@@ -51,78 +41,71 @@ describe('getDefaultImageGenConfig()', () => {
 });
 
 describe('loadImageGenConfigSync()', () => {
-  it('returns null when localStorage is empty', () => {
-    expect(loadImageGenConfigSync()).toBeNull();
-  });
-
-  it('returns parsed config from localStorage', () => {
-    localStorage.setItem(CONFIG_KEY, JSON.stringify(MOCK_IG_CONFIG));
-    expect(loadImageGenConfigSync()).toEqual(MOCK_IG_CONFIG);
-  });
-
-  it('returns null on invalid JSON', () => {
-    localStorage.setItem(CONFIG_KEY, 'bad-json');
+  it('always returns null because browser-side key caching is disabled', () => {
     expect(loadImageGenConfigSync()).toBeNull();
   });
 });
 
 describe('loadImageGenConfig()', () => {
-  it('loads imageGen from file API (new format) and syncs to localStorage', async () => {
+  it('loads redacted imageGen config from the config API', async () => {
     globalThis.fetch = vi.fn().mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ llm: MOCK_LLM_CONFIG, imageGen: MOCK_IG_CONFIG }),
+      json: () =>
+        Promise.resolve({
+          llm: { provider: 'openai', apiKey: '', hasApiKey: true, baseUrl: 'u', model: 'm' },
+          imageGen: { ...MOCK_IG_CONFIG, apiKey: '', hasApiKey: true },
+        }),
     } as unknown as Response);
 
-    const result = await loadImageGenConfig();
-
-    expect(result).toEqual(MOCK_IG_CONFIG);
-    expect(localStorage.getItem(CONFIG_KEY)).toBe(JSON.stringify(MOCK_IG_CONFIG));
+    await expect(loadImageGenConfig()).resolves.toEqual({
+      ...MOCK_IG_CONFIG,
+      apiKey: '',
+      hasApiKey: true,
+    });
   });
 
-  it('returns null from file API when imageGen is absent (LLM-only config)', async () => {
+  it('returns null when the config API has no imageGen section', async () => {
     globalThis.fetch = vi.fn().mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ llm: MOCK_LLM_CONFIG }),
+      json: () =>
+        Promise.resolve({ llm: { provider: 'openai', apiKey: '', baseUrl: 'u', model: 'm' } }),
     } as unknown as Response);
 
-    const result = await loadImageGenConfig();
-
-    // No imageGen in file → falls through to localStorage
-    expect(result).toBeNull();
-  });
-
-  it('falls back to localStorage when API is unavailable', async () => {
-    globalThis.fetch = vi.fn().mockRejectedValueOnce(new Error('Network error'));
-    localStorage.setItem(CONFIG_KEY, JSON.stringify(MOCK_IG_CONFIG));
-
-    const result = await loadImageGenConfig();
-
-    expect(result).toEqual(MOCK_IG_CONFIG);
-  });
-
-  it('returns null when both API and localStorage have nothing', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValueOnce({ ok: false, status: 404 } as Response);
-
-    expect(await loadImageGenConfig()).toBeNull();
-  });
-
-  it('handles legacy flat LLMConfig file (no imageGen) gracefully', async () => {
-    // Legacy file has flat LLMConfig → no imageGen field
-    globalThis.fetch = vi.fn().mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(MOCK_LLM_CONFIG),
-    } as unknown as Response);
-
-    const result = await loadImageGenConfig();
-
-    // Legacy format has no imageGen → should fall through to localStorage
-    expect(result).toBeNull();
+    await expect(loadImageGenConfig()).resolves.toBeNull();
   });
 });
 
 describe('saveImageGenConfig()', () => {
-  it('writes to localStorage', () => {
-    saveImageGenConfig(MOCK_IG_CONFIG);
-    expect(JSON.parse(localStorage.getItem(CONFIG_KEY)!)).toEqual(MOCK_IG_CONFIG);
+  it('remains a no-op because image config is saved via llmClient.saveConfig', () => {
+    expect(() => saveImageGenConfig(MOCK_IG_CONFIG)).not.toThrow();
+  });
+});
+
+describe('hasUsableImageGenConfig()', () => {
+  it('accepts redacted configs when the server reports a stored key', () => {
+    expect(hasUsableImageGenConfig({ ...MOCK_IG_CONFIG, apiKey: '', hasApiKey: true })).toBe(true);
+  });
+
+  it('rejects configs without a key or server-side key flag', () => {
+    expect(hasUsableImageGenConfig({ ...MOCK_IG_CONFIG, apiKey: '', hasApiKey: false })).toBe(
+      false,
+    );
+  });
+});
+
+describe('generateImage()', () => {
+  it('marks image generation requests with the imageGen config scope header', async () => {
+    const mockFetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ data: [{ b64_json: 'abc123' }] }),
+      text: () => Promise.resolve(''),
+    } as unknown as Response);
+    globalThis.fetch = mockFetch;
+
+    await generateImage('draw a castle', MOCK_IG_CONFIG);
+
+    const headers = mockFetch.mock.calls[0][1].headers as Record<string, string>;
+    expect(headers['X-LLM-Config-Scope']).toBe('imageGen');
+    expect(headers['X-LLM-Target-URL']).toBe('https://api.openai.com/v1/images/generations');
   });
 });

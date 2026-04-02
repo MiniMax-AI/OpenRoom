@@ -8,10 +8,15 @@ export type ImageGenProvider = 'openai' | 'gemini';
 export interface ImageGenConfig {
   provider: ImageGenProvider;
   apiKey: string;
+  hasApiKey?: boolean;
   baseUrl: string;
   model: string;
   customHeaders?: string;
 }
+
+export type ImageGenConfigUpdate = Omit<ImageGenConfig, 'apiKey' | 'hasApiKey'> & {
+  apiKey?: string;
+};
 
 export interface ImageGenResult {
   base64: string;
@@ -63,6 +68,15 @@ export function loadImageGenConfigSync(): ImageGenConfig | null {
 
 export function saveImageGenConfig(_config: ImageGenConfig): void {
   // No-op: config is saved server-side via saveConfig in llmClient.ts
+}
+
+export function hasUsableImageGenConfig(
+  config: ImageGenConfig | null | undefined,
+): config is ImageGenConfig {
+  const baseUrl = typeof config?.baseUrl === 'string' ? config.baseUrl.trim() : '';
+  const model = typeof config?.model === 'string' ? config.model.trim() : '';
+  const hasApiKey = typeof config?.apiKey === 'string' ? config.apiKey.trim().length > 0 : false;
+  return !!baseUrl && !!model && (hasApiKey || !!config?.hasApiKey);
 }
 
 /** Parse custom headers, adding x-custom- prefix */
@@ -117,6 +131,7 @@ async function generateImageOpenAI(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'X-LLM-Config-Scope': 'imageGen',
       'X-LLM-Target-URL': targetUrl,
       // API key injected server-side by the proxy
       ...parseCustomHeaders(config.customHeaders),
@@ -152,6 +167,7 @@ async function generateImageGemini(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'X-LLM-Config-Scope': 'imageGen',
       'X-LLM-Target-URL': targetUrl,
       // API key injected server-side by the proxy
       ...parseCustomHeaders(config.customHeaders),

@@ -15,7 +15,7 @@ import {
 } from 'react';
 import { chat, type ChatMessage, type ToolCall } from '@/lib/llmClient';
 import type { LLMConfig } from '@/lib/llmModels';
-import type { ImageGenConfig } from '@/lib/imageGenClient';
+import { hasUsableImageGenConfig, type ImageGenConfig } from '@/lib/imageGenClient';
 import type { CharacterConfig } from '@/lib/characterManager';
 import { clearEmotionVideoCache } from '@/lib/characterManager';
 import type { MemoryEntry } from '@/lib/memoryManager';
@@ -110,7 +110,7 @@ export function useConversationEngine(deps: ConversationEngineDeps) {
     async (history: ChatMessage[], cfg: LLMConfig, signal?: AbortSignal) => {
       await seedMetaFiles();
       await loadActionsFromMeta();
-      const hasImageGen = !!imageGenConfigRef.current?.apiKey;
+      const hasImageGen = hasUsableImageGenConfig(imageGenConfigRef.current);
       const mm = modManagerRef.current;
       const char = characterRef.current;
 

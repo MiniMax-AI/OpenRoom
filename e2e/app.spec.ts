@@ -101,19 +101,21 @@ test.describe('Chat panel – input interaction', () => {
     await expect(sendBtn).toBeDisabled();
   });
 
-  test('typing a message and clicking send adds it to the messages area', async ({ page }) => {
+  test('typing a message without LLM config opens settings instead of sending', async ({
+    page,
+  }) => {
     await page.goto('/');
     const input = page.locator('[data-testid="chat-input"]');
     const sendBtn = page.locator('[data-testid="send-btn"]');
     const messages = page.locator('[data-testid="chat-messages"]');
+    const settingsModal = page.locator('[data-testid="settings-modal"]');
 
     await input.fill('Test message from E2E');
     await sendBtn.click();
 
-    // The user message should appear in the messages area
-    await expect(messages).toContainText('Test message from E2E');
-    // Input should be cleared after sending
-    await expect(input).toHaveValue('');
+    await expect(settingsModal).toBeVisible();
+    await expect(messages).not.toContainText('Test message from E2E');
+    await expect(input).toHaveValue('Test message from E2E');
   });
 });
 

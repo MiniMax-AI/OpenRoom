@@ -16,7 +16,6 @@ import type { LLMConfig } from '@/lib/llmModels';
 import {
   loadImageGenConfig,
   loadImageGenConfigSync,
-  saveImageGenConfig,
   type ImageGenConfig,
 } from '@/lib/imageGenClient';
 // loadActionsFromMeta used by useConversationEngine
@@ -669,11 +668,14 @@ const ChatPanel: React.FC<{
         <SettingsModal
           config={config}
           imageGenConfig={imageGenConfig}
-          onSave={(c, igc) => {
-            setConfig(c);
-            setImageGenConfig(igc);
-            saveConfig(c, igc);
-            if (igc) saveImageGenConfig(igc);
+          onSave={async (c, igc) => {
+            await saveConfig(c, igc);
+            const [nextConfig, nextImageGenConfig] = await Promise.all([
+              loadConfig(),
+              loadImageGenConfig(),
+            ]);
+            setConfig(nextConfig);
+            setImageGenConfig(nextImageGenConfig);
             setShowSettings(false);
           }}
           onClose={() => setShowSettings(false)}

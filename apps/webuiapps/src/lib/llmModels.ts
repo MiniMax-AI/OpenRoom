@@ -19,10 +19,15 @@ export interface ModelInfo {
 export interface LLMConfig {
   provider: LLMProvider;
   apiKey: string;
+  hasApiKey?: boolean;
   baseUrl: string;
   model: string;
   customHeaders?: string;
 }
+
+export type LLMConfigUpdate = Omit<LLMConfig, 'apiKey' | 'hasApiKey'> & {
+  apiKey?: string;
+};
 
 export interface ProviderModelConfig {
   displayName: string;

@@ -7,10 +7,11 @@
 import React, { useState, useEffect } from 'react';
 import { Pencil, List } from 'lucide-react';
 import { PROVIDER_MODELS, getDefaultProviderConfig, type LLMProvider } from '@/lib/llmModels';
-import type { LLMConfig } from '@/lib/llmModels';
+import type { LLMConfig, LLMConfigUpdate } from '@/lib/llmModels';
 import {
   getDefaultImageGenConfig,
   type ImageGenConfig,
+  type ImageGenConfigUpdate,
   type ImageGenProvider,
 } from '@/lib/imageGenClient';
 import styles from './index.module.scss';
@@ -18,7 +19,10 @@ import styles from './index.module.scss';
 interface SettingsModalProps {
   config: LLMConfig | null;
   imageGenConfig: ImageGenConfig | null;
-  onSave: (_config: LLMConfig, _igConfig: ImageGenConfig | null) => void;
+  onSave: (
+    _config: LLMConfigUpdate,
+    _igConfig: ImageGenConfigUpdate | null,
+  ) => Promise<void> | void;
   onClose: () => void;
 }
 
@@ -30,7 +34,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   // LLM settings
   const [provider, setProvider] = useState<LLMProvider>(config?.provider || 'minimax');
-  const [apiKey, setApiKey] = useState(config?.apiKey || '');
+  const [apiKey, setApiKey] = useState('');
+  const [apiKeyDirty, setApiKeyDirty] = useState(false);
   const [baseUrl, setBaseUrl] = useState(
     config?.baseUrl || getDefaultProviderConfig('minimax').baseUrl,
   );
@@ -45,7 +50,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [igProvider, setIgProvider] = useState<ImageGenProvider>(
     imageGenConfig?.provider || 'gemini',
   );
-  const [igApiKey, setIgApiKey] = useState(imageGenConfig?.apiKey || '');
+  const [igApiKey, setIgApiKey] = useState('');
+  const [igApiKeyDirty, setIgApiKeyDirty] = useState(false);
   const [igBaseUrl, setIgBaseUrl] = useState(
     imageGenConfig?.baseUrl || getDefaultImageGenConfig('gemini').baseUrl,
   );
@@ -53,12 +59,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     imageGenConfig?.model || getDefaultImageGenConfig('gemini').model,
   );
   const [igCustomHeaders, setIgCustomHeaders] = useState(imageGenConfig?.customHeaders || '');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   // Sync local state when parent props change (e.g. async config load while modal is open)
   useEffect(() => {
     if (!config) return;
     setProvider(config.provider);
-    setApiKey(config.apiKey);
+    setApiKey('');
+    setApiKeyDirty(false);
     setBaseUrl(config.baseUrl || getDefaultProviderConfig(config.provider).baseUrl);
     setModel(config.model || getDefaultProviderConfig(config.provider).model);
     setCustomHeaders(config.customHeaders || '');
@@ -68,7 +77,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   useEffect(() => {
     if (!imageGenConfig) return;
     setIgProvider(imageGenConfig.provider);
-    setIgApiKey(imageGenConfig.apiKey);
+    setIgApiKey('');
+    setIgApiKeyDirty(false);
     setIgBaseUrl(
       imageGenConfig.baseUrl || getDefaultImageGenConfig(imageGenConfig.provider).baseUrl,
     );
@@ -95,6 +105,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     setIgBaseUrl(defaults.baseUrl);
     setIgModel(defaults.model);
   };
+
+  const llmApiKeyPlaceholder = config?.hasApiKey
+    ? 'Configured on server. Enter a new key to replace it.'
+    : 'Optional for local servers';
+  const imageApiKeyPlaceholder = imageGenConfig?.hasApiKey
+    ? 'Configured on server. Enter a new key to replace it.'
+    : 'API Key...';
 
   return (
     <div className={styles.overlay} data-testid="settings-overlay">
@@ -125,8 +142,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             className={styles.fieldInput}
             type="password"
             value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Optional for local servers"
+            onChange={(e) => {
+              setApiKeyDirty(true);
+              setApiKey(e.target.value);
+            }}
+            placeholder={llmApiKeyPlaceholder}
           />
         </div>
 
@@ -220,8 +240,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             className={styles.fieldInput}
             type="password"
             value={igApiKey}
-            onChange={(e) => setIgApiKey(e.target.value)}
-            placeholder="API Key..."
+            onChange={(e) => {
+              setIgApiKeyDirty(true);
+              setIgApiKey(e.target.value);
+            }}
+            placeholder={imageApiKeyPlaceholder}
           />
         </div>
 
@@ -256,32 +279,56 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         <div className={styles.settingsActions}>
+          {saveError && (
+            <div style={{ color: '#ff6b6b', fontSize: '12px', marginRight: 'auto' }}>
+              {saveError}
+            </div>
+          )}
           <button className={styles.cancelBtn} onClick={onClose}>
             Cancel
           </button>
           <button
             className={styles.saveBtn}
-            onClick={() => {
-              const llmCfg: LLMConfig = {
+            disabled={saving}
+            onClick={async () => {
+              setSaveError(null);
+              setSaving(true);
+              const llmCfg: LLMConfigUpdate = {
                 provider,
-                apiKey,
                 baseUrl,
                 model,
                 ...(customHeaders.trim() ? { customHeaders } : {}),
               };
-              const igCfg: ImageGenConfig | null = igApiKey.trim()
+              if (apiKeyDirty) {
+                llmCfg.apiKey = apiKey;
+              }
+              const igCfg: ImageGenConfigUpdate | null = imageGenConfig
                 ? {
                     provider: igProvider,
-                    apiKey: igApiKey,
                     baseUrl: igBaseUrl,
                     model: igModel,
                     ...(igCustomHeaders.trim() ? { customHeaders: igCustomHeaders } : {}),
+                    ...(igApiKeyDirty ? { apiKey: igApiKey } : {}),
                   }
-                : null;
-              onSave(llmCfg, igCfg);
+                : igApiKey.trim()
+                  ? {
+                      provider: igProvider,
+                      apiKey: igApiKey,
+                      baseUrl: igBaseUrl,
+                      model: igModel,
+                      ...(igCustomHeaders.trim() ? { customHeaders: igCustomHeaders } : {}),
+                    }
+                  : null;
+              try {
+                await onSave(llmCfg, igCfg);
+              } catch (err) {
+                setSaveError(err instanceof Error ? err.message : String(err));
+              } finally {
+                setSaving(false);
+              }
             }}
           >
-            Save
+            {saving ? 'Saving...' : 'Save'}
           </button>
         </div>
       </div>
