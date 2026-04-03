@@ -76,6 +76,36 @@ describe('redactServerConfig()', () => {
       imageGen: { provider: 'gemini', apiKey: '', hasApiKey: true, baseUrl: 'iu', model: 'im' },
     });
   });
+
+  it('sets hasApiKey=false when apiKey is an empty string', () => {
+    expect(
+      redactServerConfig({
+        llm: { provider: 'openai', apiKey: '', baseUrl: 'u', model: 'm' },
+      }),
+    ).toEqual({
+      llm: { provider: 'openai', apiKey: '', hasApiKey: false, baseUrl: 'u', model: 'm' },
+    });
+  });
+
+  it('sets hasApiKey=false when apiKey is missing entirely', () => {
+    expect(
+      redactServerConfig({
+        llm: { provider: 'openai', baseUrl: 'u', model: 'm' } as any,
+      }),
+    ).toEqual({
+      llm: { provider: 'openai', apiKey: '', hasApiKey: false, baseUrl: 'u', model: 'm' },
+    });
+  });
+
+  it('sets hasApiKey=false for whitespace-only apiKey', () => {
+    expect(
+      redactServerConfig({
+        llm: { provider: 'openai', apiKey: '   ', baseUrl: 'u', model: 'm' },
+      }),
+    ).toEqual({
+      llm: { provider: 'openai', apiKey: '', hasApiKey: false, baseUrl: 'u', model: 'm' },
+    });
+  });
 });
 
 describe('inferProvider()', () => {
