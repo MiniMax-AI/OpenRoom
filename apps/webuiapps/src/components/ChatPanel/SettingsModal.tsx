@@ -92,6 +92,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   }, [imageGenConfig]);
 
   const handleProviderChange = (p: LLMProvider) => {
+    hasLocalEditsRef.current = true;
     setProvider(p);
     const defaults = getDefaultProviderConfig(p);
     setBaseUrl(defaults.baseUrl);
@@ -100,11 +101,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleModelChange = (newModel: string) => {
+    hasLocalEditsRef.current = true;
     setModel(newModel);
     setManualModelMode(false);
   };
 
   const handleIgProviderChange = (p: ImageGenProvider) => {
+    hasLocalEditsRef.current = true;
     setIgProvider(p);
     const defaults = getDefaultImageGenConfig(p);
     setIgBaseUrl(defaults.baseUrl);
