@@ -121,12 +121,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     ? 'Server key configured (enter to replace)'
     : 'API Key...';
 
+  const llmEndpointChanged =
+    !!config && (provider !== config.provider || baseUrl !== config.baseUrl);
+  const imageGenEndpointChanged =
+    !!imageGenConfig &&
+    (igProvider !== imageGenConfig.provider || igBaseUrl !== imageGenConfig.baseUrl);
+
   const buildImageGenConfig = (): ImageGenConfigUpdate => ({
     provider: igProvider,
     baseUrl: igBaseUrl,
     model: igModel,
     customHeaders: igCustomHeaders,
     ...(igApiKeyDirty ? { apiKey: igApiKey } : {}),
+    ...(!igApiKeyDirty && imageGenEndpointChanged ? { apiKey: '' } : {}),
   });
 
   return (
@@ -197,7 +204,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </select>
                 <button
                   type="button"
-                  onClick={() => setManualModelMode(true)}
+                  onClick={() => {
+                    hasLocalEditsRef.current = true;
+                    setManualModelMode(true);
+                  }}
                   className={styles.manualToggleBtn}
                   title="Enter custom model name"
                 >
@@ -218,7 +228,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 {isPresetModel && (
                   <button
                     type="button"
-                    onClick={() => setManualModelMode(false)}
+                    onClick={() => {
+                      hasLocalEditsRef.current = true;
+                      setManualModelMode(false);
+                    }}
                     className={styles.manualToggleBtn}
                     title="Back to model list"
                   >
@@ -337,6 +350,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               };
               if (apiKeyDirty) {
                 llmCfg.apiKey = apiKey;
+              } else if (llmEndpointChanged) {
+                llmCfg.apiKey = '';
               }
               const nextImageGenConfig = buildImageGenConfig();
               const igCfg: ImageGenConfigUpdate | null = imageGenConfig

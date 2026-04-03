@@ -461,11 +461,17 @@ const ALLOWED_PROVIDER_HOSTS = new Set([
 /** Local development hosts — only allowed when ALLOW_LOCAL_LLM=true. */
 const LOCAL_LLM_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1']);
 
-/** Validate that a parsed target URL points to an allowed provider host. */
+/** Validate that a parsed target URL points to an allowed provider host.
+ * Public provider hosts must use HTTPS. Local development hosts may use HTTP/HTTPS
+ * only when ALLOW_LOCAL_LLM=true. */
 export function isAllowedTarget(parsed: URL): boolean {
   const host = parsed.hostname.toLowerCase();
-  if (ALLOWED_PROVIDER_HOSTS.has(host)) return true;
-  if (LOCAL_LLM_HOSTS.has(host) && process.env.ALLOW_LOCAL_LLM === 'true') return true;
+  if (ALLOWED_PROVIDER_HOSTS.has(host)) {
+    return parsed.protocol === 'https:';
+  }
+  if (LOCAL_LLM_HOSTS.has(host) && process.env.ALLOW_LOCAL_LLM === 'true') {
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  }
   return false;
 }
 
@@ -593,11 +599,30 @@ function llmProxyPlugin(): Plugin {
               req.headers['x-llm-config-scope'] as string,
             );
 
-            const fetchRes = await fetch(parsedTargetUrl.toString(), {
-              method: req.method || 'POST',
-              headers,
-              body,
-            });
+            const controller = new AbortController();
+            const timeoutMs = 90_000;
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+            let fetchRes: Response;
+            try {
+              fetchRes = await fetch(parsedTargetUrl.toString(), {
+                method: req.method || 'POST',
+                headers,
+                body,
+                signal: controller.signal,
+              });
+            } catch (err) {
+              if (err instanceof Error && err.name === 'AbortError') {
+                res.writeHead(504, { 'Content-Type': 'application/json' });
+                res.end(
+                  JSON.stringify({ error: `Upstream request timed out after ${timeoutMs}ms` }),
+                );
+                return;
+              }
+              throw err;
+            } finally {
+              clearTimeout(timeoutId);
+            }
 
             res.writeHead(fetchRes.status, {
               'Content-Type': fetchRes.headers.get('Content-Type') || 'application/json',

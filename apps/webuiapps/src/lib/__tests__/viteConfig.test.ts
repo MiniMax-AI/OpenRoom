@@ -1,6 +1,6 @@
 /** Unit tests for Vite proxy/config helper functions. */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import {
   normalizeServerConfig,
   redactServerConfig,
@@ -10,7 +10,29 @@ import {
   selectServerApiKey,
 } from '../../../vite.config';
 
+const originalAllowLocalLlm = process.env.ALLOW_LOCAL_LLM;
+
+afterEach(() => {
+  if (originalAllowLocalLlm === undefined) {
+    delete process.env.ALLOW_LOCAL_LLM;
+  } else {
+    process.env.ALLOW_LOCAL_LLM = originalAllowLocalLlm;
+  }
+});
+
 describe('normalizeServerConfig()', () => {
+  it('returns null for null input', () => {
+    expect(normalizeServerConfig(null)).toBeNull();
+  });
+
+  it('returns null for undefined input', () => {
+    expect(normalizeServerConfig(undefined)).toBeNull();
+  });
+
+  it('returns null for an empty object', () => {
+    expect(normalizeServerConfig({})).toBeNull();
+  });
+
   it('wraps legacy flat configs under llm', () => {
     expect(
       normalizeServerConfig({
@@ -79,6 +101,16 @@ describe('inferProvider()', () => {
 });
 
 describe('parseProxyTargetUrl()', () => {
+  it('parses valid HTTPS targets', () => {
+    expect(parseProxyTargetUrl('https://api.openai.com/v1')?.toString()).toBe(
+      'https://api.openai.com/v1',
+    );
+  });
+
+  it('parses valid HTTP localhost targets with explicit ports', () => {
+    expect(parseProxyTargetUrl('http://localhost:3000')?.toString()).toBe('http://localhost:3000/');
+  });
+
   it('returns null for malformed URLs', () => {
     expect(parseProxyTargetUrl('not a url')).toBeNull();
   });
@@ -121,29 +153,27 @@ describe('isAllowedTarget()', () => {
   });
 
   it('rejects internal addresses by default', () => {
-    const originalAllow = process.env.ALLOW_LOCAL_LLM;
     delete process.env.ALLOW_LOCAL_LLM;
 
     expect(isAllowedTarget(new URL('http://localhost:8080/v1/chat/completions'))).toBe(false);
     expect(isAllowedTarget(new URL('http://127.0.0.1:8080/v1/chat/completions'))).toBe(false);
     expect(isAllowedTarget(new URL('http://192.168.1.1:8080/v1'))).toBe(false);
-
-    // Consistent restore pattern
-    if (originalAllow === undefined) {
-      delete process.env.ALLOW_LOCAL_LLM;
-    } else {
-      process.env.ALLOW_LOCAL_LLM = originalAllow;
-    }
   });
 
   it('allows local hosts when ALLOW_LOCAL_LLM=true', () => {
-    const originalAllow = process.env.ALLOW_LOCAL_LLM;
     process.env.ALLOW_LOCAL_LLM = 'true';
 
     expect(isAllowedTarget(new URL('http://localhost:8080/v1/chat/completions'))).toBe(true);
     expect(isAllowedTarget(new URL('http://127.0.0.1:8080/v1/chat/completions'))).toBe(true);
+  });
 
-    process.env.ALLOW_LOCAL_LLM = originalAllow;
-    if (originalAllow === undefined) delete process.env.ALLOW_LOCAL_LLM;
+  it('rejects private network hosts even when ALLOW_LOCAL_LLM=true', () => {
+    process.env.ALLOW_LOCAL_LLM = 'true';
+
+    expect(isAllowedTarget(new URL('http://192.168.1.1:8080/v1'))).toBe(false);
+  });
+
+  it('rejects plaintext HTTP for public provider hosts', () => {
+    expect(isAllowedTarget(new URL('http://api.openai.com/v1/chat/completions'))).toBe(false);
   });
 });
