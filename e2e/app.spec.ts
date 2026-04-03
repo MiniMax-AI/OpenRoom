@@ -106,7 +106,10 @@ test.describe('Chat panel – input interaction', () => {
   }) => {
     // Stub the config API so the app sees no LLM config (unconfigured state)
     await page.route('**/api/llm-config', async (route) => {
-      await route.fulfill({}); // Empty object → no config
+      await route.fulfill({
+        contentType: 'application/json',
+        body: '{}',
+      }); // Empty JSON object → no config
     });
     await page.goto('/');
     const input = page.locator('[data-testid="chat-input"]');

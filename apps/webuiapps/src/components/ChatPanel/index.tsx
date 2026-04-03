@@ -669,18 +669,27 @@ const ChatPanel: React.FC<{
           config={config}
           imageGenConfig={imageGenConfig}
           onSave={async (c, igc) => {
-            await saveConfig(c, igc);
+            const saveResult = await saveConfig(c, igc);
+            if (saveResult && saveResult.ok === false) {
+              return saveResult;
+            }
+
             const [nextConfig, nextImageGenConfig] = await Promise.all([
               loadConfig(),
               loadImageGenConfig(),
             ]);
-            // Only update state if reloads succeeded; fall back to submitted values
-            setConfig(nextConfig ?? c);
-            setImageGenConfig(nextImageGenConfig ?? igc);
-            // Only close modal when reload succeeded
-            if (nextConfig !== null) {
+
+            // Keep the previous in-memory state on reload failure so we do not
+            // store partial update objects or freshly typed raw API keys in state.
+            setConfig(nextConfig ?? config);
+            setImageGenConfig(nextImageGenConfig ?? imageGenConfig);
+
+            const imageGenReloadSucceeded = igc === null ? true : nextImageGenConfig !== null;
+            if (nextConfig !== null && imageGenReloadSucceeded) {
               setShowSettings(false);
             }
+
+            return { ok: true };
           }}
           onClose={() => setShowSettings(false)}
         />

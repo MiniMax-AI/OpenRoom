@@ -4,7 +4,7 @@
  * Extracted from ChatPanel for maintainability.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Pencil, List } from 'lucide-react';
 import { PROVIDER_MODELS, getDefaultProviderConfig, type LLMProvider } from '@/lib/llmModels';
 import type { LLMConfig, LLMConfigUpdate } from '@/lib/llmModels';
@@ -22,7 +22,7 @@ interface SettingsModalProps {
   onSave: (
     _config: LLMConfigUpdate,
     _igConfig: ImageGenConfigUpdate | null,
-  ) => Promise<void> | void;
+  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string } | void;
   onClose: () => void;
 }
 
@@ -156,6 +156,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             type="password"
             value={apiKey}
             onChange={(e) => {
+              hasLocalEditsRef.current = true;
               setApiKeyDirty(true);
               setApiKey(e.target.value);
             }}
@@ -263,6 +264,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             type="password"
             value={igApiKey}
             onChange={(e) => {
+              hasLocalEditsRef.current = true;
               setIgApiKeyDirty(true);
               setIgApiKey(e.target.value);
             }}
@@ -340,7 +342,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                   ? { ...nextImageGenConfig, apiKey: igApiKey }
                   : null;
               try {
-                await onSave(llmCfg, igCfg);
+                const result = await onSave(llmCfg, igCfg);
+                if (result && result.ok === false) {
+                  setSaveError(result.error || 'Failed to save settings');
+                }
               } catch (err) {
                 setSaveError(err instanceof Error ? err.message : String(err));
               } finally {

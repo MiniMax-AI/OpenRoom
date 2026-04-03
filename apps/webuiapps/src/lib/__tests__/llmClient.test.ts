@@ -196,7 +196,9 @@ describe('saveConfig()', () => {
     const mockFetch = vi.fn().mockResolvedValueOnce({ ok: true } as Response);
     globalThis.fetch = mockFetch;
 
-    await saveConfig({ ...MOCK_OPENAI_CONFIG, apiKey: undefined });
+    await expect(saveConfig({ ...MOCK_OPENAI_CONFIG, apiKey: undefined })).resolves.toEqual({
+      ok: true,
+    });
 
     expect(mockFetch).toHaveBeenCalledWith('/api/llm-config', {
       method: 'POST',
@@ -216,7 +218,11 @@ describe('saveConfig()', () => {
     globalThis.fetch = mockFetch;
 
     const igConfig = { provider: 'openai' as const, baseUrl: 'u', model: 'm' };
-    await saveConfig({ ...MOCK_OPENAI_CONFIG, apiKey: 'next-key' }, igConfig);
+    await expect(
+      saveConfig({ ...MOCK_OPENAI_CONFIG, apiKey: 'next-key' }, igConfig),
+    ).resolves.toEqual({
+      ok: true,
+    });
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
     expect(body.llm).toEqual({
@@ -235,9 +241,10 @@ describe('saveConfig()', () => {
       text: () => Promise.resolve('boom'),
     } as unknown as Response);
 
-    await expect(saveConfig(MOCK_OPENAI_CONFIG)).rejects.toThrow(
-      'Failed to save config (500): boom',
-    );
+    await expect(saveConfig(MOCK_OPENAI_CONFIG)).resolves.toEqual({
+      ok: false,
+      error: 'Failed to save config (500): boom',
+    });
   });
 });
 

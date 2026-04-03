@@ -25,7 +25,7 @@ export async function loadConfig(): Promise<LLMConfig | null> {
 export async function saveConfig(
   config: LLMConfigUpdate,
   imageGenConfig?: import('./imageGenClient').ImageGenConfigUpdate | null,
-): Promise<void> {
+): Promise<{ ok: boolean; error?: string }> {
   const persisted: import('./configPersistence').PersistedConfigUpdate = {
     llm: config,
   };
@@ -33,7 +33,7 @@ export async function saveConfig(
     persisted.imageGen = imageGenConfig;
   }
 
-  await savePersistedConfig(persisted);
+  return savePersistedConfig(persisted);
 }
 
 /** Synchronous config read — returns null since keys are server-side only. */

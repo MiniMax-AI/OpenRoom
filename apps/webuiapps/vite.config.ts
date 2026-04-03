@@ -111,16 +111,21 @@ function llmConfigPlugin(): Plugin {
           const chunks: Buffer[] = [];
           req.on('data', (chunk: Buffer) => chunks.push(chunk));
           req.on('end', () => {
+            let parsed: unknown;
+            let nextConfig: ServerPersistedConfig | null;
+            let existingConfig: ServerPersistedConfig | null;
+            let mergedConfig: ServerPersistedConfig;
+
             try {
               const body = Buffer.concat(chunks).toString();
-              const parsed = JSON.parse(body);
-              const nextConfig = normalizeServerConfig(parsed);
+              parsed = JSON.parse(body);
+              nextConfig = normalizeServerConfig(parsed);
               if (!nextConfig) {
                 throw new Error('Invalid config payload');
               }
 
-              const existingConfig = loadServerConfig();
-              const mergedConfig: ServerPersistedConfig = {
+              existingConfig = loadServerConfig();
+              mergedConfig = {
                 llm: mergeConfigSection(existingConfig?.llm, nextConfig.llm),
               };
 
@@ -137,7 +142,13 @@ function llmConfigPlugin(): Plugin {
               } else if (existingConfig?.imageGen) {
                 mergedConfig.imageGen = { ...existingConfig.imageGen };
               }
+            } catch (err) {
+              res.writeHead(400);
+              res.end(JSON.stringify({ error: String(err) }));
+              return;
+            }
 
+            try {
               fs.mkdirSync(resolve(os.homedir(), '.openroom'), { recursive: true });
               fs.writeFileSync(LLM_CONFIG_FILE, JSON.stringify(mergedConfig), 'utf-8');
               const stat = fs.statSync(LLM_CONFIG_FILE);
@@ -145,7 +156,7 @@ function llmConfigPlugin(): Plugin {
               res.writeHead(200);
               res.end(JSON.stringify({ ok: true }));
             } catch (err) {
-              res.writeHead(400);
+              res.writeHead(500);
               res.end(JSON.stringify({ error: String(err) }));
             }
           });

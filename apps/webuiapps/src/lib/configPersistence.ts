@@ -20,6 +20,11 @@ export interface PersistedConfigUpdate {
   imageGen?: ImageGenConfigUpdate | null;
 }
 
+export interface PersistedSaveResult {
+  ok: boolean;
+  error?: string;
+}
+
 const CONFIG_API = '/api/llm-config';
 
 /** Detect legacy flat LLMConfig (has "provider" at top level, no "llm" key). */
@@ -54,14 +59,27 @@ export async function loadPersistedConfig(): Promise<PersistedConfig | null> {
  * Save config updates to ~/.openroom/config.json via the dev-server API.
  * API keys may be omitted to preserve the existing server-side secret.
  */
-export async function savePersistedConfig(config: PersistedConfigUpdate): Promise<void> {
-  const res = await fetch(CONFIG_API, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(config),
-  });
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '');
-    throw new Error(`Failed to save config (${res.status})${detail ? `: ${detail}` : ''}`);
+export async function savePersistedConfig(
+  config: PersistedConfigUpdate,
+): Promise<PersistedSaveResult> {
+  try {
+    const res = await fetch(CONFIG_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      return {
+        ok: false,
+        error: `Failed to save config (${res.status})${detail ? `: ${detail}` : ''}`,
+      };
+    }
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
 }

@@ -79,8 +79,9 @@ describe('savePersistedConfig()', () => {
       imageGen: null,
     };
 
-    await savePersistedConfig(update);
+    const result = await savePersistedConfig(update);
 
+    expect(result).toEqual({ ok: true });
     expect(mockFetch).toHaveBeenCalledWith('/api/llm-config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -88,7 +89,7 @@ describe('savePersistedConfig()', () => {
     });
   });
 
-  it('throws when the API rejects the save', async () => {
+  it('returns an error result when the API rejects the save', async () => {
     globalThis.fetch = vi.fn().mockResolvedValueOnce({
       ok: false,
       status: 400,
@@ -103,6 +104,9 @@ describe('savePersistedConfig()', () => {
           model: 'gpt-4',
         },
       }),
-    ).rejects.toThrow('Failed to save config (400): bad request');
+    ).resolves.toEqual({
+      ok: false,
+      error: 'Failed to save config (400): bad request',
+    });
   });
 });
