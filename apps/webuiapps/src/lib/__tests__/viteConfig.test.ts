@@ -6,6 +6,7 @@ import {
   redactServerConfig,
   inferProvider,
   parseProxyTargetUrl,
+  isAllowedTarget,
   selectServerApiKey,
 } from '../../../vite.config';
 
@@ -96,5 +97,44 @@ describe('selectServerApiKey()', () => {
 
   it('prefers the imageGen key for gemini when no scope is provided', () => {
     expect(selectServerApiKey(config, undefined, 'gemini')).toBe('sk-img');
+  });
+});
+
+describe('isAllowedTarget()', () => {
+  it('allows known provider hosts', () => {
+    expect(isAllowedTarget(new URL('https://api.openai.com/v1/chat/completions'))).toBe(true);
+    expect(isAllowedTarget(new URL('https://api.anthropic.com/v1/messages'))).toBe(true);
+    expect(isAllowedTarget(new URL('https://api.deepseek.com/v1/chat/completions'))).toBe(true);
+    expect(isAllowedTarget(new URL('https://openrouter.ai/api/v1/chat/completions'))).toBe(true);
+    expect(
+      isAllowedTarget(new URL('https://generativelanguage.googleapis.com/v1beta/models')),
+    ).toBe(true);
+  });
+
+  it('rejects unknown hosts', () => {
+    expect(isAllowedTarget(new URL('https://evil.example.com/steal'))).toBe(false);
+    expect(isAllowedTarget(new URL('https://attacker.com/api'))).toBe(false);
+  });
+
+  it('rejects internal addresses by default', () => {
+    const originalAllow = process.env.ALLOW_LOCAL_LLM;
+    delete process.env.ALLOW_LOCAL_LLM;
+
+    expect(isAllowedTarget(new URL('http://localhost:8080/v1/chat/completions'))).toBe(false);
+    expect(isAllowedTarget(new URL('http://127.0.0.1:8080/v1/chat/completions'))).toBe(false);
+    expect(isAllowedTarget(new URL('http://192.168.1.1:8080/v1'))).toBe(false);
+
+    if (originalAllow !== undefined) process.env.ALLOW_LOCAL_LLM = originalAllow;
+  });
+
+  it('allows local hosts when ALLOW_LOCAL_LLM=true', () => {
+    const originalAllow = process.env.ALLOW_LOCAL_LLM;
+    process.env.ALLOW_LOCAL_LLM = 'true';
+
+    expect(isAllowedTarget(new URL('http://localhost:8080/v1/chat/completions'))).toBe(true);
+    expect(isAllowedTarget(new URL('http://127.0.0.1:8080/v1/chat/completions'))).toBe(true);
+
+    process.env.ALLOW_LOCAL_LLM = originalAllow;
+    if (originalAllow === undefined) delete process.env.ALLOW_LOCAL_LLM;
   });
 });

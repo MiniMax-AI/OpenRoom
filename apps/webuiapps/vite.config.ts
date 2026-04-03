@@ -431,6 +431,29 @@ export function parseProxyTargetUrl(targetUrl: string): URL | null {
   }
 }
 
+/** Known LLM/image-gen provider hostnames that the proxy may forward to. */
+const ALLOWED_PROVIDER_HOSTS = new Set([
+  'api.openai.com',
+  'api.anthropic.com',
+  'api.deepseek.com',
+  'api.minimax.io',
+  'api.z.ai',
+  'api.moonshot.cn',
+  'openrouter.ai',
+  'generativelanguage.googleapis.com',
+]);
+
+/** Local development hosts — only allowed when ALLOW_LOCAL_LLM=true. */
+const LOCAL_LLM_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1']);
+
+/** Validate that a parsed target URL points to an allowed provider host. */
+export function isAllowedTarget(parsed: URL): boolean {
+  const host = parsed.hostname.toLowerCase();
+  if (ALLOWED_PROVIDER_HOSTS.has(host)) return true;
+  if (LOCAL_LLM_HOSTS.has(host) && process.env.ALLOW_LOCAL_LLM === 'true') return true;
+  return false;
+}
+
 function normalizeConfigScope(scope?: string): ConfigScope | undefined {
   return scope === 'imageGen' || scope === 'llm' ? scope : undefined;
 }
@@ -513,6 +536,18 @@ function llmProxyPlugin(): Plugin {
               res.end(JSON.stringify({ error: 'Invalid target URL' }));
               return;
             }
+
+            // Strict SSRF: validate target host BEFORE injecting keys
+            if (!isAllowedTarget(parsedTargetUrl)) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(
+                JSON.stringify({
+                  error: 'Target host not allowed',
+                  host: parsedTargetUrl.hostname,
+                }),
+              );
+              return;
+            }
             const headers: Record<string, string> = {};
             // Only forward safe, non-sensitive headers from the browser.
             // API keys are NO LONGER accepted from the client — they come from server config.
@@ -542,22 +577,6 @@ function llmProxyPlugin(): Plugin {
               req.headers['x-llm-provider'] as string,
               req.headers['x-llm-config-scope'] as string,
             );
-
-            // Validate target URL — only allow https:// and http:// to known API hosts
-            // Block internal/private network addresses to prevent SSRF
-            const hostname = parsedTargetUrl.hostname;
-            if (
-              hostname === 'localhost' ||
-              hostname === '127.0.0.1' ||
-              hostname === '0.0.0.0' ||
-              hostname.startsWith('192.168.') ||
-              hostname.startsWith('10.') ||
-              hostname.startsWith('172.16.') ||
-              hostname === '::1'
-            ) {
-              // Allow for local development (llama.cpp, etc.) but log a warning
-              console.warn('[llm-proxy] Allowing request to internal address:', hostname);
-            }
 
             const fetchRes = await fetch(parsedTargetUrl.toString(), {
               method: req.method || 'POST',
