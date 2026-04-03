@@ -72,6 +72,10 @@ describe('inferProvider()', () => {
       'gemini',
     );
   });
+
+  it('returns unknown for malformed URLs', () => {
+    expect(inferProvider('not a url')).toBe('unknown');
+  });
 });
 
 describe('parseProxyTargetUrl()', () => {
@@ -124,7 +128,12 @@ describe('isAllowedTarget()', () => {
     expect(isAllowedTarget(new URL('http://127.0.0.1:8080/v1/chat/completions'))).toBe(false);
     expect(isAllowedTarget(new URL('http://192.168.1.1:8080/v1'))).toBe(false);
 
-    if (originalAllow !== undefined) process.env.ALLOW_LOCAL_LLM = originalAllow;
+    // Consistent restore pattern
+    if (originalAllow === undefined) {
+      delete process.env.ALLOW_LOCAL_LLM;
+    } else {
+      process.env.ALLOW_LOCAL_LLM = originalAllow;
+    }
   });
 
   it('allows local hosts when ALLOW_LOCAL_LLM=true', () => {

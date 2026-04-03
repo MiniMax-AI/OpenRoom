@@ -62,9 +62,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Sync local state when parent props change (e.g. async config load while modal is open)
+  // Track whether the user has edited any field locally — prevents useEffect from clobbering in-progress edits
+  const hasLocalEditsRef = useRef(false);
+
+  // Sync local state when parent props change — but only before first local edit
   useEffect(() => {
     if (!config) return;
+    if (hasLocalEditsRef.current) return;
     setProvider(config.provider);
     setApiKey('');
     setApiKeyDirty(false);
@@ -76,6 +80,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   useEffect(() => {
     if (!imageGenConfig) return;
+    if (hasLocalEditsRef.current) return;
     setIgProvider(imageGenConfig.provider);
     setIgApiKey('');
     setIgApiKeyDirty(false);
@@ -117,7 +122,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     provider: igProvider,
     baseUrl: igBaseUrl,
     model: igModel,
-    ...(igCustomHeaders.trim() ? { customHeaders: igCustomHeaders } : {}),
+    customHeaders: igCustomHeaders,
     ...(igApiKeyDirty ? { apiKey: igApiKey } : {}),
   });
 
@@ -163,7 +168,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           <input
             className={styles.fieldInput}
             value={baseUrl}
-            onChange={(e) => setBaseUrl(e.target.value)}
+            onChange={(e) => {
+              hasLocalEditsRef.current = true;
+              setBaseUrl(e.target.value);
+            }}
           />
         </div>
 
@@ -197,7 +205,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 <input
                   className={styles.fieldInput}
                   value={model}
-                  onChange={(e) => setModel(e.target.value)}
+                  onChange={(e) => {
+                    hasLocalEditsRef.current = true;
+                    setModel(e.target.value);
+                  }}
                   placeholder="e.g. gpt-4-turbo"
                 />
                 {isPresetModel && (
@@ -220,7 +231,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           <textarea
             className={styles.fieldInput}
             value={customHeaders}
-            onChange={(e) => setCustomHeaders(e.target.value)}
+            onChange={(e) => {
+              hasLocalEditsRef.current = true;
+              setCustomHeaders(e.target.value);
+            }}
             placeholder={'X-Custom-Header: value\nAnother-Header: value'}
             rows={3}
             style={{ resize: 'vertical', fontFamily: 'monospace', fontSize: '12px' }}
@@ -261,7 +275,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           <input
             className={styles.fieldInput}
             value={igBaseUrl}
-            onChange={(e) => setIgBaseUrl(e.target.value)}
+            onChange={(e) => {
+              hasLocalEditsRef.current = true;
+              setIgBaseUrl(e.target.value);
+            }}
           />
         </div>
 
@@ -270,7 +287,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           <input
             className={styles.fieldInput}
             value={igModel}
-            onChange={(e) => setIgModel(e.target.value)}
+            onChange={(e) => {
+              hasLocalEditsRef.current = true;
+              setIgModel(e.target.value);
+            }}
           />
         </div>
 
@@ -279,7 +299,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           <textarea
             className={styles.fieldInput}
             value={igCustomHeaders}
-            onChange={(e) => setIgCustomHeaders(e.target.value)}
+            onChange={(e) => {
+              hasLocalEditsRef.current = true;
+              setIgCustomHeaders(e.target.value);
+            }}
             placeholder={'X-Custom-Header: value'}
             rows={2}
             style={{ resize: 'vertical', fontFamily: 'monospace', fontSize: '12px' }}
@@ -305,7 +328,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 provider,
                 baseUrl,
                 model,
-                ...(customHeaders.trim() ? { customHeaders } : {}),
+                customHeaders,
               };
               if (apiKeyDirty) {
                 llmCfg.apiKey = apiKey;

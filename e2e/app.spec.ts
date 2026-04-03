@@ -104,6 +104,10 @@ test.describe('Chat panel – input interaction', () => {
   test('typing a message without LLM config opens settings instead of sending', async ({
     page,
   }) => {
+    // Stub the config API so the app sees no LLM config (unconfigured state)
+    await page.route('**/api/llm-config', async (route) => {
+      await route.fulfill({}); // Empty object → no config
+    });
     await page.goto('/');
     const input = page.locator('[data-testid="chat-input"]');
     const sendBtn = page.locator('[data-testid="send-btn"]');

@@ -674,9 +674,13 @@ const ChatPanel: React.FC<{
               loadConfig(),
               loadImageGenConfig(),
             ]);
-            setConfig(nextConfig);
-            setImageGenConfig(nextImageGenConfig);
-            setShowSettings(false);
+            // Only update state if reloads succeeded; fall back to submitted values
+            setConfig(nextConfig ?? c);
+            setImageGenConfig(nextImageGenConfig ?? igc);
+            // Only close modal when reload succeeded
+            if (nextConfig !== null) {
+              setShowSettings(false);
+            }
           }}
           onClose={() => setShowSettings(false)}
         />

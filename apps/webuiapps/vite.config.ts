@@ -411,12 +411,16 @@ export function inferProvider(targetUrl: URL | string, hint?: string): ProxyProv
     return 'unknown';
   }
 
-  const parsed = targetUrl instanceof URL ? targetUrl : new URL(targetUrl);
-  const host = parsed.hostname.toLowerCase();
-  if (host.includes('anthropic')) return 'anthropic';
-  if (host.includes('minimax')) return 'minimax';
-  if (host.includes('google') || host.includes('generativelanguage')) return 'gemini';
-  return 'openai'; // default: OpenAI-compatible (also covers openrouter, deepseek, kimi, z.ai, etc.)
+  try {
+    const parsed = targetUrl instanceof URL ? targetUrl : new URL(targetUrl);
+    const host = parsed.hostname.toLowerCase();
+    if (host.includes('anthropic')) return 'anthropic';
+    if (host.includes('minimax')) return 'minimax';
+    if (host.includes('google') || host.includes('generativelanguage')) return 'gemini';
+    return 'openai'; // default: OpenAI-compatible
+  } catch {
+    return 'unknown';
+  }
 }
 
 export function parseProxyTargetUrl(targetUrl: string): URL | null {
