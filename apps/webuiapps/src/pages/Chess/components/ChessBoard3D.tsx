@@ -1,4 +1,4 @@
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense, useMemo } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, ContactShadows, Environment } from '@react-three/drei';
 import * as THREE from 'three';
@@ -282,6 +282,14 @@ const ChessBoard3D: React.FC<ChessBoard3DProps> = ({
   onSquareClick,
 }) => {
   const [pieces, setPieces] = useState<TrackedPiece[]>(() => extractPieces(board));
+  const [webglStatus, setWebglStatus] = useState<
+    { supported: true } | { supported: false; message: string; details: string[] } | null
+  >(null);
+
+  const statusLines = useMemo(() => {
+    if (!webglStatus || webglStatus.supported) return [] as string[];
+    return webglStatus.details;
+  }, [webglStatus]);
 
   // Full-board reconciliation piece tracking
   useEffect(() => {
@@ -369,12 +377,112 @@ const ChessBoard3D: React.FC<ChessBoard3DProps> = ({
     });
   }, [board, lastMove]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      setWebglStatus({ supported: true });
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    const details: string[] = [];
+
+    const tryContext = (kind: 'webgl2' | 'webgl') => {
+      try {
+        return canvas.getContext(kind, {
+          alpha: true,
+          antialias: true,
+          powerPreference: 'high-performance',
+          stencil: true,
+          depth: true,
+        } as WebGLContextAttributes);
+      } catch (error) {
+        details.push(
+          `${kind}: ${error instanceof Error ? error.message : String(error) || 'failed'}`,
+        );
+        return null;
+      }
+    };
+
+    const webgl2 = tryContext('webgl2');
+    const webgl = webgl2 ?? tryContext('webgl');
+
+    if (webgl2 || webgl) {
+      const gl = webgl2 ?? webgl;
+      try {
+        const dbg = gl?.getExtension?.('WEBGL_debug_renderer_info');
+        if (dbg) {
+          const renderer = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL);
+          const vendor = gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL);
+          details.push(`renderer: ${String(renderer)}`);
+          details.push(`vendor: ${String(vendor)}`);
+        }
+      } catch {
+        // Best-effort diagnostics only.
+      }
+      setWebglStatus({ supported: true });
+      return;
+    }
+
+    details.push('No WebGL context could be created for @react-three/fiber Canvas.');
+    setWebglStatus({
+      supported: false,
+      message: '3D board unavailable in this browser/runtime',
+      details,
+    });
+  }, []);
+
   const selectedSquareKey = selectedPos ? `${selectedPos[0]}-${selectedPos[1]}` : null;
 
   const handleSquareClick = (r: number, c: number) => {
     if (!canInteract) return;
     onSquareClick(r, c);
   };
+
+  if (webglStatus && !webglStatus.supported) {
+    return (
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          backgroundImage: `url(${chessBg})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '520px',
+            background: 'rgba(8, 8, 10, 0.82)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: '16px',
+            padding: '20px 22px',
+            color: 'rgba(255,255,255,0.92)',
+            backdropFilter: 'blur(12px)',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.45)',
+          }}
+        >
+          <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>
+            {webglStatus.message}
+          </div>
+          <div style={{ fontSize: '14px', lineHeight: 1.5, opacity: 0.85 }}>
+            The Chess app mounted correctly, but this environment failed WebGL initialization, so
+            the Three.js board cannot render here.
+          </div>
+          {statusLines.length > 0 && (
+            <div style={{ marginTop: '14px', fontSize: '12px', opacity: 0.72 }}>
+              {statusLines.map((line, idx) => (
+                <div key={`${idx}-${line}`}>{line}</div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

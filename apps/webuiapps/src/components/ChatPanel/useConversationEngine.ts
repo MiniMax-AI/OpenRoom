@@ -291,7 +291,14 @@ async function executeToolCall(
   // ---- File tools ----
   if (isFileTool(tc.function.name)) {
     // Only log tool name + path to avoid persisting sensitive file contents
-    const pathKeys = ['path', 'filePath', 'sourcePath', 'targetPath', 'destinationPath'] as const;
+    const pathKeys = [
+      'path',
+      'file_path',
+      'filePath',
+      'sourcePath',
+      'targetPath',
+      'destinationPath',
+    ] as const;
     let summary = tc.function.name;
     for (const key of pathKeys) {
       const value = (params as Record<string, unknown>)[key];
