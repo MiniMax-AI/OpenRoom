@@ -142,7 +142,13 @@ export const CharacterAvatar: React.FC<{
     });
   }, [media?.url, activeUrl]);
 
+  const desiredUrlRef = useRef<string | undefined>(media?.url);
+  desiredUrlRef.current = media?.url;
+
   const handleMediaReady = useCallback((readyUrl: string) => {
+    // Ignore stale loads — if the user has since switched to a different emotion,
+    // don't activate the old layer
+    if (desiredUrlRef.current && readyUrl !== desiredUrlRef.current) return;
     setLayers((prev) => {
       const staleUrls = prev.filter((l) => l.url !== readyUrl).map((l) => l.url);
       if (cleanupRef.current) clearTimeout(cleanupRef.current);

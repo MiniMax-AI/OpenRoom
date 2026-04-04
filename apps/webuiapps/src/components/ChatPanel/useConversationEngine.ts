@@ -15,7 +15,7 @@ import {
 } from 'react';
 import { chat, type ChatMessage, type ToolCall } from '@/lib/llmClient';
 import type { LLMConfig } from '@/lib/llmModels';
-import { hasUsableImageGenConfig, type ImageGenConfig } from '@/lib/imageGenClient';
+import { type ImageGenConfig } from '@/lib/imageGenClient';
 import type { CharacterConfig } from '@/lib/characterManager';
 import { clearEmotionVideoCache } from '@/lib/characterManager';
 import type { MemoryEntry } from '@/lib/memoryManager';
@@ -110,7 +110,7 @@ export function useConversationEngine(deps: ConversationEngineDeps) {
     async (history: ChatMessage[], cfg: LLMConfig, signal?: AbortSignal) => {
       await seedMetaFiles();
       await loadActionsFromMeta();
-      const hasImageGen = hasUsableImageGenConfig(imageGenConfigRef.current);
+      const hasImageGen = (imageGenConfigRef.current?.apiKey?.trim().length ?? 0) > 0;
       const mm = modManagerRef.current;
       const char = characterRef.current;
 
@@ -138,7 +138,7 @@ export function useConversationEngine(deps: ConversationEngineDeps) {
       while (iterations < maxIterations) {
         if (signal?.aborted) break;
         iterations++;
-        const response = await chat(currentMessages, tools, cfg);
+        const response = await chat(currentMessages, tools, cfg, signal);
 
         if (response.toolCalls.length === 0) {
           // No tool calls — fallback plain text
@@ -290,9 +290,17 @@ async function executeToolCall(
 
   // ---- File tools ----
   if (isFileTool(tc.function.name)) {
-    ctx.pendingToolCallsRef.current.push(
-      `${tc.function.name}(${JSON.stringify(params).slice(0, 60)})`,
-    );
+    // Only log tool name + path to avoid persisting sensitive file contents
+    const pathKeys = ['path', 'filePath', 'sourcePath', 'targetPath', 'destinationPath'] as const;
+    let summary = tc.function.name;
+    for (const key of pathKeys) {
+      const value = (params as Record<string, unknown>)[key];
+      if (typeof value === 'string' && value.length > 0) {
+        summary = `${tc.function.name}(${key}: ${value})`;
+        break;
+      }
+    }
+    ctx.pendingToolCallsRef.current.push(summary);
     try {
       const result = await executeFileTool(tc.function.name, params as Record<string, string>);
       return toolResult(result);

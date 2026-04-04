@@ -149,8 +149,12 @@ function llmConfigPlugin(): Plugin {
             }
 
             try {
-              fs.mkdirSync(resolve(os.homedir(), '.openroom'), { recursive: true });
-              fs.writeFileSync(LLM_CONFIG_FILE, JSON.stringify(mergedConfig), 'utf-8');
+              const configDir = resolve(os.homedir(), '.openroom');
+              fs.mkdirSync(configDir, { recursive: true, mode: 0o700 });
+              fs.writeFileSync(LLM_CONFIG_FILE, JSON.stringify(mergedConfig), {
+                encoding: 'utf-8',
+                mode: 0o600,
+              });
               const stat = fs.statSync(LLM_CONFIG_FILE);
               cachedServerConfig = { mtimeMs: stat.mtimeMs, value: mergedConfig };
               res.writeHead(200);
@@ -182,7 +186,7 @@ function sanitizeRelativePath(relPath: string, baseDir: string): string | null {
   const safe = cleaned.replace(/[^a-zA-Z0-9_\-./]/g, '_');
   // Resolve to absolute and verify it stays within baseDir
   const resolved = resolve(baseDir, safe);
-  // Normalize both paths for comparison (resolve handles .. and symlinks)
+  // Normalize both paths for comparison (resolve handles .. sequences)
   const normalizedBase = resolve(baseDir);
   if (!resolved.startsWith(normalizedBase + sep) && resolved !== normalizedBase) {
     return null;
@@ -506,6 +510,16 @@ function isBlockedPassthroughHeader(headerName: string): boolean {
       'proxy-authorization',
       'x-api-key',
       'x-goog-api-key',
+      // Hop-by-hop headers per RFC 9110 — forwarding these can cause
+      // request smuggling or broken upstream responses
+      'content-length',
+      'transfer-encoding',
+      'content-encoding',
+      'accept-encoding',
+      'te',
+      'trailer',
+      'upgrade',
+      'keep-alive',
     ].includes(headerName)
   );
 }
@@ -540,7 +554,14 @@ function llmProxyPlugin(): Plugin {
     name: 'llm-proxy',
     configureServer(server) {
       server.middlewares.use('/api/llm-proxy', async (req, res) => {
-        const targetUrl = req.headers['x-llm-target-url'] as string;
+        // Normalize header values — Node http headers can be string[] for duplicates
+        const getHeader = (name: string): string | undefined => {
+          const val = req.headers[name];
+          if (Array.isArray(val)) return val[0];
+          return val;
+        };
+
+        const targetUrl = getHeader('x-llm-target-url');
         if (!targetUrl) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Missing X-LLM-Target-URL header' }));
@@ -595,8 +616,8 @@ function llmProxyPlugin(): Plugin {
             injectServerApiKey(
               headers,
               parsedTargetUrl,
-              req.headers['x-llm-provider'] as string,
-              req.headers['x-llm-config-scope'] as string,
+              getHeader('x-llm-provider'),
+              getHeader('x-llm-config-scope'),
             );
 
             const controller = new AbortController();

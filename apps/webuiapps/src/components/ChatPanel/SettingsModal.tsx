@@ -344,20 +344,33 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               setSaving(true);
               const llmCfg: LLMConfigUpdate = {
                 provider,
-                baseUrl,
-                model,
-                customHeaders,
+                baseUrl: baseUrl.trim(),
+                model: model.trim(),
+                customHeaders: customHeaders.trim(),
               };
               if (apiKeyDirty) {
-                llmCfg.apiKey = apiKey;
+                llmCfg.apiKey = apiKey.trim();
               } else if (llmEndpointChanged) {
                 llmCfg.apiKey = '';
               }
               const nextImageGenConfig = buildImageGenConfig();
               const igCfg: ImageGenConfigUpdate | null = imageGenConfig
-                ? nextImageGenConfig
+                ? {
+                    ...nextImageGenConfig,
+                    baseUrl: nextImageGenConfig.baseUrl.trim(),
+                    model: nextImageGenConfig.model.trim(),
+                    customHeaders: nextImageGenConfig.customHeaders?.trim(),
+                    ...(nextImageGenConfig.apiKey
+                      ? { apiKey: nextImageGenConfig.apiKey.trim() }
+                      : {}),
+                  }
                 : igApiKey.trim()
-                  ? { ...nextImageGenConfig, apiKey: igApiKey }
+                  ? {
+                      ...nextImageGenConfig,
+                      apiKey: igApiKey.trim(),
+                      baseUrl: nextImageGenConfig.baseUrl.trim(),
+                      model: nextImageGenConfig.model.trim(),
+                    }
                   : null;
               try {
                 const result = await onSave(llmCfg, igCfg);

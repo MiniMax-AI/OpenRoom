@@ -178,6 +178,7 @@ export async function chat(
   messages: ChatMessage[],
   tools: ToolDef[],
   config: LLMConfig,
+  signal?: AbortSignal,
 ): Promise<LLMResponse> {
   logger.info(
     'LLM',
@@ -189,15 +190,16 @@ export async function chat(
     messages.length,
   );
   if (config.provider === 'anthropic' || config.provider === 'minimax') {
-    return chatAnthropic(messages, tools, config);
+    return chatAnthropic(messages, tools, config, signal);
   }
-  return chatOpenAI(messages, tools, config);
+  return chatOpenAI(messages, tools, config, signal);
 }
 
 async function chatOpenAI(
   messages: ChatMessage[],
   tools: ToolDef[],
   config: LLMConfig,
+  signal?: AbortSignal,
 ): Promise<LLMResponse> {
   const body: Record<string, unknown> = {
     model: config.model,
@@ -227,6 +229,7 @@ async function chatOpenAI(
     method: 'POST',
     headers,
     body: JSON.stringify(body),
+    signal,
   });
 
   logger.info('LLM', 'Response status:', res.status);
@@ -263,6 +266,7 @@ async function chatAnthropic(
   messages: ChatMessage[],
   tools: ToolDef[],
   config: LLMConfig,
+  signal?: AbortSignal,
 ): Promise<LLMResponse> {
   const systemMsg = messages.find((m) => m.role === 'system')?.content || '';
   const nonSystemMessages = messages.filter((m) => m.role !== 'system');
@@ -338,6 +342,7 @@ async function chatAnthropic(
     method: 'POST',
     headers,
     body: JSON.stringify(body),
+    signal,
   });
 
   logger.info('LLM', 'Anthropic Response status:', res.status);

@@ -40,13 +40,18 @@ export class ErrorBoundary extends Component<Props, State> {
   render(): ReactNode {
     if (this.state.hasError) {
       return (
-        <div className={styles.fallback} data-testid="error-boundary-fallback">
+        <div
+          className={styles.fallback}
+          data-testid="error-boundary-fallback"
+          role="alert"
+          aria-live="assertive"
+        >
           <div className={styles.icon}>⚠️</div>
           <div className={styles.message}>
             {this.props.name ? `${this.props.name} crashed` : 'Something went wrong'}
           </div>
           <div className={styles.detail}>{this.state.error?.message}</div>
-          <button className={styles.retryBtn} onClick={this.handleRetry}>
+          <button type="button" className={styles.retryBtn} onClick={this.handleRetry}>
             Retry
           </button>
         </div>

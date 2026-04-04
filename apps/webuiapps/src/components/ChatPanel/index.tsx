@@ -689,6 +689,17 @@ const ChatPanel: React.FC<{
               setShowSettings(false);
             }
 
+            if (nextConfig === null || !imageGenReloadSucceeded) {
+              const reloadFailures = [
+                ...(nextConfig === null ? ['chat settings'] : []),
+                ...(!imageGenReloadSucceeded ? ['image generation settings'] : []),
+              ];
+              return {
+                ok: false,
+                error: `Settings were saved, but reloading ${reloadFailures.join(' and ')} failed. Please reopen settings to verify.`,
+              };
+            }
+
             return { ok: true };
           }}
           onClose={() => setShowSettings(false)}
