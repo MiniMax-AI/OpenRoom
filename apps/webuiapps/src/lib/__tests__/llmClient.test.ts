@@ -1,11 +1,4 @@
-/**
- * Unit tests for llmClient.ts
- *
- * Environment: happy-dom (provides localStorage, fetch globals)
- * Mock strategy:
- *   - fetch: vi.fn() via globalThis.fetch per test
- *   - localStorage: happy-dom provides real implementation, cleared in beforeEach
- */
+/** Unit tests for llmClient.ts */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
@@ -17,10 +10,6 @@ import {
   type ToolDef,
 } from '../llmClient';
 import { getDefaultProviderConfig, type LLMConfig } from '../llmModels';
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const CONFIG_KEY = 'webuiapps-llm-config';
 
 const MOCK_OPENAI_CONFIG: LLMConfig = {
   provider: 'openai',
@@ -90,7 +79,6 @@ function makeErrorResponse(status: number, bodyText: string) {
 // ─── Setup / Teardown ─────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  localStorage.clear();
   vi.restoreAllMocks();
 });
 
@@ -163,175 +151,100 @@ describe('getDefaultProviderConfig()', () => {
   });
 });
 
-// ─── loadConfigSync() ─────────────────────────────────────────────────────────
-
 describe('loadConfigSync()', () => {
-  it('returns null when localStorage is empty', () => {
+  it('always returns null because browser-side key caching is disabled', () => {
     expect(loadConfigSync()).toBeNull();
-  });
-
-  it('returns parsed config when localStorage has valid JSON', () => {
-    localStorage.setItem(CONFIG_KEY, JSON.stringify(MOCK_OPENAI_CONFIG));
-    expect(loadConfigSync()).toEqual(MOCK_OPENAI_CONFIG);
-  });
-
-  it('returns null when localStorage contains invalid JSON', () => {
-    localStorage.setItem(CONFIG_KEY, 'not-valid-json{{{');
-    expect(loadConfigSync()).toBeNull();
-  });
-
-  it('returns null when value is empty string', () => {
-    localStorage.setItem(CONFIG_KEY, '');
-    expect(loadConfigSync()).toBeNull();
-  });
-
-  it('preserves optional customHeaders field', () => {
-    const cfg: LLMConfig = { ...MOCK_OPENAI_CONFIG, customHeaders: 'X-Foo: bar\nX-Baz: qux' };
-    localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
-    expect(loadConfigSync()?.customHeaders).toBe('X-Foo: bar\nX-Baz: qux');
   });
 });
-
-// ─── loadConfig() ─────────────────────────────────────────────────────────────
 
 describe('loadConfig()', () => {
-  describe('Scenario A: API returns 200 with new format', () => {
-    it('returns LLM config from { llm, imageGen } format and syncs to localStorage', async () => {
-      globalThis.fetch = vi.fn().mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            llm: MOCK_OPENAI_CONFIG,
-            imageGen: { provider: 'openai', apiKey: 'k', baseUrl: 'u', model: 'm' },
-          }),
-      } as unknown as Response);
+  it('returns redacted LLM config from the persisted payload', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          llm: { ...MOCK_OPENAI_CONFIG, apiKey: '', hasApiKey: true },
+          imageGen: { provider: 'openai', apiKey: '', hasApiKey: true, baseUrl: 'u', model: 'm' },
+        }),
+    } as unknown as Response);
 
-      const result = await loadConfig();
-
-      expect(result).toEqual(MOCK_OPENAI_CONFIG);
-      expect(localStorage.getItem(CONFIG_KEY)).toBe(JSON.stringify(MOCK_OPENAI_CONFIG));
+    await expect(loadConfig()).resolves.toEqual({
+      ...MOCK_OPENAI_CONFIG,
+      apiKey: '',
+      hasApiKey: true,
     });
   });
 
-  describe('Scenario A2: API returns 200 with legacy flat format', () => {
-    it('returns config from legacy flat LLMConfig format', async () => {
-      globalThis.fetch = vi.fn().mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(MOCK_OPENAI_CONFIG),
-      } as unknown as Response);
+  it('supports legacy flat config responses', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(MOCK_OPENAI_CONFIG),
+    } as unknown as Response);
 
-      const result = await loadConfig();
-
-      expect(result).toEqual(MOCK_OPENAI_CONFIG);
-      expect(localStorage.getItem(CONFIG_KEY)).toBe(JSON.stringify(MOCK_OPENAI_CONFIG));
-    });
+    await expect(loadConfig()).resolves.toEqual(MOCK_OPENAI_CONFIG);
   });
 
-  describe('Scenario B: API returns 404 (no file)', () => {
-    it('falls back to localStorage when API returns 404', async () => {
-      globalThis.fetch = vi.fn().mockResolvedValueOnce({ ok: false, status: 404 } as Response);
-      localStorage.setItem(CONFIG_KEY, JSON.stringify(MOCK_OPENAI_CONFIG));
+  it('returns null when the config API is unavailable', async () => {
+    globalThis.fetch = vi.fn().mockRejectedValueOnce(new Error('Network error'));
 
-      expect(await loadConfig()).toEqual(MOCK_OPENAI_CONFIG);
-    });
-
-    it('returns null when API returns 404 and localStorage is empty', async () => {
-      globalThis.fetch = vi.fn().mockResolvedValueOnce({ ok: false, status: 404 } as Response);
-
-      expect(await loadConfig()).toBeNull();
-    });
-  });
-
-  describe('Scenario C: fetch throws (network error / production)', () => {
-    it('falls back to localStorage on network error', async () => {
-      globalThis.fetch = vi.fn().mockRejectedValueOnce(new Error('Network error'));
-      localStorage.setItem(CONFIG_KEY, JSON.stringify(MOCK_ANTHROPIC_CONFIG));
-
-      expect(await loadConfig()).toEqual(MOCK_ANTHROPIC_CONFIG);
-    });
-
-    it('returns null when fetch throws and localStorage is empty', async () => {
-      globalThis.fetch = vi.fn().mockRejectedValueOnce(new Error('fetch is not defined'));
-
-      expect(await loadConfig()).toBeNull();
-    });
-
-    it('resolves null when both API and localStorage fail (does not throw)', async () => {
-      globalThis.fetch = vi.fn().mockRejectedValueOnce(new Error('Network error'));
-      localStorage.setItem(CONFIG_KEY, 'corrupted-json');
-
-      await expect(loadConfig()).resolves.toBeNull();
-    });
+    await expect(loadConfig()).resolves.toBeNull();
   });
 });
 
-// ─── saveConfig() ─────────────────────────────────────────────────────────────
-
 describe('saveConfig()', () => {
-  it('always writes to localStorage even if fetch fails', async () => {
-    globalThis.fetch = vi.fn().mockRejectedValueOnce(new Error('API unavailable'));
-
-    await saveConfig(MOCK_OPENAI_CONFIG);
-
-    expect(localStorage.getItem(CONFIG_KEY)).toBe(JSON.stringify(MOCK_OPENAI_CONFIG));
-  });
-
   it('POSTs new { llm } format to /api/llm-config', async () => {
     const mockFetch = vi.fn().mockResolvedValueOnce({ ok: true } as Response);
     globalThis.fetch = mockFetch;
 
-    await saveConfig(MOCK_OPENAI_CONFIG);
+    await expect(saveConfig({ ...MOCK_OPENAI_CONFIG, apiKey: undefined })).resolves.toEqual({
+      ok: true,
+    });
 
     expect(mockFetch).toHaveBeenCalledWith('/api/llm-config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ llm: MOCK_OPENAI_CONFIG }),
+      body: JSON.stringify({
+        llm: {
+          provider: MOCK_OPENAI_CONFIG.provider,
+          baseUrl: MOCK_OPENAI_CONFIG.baseUrl,
+          model: MOCK_OPENAI_CONFIG.model,
+        },
+      }),
     });
   });
 
-  it('includes imageGen when provided', async () => {
+  it('includes imageGen updates when provided', async () => {
     const mockFetch = vi.fn().mockResolvedValueOnce({ ok: true } as Response);
     globalThis.fetch = mockFetch;
 
-    const igConfig = { provider: 'openai' as const, apiKey: 'k', baseUrl: 'u', model: 'm' };
-    await saveConfig(MOCK_OPENAI_CONFIG, igConfig);
+    const igConfig = { provider: 'openai' as const, baseUrl: 'u', model: 'm' };
+    await expect(
+      saveConfig({ ...MOCK_OPENAI_CONFIG, apiKey: 'next-key' }, igConfig),
+    ).resolves.toEqual({
+      ok: true,
+    });
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
-    expect(body.llm).toEqual(MOCK_OPENAI_CONFIG);
+    expect(body.llm).toEqual({
+      provider: MOCK_OPENAI_CONFIG.provider,
+      apiKey: 'next-key',
+      baseUrl: MOCK_OPENAI_CONFIG.baseUrl,
+      model: MOCK_OPENAI_CONFIG.model,
+    });
     expect(body.imageGen).toEqual(igConfig);
   });
 
-  it('does not throw when POST request fails silently', async () => {
-    globalThis.fetch = vi.fn().mockRejectedValueOnce(new Error('API unavailable'));
+  it('surfaces save failures to the caller', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      text: () => Promise.resolve('boom'),
+    } as unknown as Response);
 
-    await expect(saveConfig(MOCK_OPENAI_CONFIG)).resolves.toBeUndefined();
-  });
-
-  it('overwrites previous config — latest value wins', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true } as Response);
-
-    await saveConfig(MOCK_OPENAI_CONFIG);
-    await saveConfig(MOCK_ANTHROPIC_CONFIG);
-
-    const stored = JSON.parse(localStorage.getItem(CONFIG_KEY) ?? 'null');
-    expect(stored?.provider).toBe('anthropic');
-  });
-
-  it('writes localStorage before awaiting fetch', async () => {
-    let localStorageWrittenBeforeFetch = false;
-    const originalSetItem = localStorage.setItem.bind(localStorage);
-
-    globalThis.fetch = vi.fn().mockImplementationOnce(() => {
-      // By the time fetch is called, localStorage should already be written
-      localStorageWrittenBeforeFetch = localStorage.getItem(CONFIG_KEY) !== null;
-      return Promise.resolve({ ok: true } as Response);
+    await expect(saveConfig(MOCK_OPENAI_CONFIG)).resolves.toEqual({
+      ok: false,
+      error: 'Failed to save config (500): boom',
     });
-
-    vi.spyOn(localStorage, 'setItem').mockImplementation(originalSetItem);
-
-    await saveConfig(MOCK_OPENAI_CONFIG);
-
-    expect(localStorageWrittenBeforeFetch).toBe(true);
   });
 });
 
@@ -353,14 +266,15 @@ describe('chat()', () => {
       expect(result.toolCalls).toEqual([]);
     });
 
-    it('sets Authorization Bearer token header', async () => {
+    it('sends only proxy routing headers for OpenAI requests', async () => {
       const mockFetch = vi.fn().mockResolvedValueOnce(makeOpenAIResponse('ok'));
       globalThis.fetch = mockFetch;
 
       await chat(MOCK_MESSAGES, [], MOCK_OPENAI_CONFIG);
 
       const headers = mockFetch.mock.calls[0][1].headers as Record<string, string>;
-      expect(headers['Authorization']).toBe('Bearer sk-test-key');
+      expect(headers['Authorization']).toBeUndefined();
+      expect(headers['X-LLM-Config-Scope']).toBe('llm');
     });
 
     it('uses v1/chat/completions when baseUrl has no version suffix', async () => {
@@ -446,6 +360,7 @@ describe('chat()', () => {
       expect(result.content).toBe('Local response');
       const headers = mockFetch.mock.calls[0][1].headers as Record<string, string>;
       expect(headers['Authorization']).toBeUndefined();
+      expect(headers['X-LLM-Config-Scope']).toBe('llm');
       expect(headers['X-LLM-Target-URL']).toBe('http://athena:8081/v1/chat/completions');
     });
 
@@ -482,7 +397,7 @@ respond_to_user
   });
 
   describe('Anthropic provider', () => {
-    it('uses x-api-key and anthropic-version headers', async () => {
+    it('uses anthropic-version and proxy scope headers without exposing x-api-key', async () => {
       const mockFetch = vi.fn().mockResolvedValueOnce(makeAnthropicResponse('Anthropic response'));
       globalThis.fetch = mockFetch;
 
@@ -491,7 +406,8 @@ respond_to_user
       expect(result.content).toBe('Anthropic response');
       const headers = mockFetch.mock.calls[0][1].headers as Record<string, string>;
       expect(headers['anthropic-version']).toBe('2023-06-01');
-      expect(headers['x-api-key']).toBe('ant-test-key');
+      expect(headers['x-api-key']).toBeUndefined();
+      expect(headers['X-LLM-Config-Scope']).toBe('llm');
     });
 
     it('uses /messages when baseUrl already includes /v1', async () => {

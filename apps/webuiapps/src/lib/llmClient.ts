@@ -3,55 +3,42 @@
  * Supports OpenAI-compatible / Anthropic-compatible formats
  */
 
-import type { LLMConfig } from './llmModels';
+import type { LLMConfig, LLMConfigUpdate } from './llmModels';
 
 import { logger } from './logger';
 import { loadPersistedConfig, savePersistedConfig } from './configPersistence';
 
-const CONFIG_KEY = 'webuiapps-llm-config';
-
 export async function loadConfig(): Promise<LLMConfig | null> {
+  // Load from server-side config only — keys never stored in localStorage
   try {
     const persisted = await loadPersistedConfig();
     if (persisted?.llm) {
-      localStorage.setItem(CONFIG_KEY, JSON.stringify(persisted.llm));
       return persisted.llm;
     }
   } catch {
     // API not available (production / network error)
   }
 
-  try {
-    const raw = localStorage.getItem(CONFIG_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 export async function saveConfig(
-  config: LLMConfig,
-  imageGenConfig?: import('./imageGenClient').ImageGenConfig | null,
-): Promise<void> {
-  localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
-
-  const persisted: import('./configPersistence').PersistedConfig = {
+  config: LLMConfigUpdate,
+  imageGenConfig?: import('./imageGenClient').ImageGenConfigUpdate | null,
+): Promise<{ ok: boolean; error?: string }> {
+  const persisted: import('./configPersistence').PersistedConfigUpdate = {
     llm: config,
   };
-  if (imageGenConfig) {
+  if (imageGenConfig !== undefined) {
     persisted.imageGen = imageGenConfig;
   }
 
-  await savePersistedConfig(persisted);
+  return savePersistedConfig(persisted);
 }
 
+/** Synchronous config read — returns null since keys are server-side only. */
 export function loadConfigSync(): LLMConfig | null {
-  try {
-    const raw = localStorage.getItem(CONFIG_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 export interface ChatMessage {
@@ -191,6 +178,7 @@ export async function chat(
   messages: ChatMessage[],
   tools: ToolDef[],
   config: LLMConfig,
+  signal?: AbortSignal,
 ): Promise<LLMResponse> {
   logger.info(
     'LLM',
@@ -202,15 +190,16 @@ export async function chat(
     messages.length,
   );
   if (config.provider === 'anthropic' || config.provider === 'minimax') {
-    return chatAnthropic(messages, tools, config);
+    return chatAnthropic(messages, tools, config, signal);
   }
-  return chatOpenAI(messages, tools, config);
+  return chatOpenAI(messages, tools, config, signal);
 }
 
 async function chatOpenAI(
   messages: ChatMessage[],
   tools: ToolDef[],
   config: LLMConfig,
+  signal?: AbortSignal,
 ): Promise<LLMResponse> {
   const body: Record<string, unknown> = {
     model: config.model,
@@ -231,16 +220,16 @@ async function chatOpenAI(
   });
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'X-LLM-Config-Scope': 'llm',
     'X-LLM-Target-URL': targetUrl,
+    // API key injected server-side by the proxy — never sent from browser
     ...parseCustomHeaders(config.customHeaders),
   };
-  if (config.apiKey.trim()) {
-    headers.Authorization = `Bearer ${config.apiKey}`;
-  }
   const res = await fetch('/api/llm-proxy', {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
+    signal,
   });
 
   logger.info('LLM', 'Response status:', res.status);
@@ -277,6 +266,7 @@ async function chatAnthropic(
   messages: ChatMessage[],
   tools: ToolDef[],
   config: LLMConfig,
+  signal?: AbortSignal,
 ): Promise<LLMResponse> {
   const systemMsg = messages.find((m) => m.role === 'system')?.content || '';
   const nonSystemMessages = messages.filter((m) => m.role !== 'system');
@@ -343,16 +333,16 @@ async function chatAnthropic(
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'anthropic-version': '2023-06-01',
+    'X-LLM-Config-Scope': 'llm',
     'X-LLM-Target-URL': targetUrl,
+    // API key injected server-side by the proxy — never sent from browser
     ...parseCustomHeaders(config.customHeaders),
   };
-  if (config.apiKey.trim()) {
-    headers['x-api-key'] = config.apiKey;
-  }
   const res = await fetch('/api/llm-proxy', {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
+    signal,
   });
 
   logger.info('LLM', 'Anthropic Response status:', res.status);

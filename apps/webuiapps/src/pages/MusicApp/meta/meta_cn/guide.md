@@ -21,16 +21,16 @@ apps/musicPlayer/data/
 
 #### 歌曲文件 `{id}.json`
 
-| Field      | Type   | Required | Description                          |
-| ---------- | ------ | -------- | ------------------------------------ |
-| id         | string | 是       | 歌曲唯一标识，如 `song-001`          |
-| title      | string | 是       | 歌曲标题                             |
-| artist     | string | 是       | 艺术家名称                           |
-| album      | string | 是       | 专辑名称                             |
-| duration   | number | 是       | 时长（秒）                           |
-| coverColor | string | 是       | 封面颜色（hex，如 `#6366F1`）        |
-| createdAt  | number | 是       | 创建时间戳（毫秒）                   |
-| audioUrl   | string | 是       | 音频文件 URL                         |
+| Field      | Type   | Required | Description                   |
+| ---------- | ------ | -------- | ----------------------------- |
+| id         | string | 是       | 歌曲唯一标识，如 `song-001`   |
+| title      | string | 是       | 歌曲标题                      |
+| artist     | string | 是       | 艺术家名称                    |
+| album      | string | 是       | 专辑名称                      |
+| duration   | number | 是       | 时长（秒）                    |
+| coverColor | string | 是       | 封面颜色（hex，如 `#6366F1`） |
+| createdAt  | number | 是       | 创建时间戳（毫秒）            |
+| audioUrl   | string | 是       | 音频文件 URL                  |
 
 ```json
 {
@@ -51,12 +51,12 @@ apps/musicPlayer/data/
 
 #### 播放列表文件 `{id}.json`
 
-| Field     | Type     | Required | Description                              |
-| --------- | -------- | -------- | ---------------------------------------- |
-| id        | string   | 是       | 播放列表唯一标识，如 `playlist-001`      |
-| name      | string   | 是       | 播放列表名称                             |
-| songIds   | string[] | 是       | 歌曲 ID 列表                            |
-| createdAt | number   | 是       | 创建时间戳（毫秒）                       |
+| Field     | Type     | Required | Description                         |
+| --------- | -------- | -------- | ----------------------------------- |
+| id        | string   | 是       | 播放列表唯一标识，如 `playlist-001` |
+| name      | string   | 是       | 播放列表名称                        |
+| songIds   | string[] | 是       | 歌曲 ID 列表                        |
+| createdAt | number   | 是       | 创建时间戳（毫秒）                  |
 
 ```json
 {
@@ -71,23 +71,23 @@ apps/musicPlayer/data/
 
 应用运行时状态文件，用于现场恢复和跨端状态同步。App 启动时读取此文件恢复上次状态，运行中定期保存。
 
-| Field            | Type           | Default     | Description                                        |
-| ---------------- | -------------- | ----------- | -------------------------------------------------- |
-| currentView      | string         | "all-songs" | 当前视图（`"all-songs"` \| `"playlist"`）          |
-| activePlaylistId | string \| null | null        | 当前选中的播放列表 ID                              |
-| player           | object         | -           | 播放器状态对象（见下表）                           |
-| searchQuery      | string         | ""          | 当前搜索关键词                                     |
+| Field            | Type           | Default     | Description                               |
+| ---------------- | -------------- | ----------- | ----------------------------------------- |
+| currentView      | string         | "all-songs" | 当前视图（`"all-songs"` \| `"playlist"`） |
+| activePlaylistId | string \| null | null        | 当前选中的播放列表 ID                     |
+| player           | object         | -           | 播放器状态对象（见下表）                  |
+| searchQuery      | string         | ""          | 当前搜索关键词                            |
 
 #### Player State（嵌套在 `player` 中）
 
-| Field                  | Type           | Default      | Description                                                  |
-| ---------------------- | -------------- | ------------ | ------------------------------------------------------------ |
-| currentSongId          | string \| null | null         | 当前播放歌曲 ID                                              |
-| currentPlaylistContext | string \| null | null         | 当前播放上下文的播放列表 ID                                  |
-| isPlaying              | boolean        | false        | 是否正在播放                                                 |
-| currentTime            | number         | 0            | 当前播放进度（秒）                                           |
-| volume                 | number         | 0.7          | 音量（0.0 - 1.0）                                            |
-| playMode               | string         | "sequential" | 播放模式（`"sequential"` \| `"repeat-one"` \| `"shuffle"`）  |
+| Field                  | Type           | Default      | Description                                                 |
+| ---------------------- | -------------- | ------------ | ----------------------------------------------------------- |
+| currentSongId          | string \| null | null         | 当前播放歌曲 ID                                             |
+| currentPlaylistContext | string \| null | null         | 当前播放上下文的播放列表 ID                                 |
+| isPlaying              | boolean        | false        | 是否正在播放                                                |
+| currentTime            | number         | 0            | 当前播放进度（秒）                                          |
+| volume                 | number         | 0.7          | 音量（0.0 - 1.0）                                           |
+| playMode               | string         | "sequential" | 播放模式（`"sequential"` \| `"repeat-one"` \| `"shuffle"`） |
 
 ```json
 {
@@ -118,7 +118,8 @@ apps/musicPlayer/data/
 
 1. 用户在 App 中操作（如创建播放列表、添加歌曲到播放列表）
 2. App 将数据写入云端（`syncToCloud`）
-3. App 调用 `reportAction` 上报用户操作（如 `reportAction('CREATE_PLAYLIST', { playlistId: '...' })`）
+3. App 调用 `reportAction` 上报用户操作（如
+   `reportAction('CREATE_PLAYLIST', { playlistId: '...' })`）
 
 ### 启动恢复
 

@@ -23,42 +23,42 @@
 
 #### 帖子文件 `{postId}.json`
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| id | string | 是 | 帖子唯一标识，与文件名一致（不含 `.json` 后缀） |
-| author | object | 是 | 作者信息 |
-| author.name | string | 是 | 作者昵称 |
-| author.username | string | 是 | 作者用户名（`@xxx` 格式） |
-| author.avatar | string | 是 | 作者头像 URL，可为空字符串 |
-| content | string | 是 | 帖子内容，最长 280 字符 |
-| timestamp | integer | 是 | 发布时间戳（毫秒） |
-| likes | integer | 是 | 点赞数，最小值为 0 |
-| isLiked | boolean | 是 | 当前用户是否已点赞 |
-| comments | array | 是 | 评论列表，每项为 Comment 对象 |
+| 字段            | 类型    | 必填 | 说明                                            |
+| --------------- | ------- | ---- | ----------------------------------------------- |
+| id              | string  | 是   | 帖子唯一标识，与文件名一致（不含 `.json` 后缀） |
+| author          | object  | 是   | 作者信息                                        |
+| author.name     | string  | 是   | 作者昵称                                        |
+| author.username | string  | 是   | 作者用户名（`@xxx` 格式）                       |
+| author.avatar   | string  | 是   | 作者头像 URL，可为空字符串                      |
+| content         | string  | 是   | 帖子内容，最长 280 字符                         |
+| timestamp       | integer | 是   | 发布时间戳（毫秒）                              |
+| likes           | integer | 是   | 点赞数，最小值为 0                              |
+| isLiked         | boolean | 是   | 当前用户是否已点赞                              |
+| comments        | array   | 是   | 评论列表，每项为 Comment 对象                   |
 
 **Comment 对象结构：**
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| id | string | 是 | 评论唯一标识 |
-| author | object | 是 | 评论作者信息 |
-| author.name | string | 是 | 作者昵称 |
-| author.username | string | 是 | 作者用户名（`@xxx` 格式） |
-| author.avatar | string | 是 | 作者头像 URL，可为空字符串 |
-| content | string | 是 | 评论内容，最长 280 字符 |
-| timestamp | integer | 是 | 评论时间戳（毫秒） |
+| 字段            | 类型    | 必填 | 说明                       |
+| --------------- | ------- | ---- | -------------------------- |
+| id              | string  | 是   | 评论唯一标识               |
+| author          | object  | 是   | 评论作者信息               |
+| author.name     | string  | 是   | 作者昵称                   |
+| author.username | string  | 是   | 作者用户名（`@xxx` 格式）  |
+| author.avatar   | string  | 是   | 作者头像 URL，可为空字符串 |
+| content         | string  | 是   | 评论内容，最长 280 字符    |
+| timestamp       | integer | 是   | 评论时间戳（毫秒）         |
 
 ### 状态文件 `/state.json`
 
 存储应用运行时状态，用于启动时恢复现场。前端在状态变更时自动保存并同步到云端。
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| draftContent | string | 否 | 当前发帖输入框中的草稿内容 |
-| currentUser | object | 是 | 当前登录用户信息 |
-| currentUser.name | string | 是 | 用户昵称 |
-| currentUser.username | string | 是 | 用户名（`@xxx` 格式） |
-| currentUser.avatar | string | 是 | 头像 URL，可为空字符串 |
+| 字段                 | 类型   | 必填 | 说明                       |
+| -------------------- | ------ | ---- | -------------------------- |
+| draftContent         | string | 否   | 当前发帖输入框中的草稿内容 |
+| currentUser          | object | 是   | 当前登录用户信息           |
+| currentUser.name     | string | 是   | 用户昵称                   |
+| currentUser.username | string | 是   | 用户名（`@xxx` 格式）      |
+| currentUser.avatar   | string | 是   | 头像 URL，可为空字符串     |
 
 示例：
 
@@ -77,8 +77,7 @@
 
 ### Agent 操作（Agent → 前端）
 
-Agent 负责在云端完成文件的写入/修改/删除，完成后通过下发 Action 通知前端同步刷新。
-前端收到 Action 后仅从云端读取最新数据，不再进行本地文件创建。
+Agent 负责在云端完成文件的写入/修改/删除，完成后通过下发 Action 通知前端同步刷新。前端收到 Action 后仅从云端读取最新数据，不再进行本地文件创建。
 
 **Agent 创建帖子**:
 
@@ -89,7 +88,8 @@ Agent 负责在云端完成文件的写入/修改/删除，完成后通过下发
 **Agent 更新/点赞/评论帖子**:
 
 1. Agent 在云端修改帖子文件（更新内容、增加点赞、追加评论等）
-2. Agent 下发对应 Action（`UPDATE_POST`/`LIKE_POST`/`UNLIKE_POST`/`COMMENT_POST`），params 携带 `filePath` 或 `postId`
+2. Agent 下发对应 Action（`UPDATE_POST`/`LIKE_POST`/`UNLIKE_POST`/`COMMENT_POST`），params 携带
+   `filePath` 或 `postId`
 3. 前端收到 Action 后从云端重新读取该帖子文件，替换本地数据并刷新 UI
 
 **Agent 删除帖子**:

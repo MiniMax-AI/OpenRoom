@@ -2,7 +2,7 @@ import { UserConfigExport, ConfigEnv, loadEnv } from 'vite';
 import type { PluginOption, Plugin } from 'vite';
 import legacy from '@vitejs/plugin-legacy';
 import react from '@vitejs/plugin-react-swc';
-import { resolve } from 'path';
+import { resolve, sep } from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
 import autoprefixer from 'autoprefixer';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
@@ -17,6 +17,77 @@ const SESSIONS_DIR = resolve(os.homedir(), '.openroom', 'sessions');
 const CHARACTERS_FILE = resolve(os.homedir(), '.openroom', 'characters.json');
 const MODS_FILE = resolve(os.homedir(), '.openroom', 'mods.json');
 
+type ServerConfigSection = Record<string, unknown>;
+interface ServerPersistedConfig {
+  llm: ServerConfigSection;
+  imageGen?: ServerConfigSection;
+}
+type ProxyProvider = 'openai' | 'anthropic' | 'minimax' | 'gemini' | 'unknown';
+type ConfigScope = 'llm' | 'imageGen';
+
+let cachedServerConfig: {
+  mtimeMs: number;
+  value: ServerPersistedConfig | null;
+} | null = null;
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function normalizeServerConfig(raw: unknown): ServerPersistedConfig | null {
+  if (isObjectRecord(raw) && isObjectRecord(raw.llm)) {
+    const normalized: ServerPersistedConfig = { llm: { ...raw.llm } };
+    if (isObjectRecord(raw.imageGen)) {
+      normalized.imageGen = { ...raw.imageGen };
+    }
+    return normalized;
+  }
+
+  if (isObjectRecord(raw) && 'provider' in raw) {
+    return { llm: { ...raw } };
+  }
+
+  return null;
+}
+
+function getStoredApiKey(section?: ServerConfigSection): string | null {
+  return typeof section?.apiKey === 'string' && section.apiKey.trim() ? section.apiKey : null;
+}
+
+function redactConfigSection(section?: ServerConfigSection): ServerConfigSection | undefined {
+  if (!section) return undefined;
+  return {
+    ...section,
+    apiKey: '',
+    hasApiKey: !!getStoredApiKey(section),
+  };
+}
+
+export function redactServerConfig(config: ServerPersistedConfig | null): Record<string, unknown> {
+  if (!config) return {};
+
+  const redacted: Record<string, unknown> = {
+    llm: redactConfigSection(config.llm),
+  };
+  const imageGen = redactConfigSection(config.imageGen);
+  if (imageGen) {
+    redacted.imageGen = imageGen;
+  }
+  return redacted;
+}
+
+function mergeConfigSection(
+  existing: ServerConfigSection | undefined,
+  incoming: ServerConfigSection,
+): ServerConfigSection {
+  const merged: ServerConfigSection = { ...(existing || {}), ...incoming };
+  if (!Object.hasOwn(incoming, 'apiKey') && typeof existing?.apiKey === 'string') {
+    merged.apiKey = existing.apiKey;
+  }
+  delete merged.hasApiKey;
+  return merged;
+}
+
 /** LLM config persistence plugin — reads/writes config to ~/.openroom/config.json */
 function llmConfigPlugin(): Plugin {
   return {
@@ -27,14 +98,8 @@ function llmConfigPlugin(): Plugin {
 
         if (req.method === 'GET') {
           try {
-            if (fs.existsSync(LLM_CONFIG_FILE)) {
-              const content = fs.readFileSync(LLM_CONFIG_FILE, 'utf-8');
-              res.writeHead(200);
-              res.end(content);
-            } else {
-              res.writeHead(200);
-              res.end('{}');
-            }
+            res.writeHead(200);
+            res.end(JSON.stringify(redactServerConfig(loadServerConfig())));
           } catch (err) {
             res.writeHead(500);
             res.end(JSON.stringify({ error: String(err) }));
@@ -46,12 +111,52 @@ function llmConfigPlugin(): Plugin {
           const chunks: Buffer[] = [];
           req.on('data', (chunk: Buffer) => chunks.push(chunk));
           req.on('end', () => {
+            let parsed: unknown;
+            let nextConfig: ServerPersistedConfig | null;
+            let existingConfig: ServerPersistedConfig | null;
+            let mergedConfig: ServerPersistedConfig;
+
             try {
               const body = Buffer.concat(chunks).toString();
-              // Validate JSON before writing
-              JSON.parse(body);
-              fs.mkdirSync(resolve(os.homedir(), '.openroom'), { recursive: true });
-              fs.writeFileSync(LLM_CONFIG_FILE, body, 'utf-8');
+              parsed = JSON.parse(body);
+              nextConfig = normalizeServerConfig(parsed);
+              if (!nextConfig) {
+                throw new Error('Invalid config payload');
+              }
+
+              existingConfig = loadServerConfig();
+              mergedConfig = {
+                llm: mergeConfigSection(existingConfig?.llm, nextConfig.llm),
+              };
+
+              if (isObjectRecord(parsed) && Object.hasOwn(parsed, 'imageGen')) {
+                if (parsed.imageGen !== null) {
+                  if (!isObjectRecord(parsed.imageGen)) {
+                    throw new Error('Invalid imageGen config payload');
+                  }
+                  mergedConfig.imageGen = mergeConfigSection(
+                    existingConfig?.imageGen,
+                    parsed.imageGen,
+                  );
+                }
+              } else if (existingConfig?.imageGen) {
+                mergedConfig.imageGen = { ...existingConfig.imageGen };
+              }
+            } catch (err) {
+              res.writeHead(400);
+              res.end(JSON.stringify({ error: String(err) }));
+              return;
+            }
+
+            try {
+              const configDir = resolve(os.homedir(), '.openroom');
+              fs.mkdirSync(configDir, { recursive: true, mode: 0o700 });
+              fs.writeFileSync(LLM_CONFIG_FILE, JSON.stringify(mergedConfig), {
+                encoding: 'utf-8',
+                mode: 0o600,
+              });
+              const stat = fs.statSync(LLM_CONFIG_FILE);
+              cachedServerConfig = { mtimeMs: stat.mtimeMs, value: mergedConfig };
               res.writeHead(200);
               res.end(JSON.stringify({ ok: true }));
             } catch (err) {
@@ -67,6 +172,27 @@ function llmConfigPlugin(): Plugin {
       });
     },
   };
+}
+
+/**
+ * Sanitize a relative path to prevent directory traversal.
+ * Resolves any ../ sequences and ensures the result stays within the expected base.
+ * Returns null if the path would escape the base directory.
+ */
+function sanitizeRelativePath(relPath: string, baseDir: string): string | null {
+  // Strip null bytes and normalize
+  const cleaned = relPath.replace(/\0/g, '');
+  // Only allow safe characters: alphanumeric, underscore, hyphen, dot, forward slash
+  const safe = cleaned.replace(/[^a-zA-Z0-9_\-./]/g, '_');
+  // Resolve to absolute and verify it stays within baseDir
+  const resolved = resolve(baseDir, safe);
+  // Normalize both paths for comparison (resolve handles .. sequences)
+  const normalizedBase = resolve(baseDir);
+  if (!resolved.startsWith(normalizedBase + sep) && resolved !== normalizedBase) {
+    return null;
+  }
+  // Return the relative portion (stripped of base) for use with join()
+  return resolved.slice(normalizedBase.length + 1) || '';
 }
 
 /**
@@ -91,8 +217,13 @@ function sessionDataPlugin(): Plugin {
           return;
         }
 
-        // Sanitize: only allow alphanumeric, underscore, hyphen, dot, forward slash
-        const safePath = relPath.replace(/[^a-zA-Z0-9_\-./]/g, '_').replace(/\.\./g, '');
+        // Sanitize: resolve path and ensure it stays within SESSIONS_DIR
+        const safePath = sanitizeRelativePath(relPath, SESSIONS_DIR);
+        if (safePath === null) {
+          res.writeHead(403);
+          res.end(JSON.stringify({ error: 'Invalid path' }));
+          return;
+        }
         const filePath = join(SESSIONS_DIR, safePath);
 
         // Directory listing: ?action=list&path=...
@@ -216,7 +347,12 @@ function sessionDataPlugin(): Plugin {
           return;
         }
 
-        const safePath = relPath.replace(/[^a-zA-Z0-9_\-./]/g, '_').replace(/\.\./g, '');
+        const safePath = sanitizeRelativePath(relPath, SESSIONS_DIR);
+        if (safePath === null) {
+          res.writeHead(403);
+          res.end(JSON.stringify({ error: 'Invalid path' }));
+          return;
+        }
         const targetDir = join(SESSIONS_DIR, safePath);
 
         try {
@@ -252,13 +388,180 @@ function logServerPlugin(): Plugin {
   };
 }
 
-/** LLM API proxy plugin — resolves browser CORS restrictions */
+/** Load server-side LLM config for API key injection */
+function loadServerConfig(): ServerPersistedConfig | null {
+  try {
+    if (!fs.existsSync(LLM_CONFIG_FILE)) {
+      cachedServerConfig = null;
+      return null;
+    }
+
+    const stat = fs.statSync(LLM_CONFIG_FILE);
+    if (cachedServerConfig && cachedServerConfig.mtimeMs === stat.mtimeMs) {
+      return cachedServerConfig.value;
+    }
+
+    const parsed = normalizeServerConfig(JSON.parse(fs.readFileSync(LLM_CONFIG_FILE, 'utf-8')));
+    cachedServerConfig = { mtimeMs: stat.mtimeMs, value: parsed };
+    return parsed;
+  } catch {
+    // Config file missing or malformed
+    cachedServerConfig = null;
+  }
+  return null;
+}
+
+/** Determine provider type from target URL or X-LLM-Provider hint header */
+export function inferProvider(targetUrl: URL | string, hint?: string): ProxyProvider {
+  const normalizedHint = hint?.trim().toLowerCase();
+  if (normalizedHint) {
+    if (
+      normalizedHint === 'openai' ||
+      normalizedHint === 'anthropic' ||
+      normalizedHint === 'minimax' ||
+      normalizedHint === 'gemini'
+    ) {
+      return normalizedHint;
+    }
+    return 'unknown';
+  }
+
+  try {
+    const parsed = targetUrl instanceof URL ? targetUrl : new URL(targetUrl);
+    const host = parsed.hostname.toLowerCase();
+    if (host.includes('anthropic')) return 'anthropic';
+    if (host.includes('minimax')) return 'minimax';
+    if (host.includes('google') || host.includes('generativelanguage')) return 'gemini';
+    return 'openai'; // default: OpenAI-compatible
+  } catch {
+    return 'unknown';
+  }
+}
+
+export function parseProxyTargetUrl(targetUrl: string): URL | null {
+  try {
+    const parsed = new URL(targetUrl);
+    if (!['https:', 'http:'].includes(parsed.protocol)) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+/** Known LLM/image-gen provider hostnames that the proxy may forward to. */
+const ALLOWED_PROVIDER_HOSTS = new Set([
+  'api.openai.com',
+  'api.anthropic.com',
+  'api.deepseek.com',
+  'api.minimax.io',
+  'api.z.ai',
+  'api.moonshot.cn',
+  'openrouter.ai',
+  'generativelanguage.googleapis.com',
+]);
+
+/** Local development hosts — only allowed when ALLOW_LOCAL_LLM=true. */
+const LOCAL_LLM_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1']);
+
+/** Validate that a parsed target URL points to an allowed provider host.
+ * Public provider hosts must use HTTPS. Local development hosts may use HTTP/HTTPS
+ * only when ALLOW_LOCAL_LLM=true. */
+export function isAllowedTarget(parsed: URL): boolean {
+  const host = parsed.hostname.toLowerCase();
+  if (ALLOWED_PROVIDER_HOSTS.has(host)) {
+    return parsed.protocol === 'https:';
+  }
+  if (LOCAL_LLM_HOSTS.has(host) && process.env.ALLOW_LOCAL_LLM === 'true') {
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  }
+  return false;
+}
+
+function normalizeConfigScope(scope?: string): ConfigScope | undefined {
+  return scope === 'imageGen' || scope === 'llm' ? scope : undefined;
+}
+
+export function selectServerApiKey(
+  config: ServerPersistedConfig | null,
+  scope: ConfigScope | undefined,
+  provider: ProxyProvider,
+): string | null {
+  if (!config) return null;
+
+  const llmApiKey = getStoredApiKey(config.llm);
+  const imageGenApiKey = getStoredApiKey(config.imageGen);
+
+  if (scope === 'llm') return llmApiKey;
+  if (scope === 'imageGen') return imageGenApiKey;
+  if (provider === 'gemini') return imageGenApiKey || llmApiKey;
+  return llmApiKey || imageGenApiKey;
+}
+
+function isBlockedPassthroughHeader(headerName: string): boolean {
+  return (
+    headerName.startsWith('x-llm-') ||
+    [
+      'authorization',
+      'cookie',
+      'host',
+      'connection',
+      'proxy-authorization',
+      'x-api-key',
+      'x-goog-api-key',
+      // Hop-by-hop headers per RFC 9110 — forwarding these can cause
+      // request smuggling or broken upstream responses
+      'content-length',
+      'transfer-encoding',
+      'content-encoding',
+      'accept-encoding',
+      'te',
+      'trailer',
+      'upgrade',
+      'keep-alive',
+    ].includes(headerName)
+  );
+}
+
+/** Inject API key from server-side config into proxy request headers */
+function injectServerApiKey(
+  headers: Record<string, string>,
+  targetUrl: URL,
+  providerHint?: string,
+  configScope?: string,
+): void {
+  const config = loadServerConfig();
+  const provider = inferProvider(targetUrl, providerHint);
+  const apiKey = selectServerApiKey(config, normalizeConfigScope(configScope), provider);
+
+  if (!apiKey) return;
+
+  if (provider === 'anthropic' || provider === 'minimax') {
+    headers['x-api-key'] = apiKey;
+  } else if (provider === 'gemini') {
+    headers['x-goog-api-key'] = apiKey;
+  } else {
+    headers['authorization'] = `Bearer ${apiKey}`;
+  }
+}
+
+/** LLM API proxy plugin — resolves browser CORS restrictions
+ *  API keys are now injected server-side from ~/.openroom/config.json.
+ *  The browser never sends or sees API keys. */
 function llmProxyPlugin(): Plugin {
   return {
     name: 'llm-proxy',
     configureServer(server) {
       server.middlewares.use('/api/llm-proxy', async (req, res) => {
-        const targetUrl = req.headers['x-llm-target-url'] as string;
+        // Normalize header values — Node http headers can be string[] for duplicates
+        const getHeader = (name: string): string | undefined => {
+          const val = req.headers[name];
+          if (Array.isArray(val)) return val[0];
+          return val;
+        };
+
+        const targetUrl = getHeader('x-llm-target-url');
         if (!targetUrl) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Missing X-LLM-Target-URL header' }));
@@ -269,24 +572,78 @@ function llmProxyPlugin(): Plugin {
         req.on('end', async () => {
           try {
             const body = Buffer.concat(chunks).toString();
-            const headers: Record<string, string> = {};
-            // Forward all headers except host/connection/internal ones
-            const skipKeys = new Set(['host', 'connection', 'content-length', 'x-llm-target-url']);
-            for (const [key, val] of Object.entries(req.headers)) {
-              if (typeof val !== 'string') continue;
-              if (skipKeys.has(key)) continue;
-              if (key.startsWith('x-custom-')) {
-                headers[key.replace('x-custom-', '')] = val;
-              } else {
-                headers[key] = val;
-              }
+            const parsedTargetUrl = parseProxyTargetUrl(targetUrl);
+            if (!parsedTargetUrl) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Invalid target URL' }));
+              return;
             }
 
-            const fetchRes = await fetch(targetUrl, {
-              method: req.method || 'POST',
+            // Strict SSRF: validate target host BEFORE injecting keys
+            if (!isAllowedTarget(parsedTargetUrl)) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(
+                JSON.stringify({
+                  error: 'Target host not allowed',
+                  host: parsedTargetUrl.hostname,
+                }),
+              );
+              return;
+            }
+            const headers: Record<string, string> = {};
+            // Only forward safe, non-sensitive headers from the browser.
+            // API keys are NO LONGER accepted from the client — they come from server config.
+            const allowKeys = new Set([
+              'content-type',
+              'anthropic-version', // Anthropic API version (not a secret)
+            ]);
+            for (const [key, val] of Object.entries(req.headers)) {
+              if (typeof val !== 'string') continue;
+              if (allowKeys.has(key)) {
+                headers[key] = val;
+              } else if (key.startsWith('x-custom-')) {
+                // Only forward x-custom- headers that map to safe, non-sensitive names
+                const strippedKey = key.slice('x-custom-'.length);
+                // Block headers that could inject auth or override internal routing
+                if (strippedKey && !isBlockedPassthroughHeader(strippedKey)) {
+                  headers[strippedKey] = val;
+                }
+              }
+              // All other headers (including authorization and x-api-key) are dropped
+            }
+
+            // Inject API key from server-side config
+            injectServerApiKey(
               headers,
-              body,
-            });
+              parsedTargetUrl,
+              getHeader('x-llm-provider'),
+              getHeader('x-llm-config-scope'),
+            );
+
+            const controller = new AbortController();
+            const timeoutMs = 90_000;
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+            let fetchRes: Response;
+            try {
+              fetchRes = await fetch(parsedTargetUrl.toString(), {
+                method: req.method || 'POST',
+                headers,
+                body,
+                signal: controller.signal,
+              });
+            } catch (err) {
+              if (err instanceof Error && err.name === 'AbortError') {
+                res.writeHead(504, { 'Content-Type': 'application/json' });
+                res.end(
+                  JSON.stringify({ error: `Upstream request timed out after ${timeoutMs}ms` }),
+                );
+                return;
+              }
+              throw err;
+            } finally {
+              clearTimeout(timeoutId);
+            }
 
             res.writeHead(fetchRes.status, {
               'Content-Type': fetchRes.headers.get('Content-Type') || 'application/json',

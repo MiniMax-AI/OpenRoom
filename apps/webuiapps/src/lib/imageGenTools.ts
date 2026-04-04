@@ -5,7 +5,7 @@
 
 import * as idb from './diskStorage';
 import { getSessionPath } from './sessionPath';
-import { generateImage, type ImageGenConfig } from './imageGenClient';
+import { generateImage, hasUsableImageGenConfig, type ImageGenConfig } from './imageGenClient';
 
 const TOOL_NAME = 'generate_image';
 const IMAGES_DIR = 'generated-images';
@@ -70,7 +70,7 @@ export async function executeImageGenTool(
   params: Record<string, string>,
   config: ImageGenConfig | null,
 ): Promise<{ result: string; dataUrl?: string }> {
-  if (!config?.apiKey) {
+  if (!hasUsableImageGenConfig(config)) {
     return { result: 'error: image generation not configured, please set up in Settings' };
   }
 

@@ -8,10 +8,15 @@ export type ImageGenProvider = 'openai' | 'gemini';
 export interface ImageGenConfig {
   provider: ImageGenProvider;
   apiKey: string;
+  hasApiKey?: boolean;
   baseUrl: string;
   model: string;
   customHeaders?: string;
 }
+
+export type ImageGenConfigUpdate = Omit<ImageGenConfig, 'apiKey' | 'hasApiKey'> & {
+  apiKey?: string;
+};
 
 export interface ImageGenResult {
   base64: string;
@@ -20,8 +25,6 @@ export interface ImageGenResult {
 
 import { logger } from './logger';
 import { loadPersistedConfig } from './configPersistence';
-
-const CONFIG_KEY = 'webuiapps-imagegen-config';
 
 const DEFAULT_CONFIGS: Record<ImageGenProvider, Omit<ImageGenConfig, 'apiKey'>> = {
   openai: {
@@ -43,37 +46,37 @@ export function getDefaultImageGenConfig(
 }
 
 /**
- * Load image gen config — priority: local file (~/.openroom/config.json) > localStorage.
- * Falls back gracefully if the dev server API is unavailable.
+ * Load image gen config — from server-side config only.
+ * Keys never touch localStorage.
  */
 export async function loadImageGenConfig(): Promise<ImageGenConfig | null> {
-  // 1. Try local file via dev-server API
   try {
     const persisted = await loadPersistedConfig();
     if (persisted?.imageGen) {
-      localStorage.setItem(CONFIG_KEY, JSON.stringify(persisted.imageGen));
       return persisted.imageGen;
     }
   } catch {
     // API not available — fall through
   }
-
-  // 2. Fall back to localStorage
-  return loadImageGenConfigSync();
+  return null;
 }
 
-/** Synchronous read from localStorage cache. */
+/** Synchronous read — returns null since keys are server-side only. */
 export function loadImageGenConfigSync(): ImageGenConfig | null {
-  try {
-    const raw = localStorage.getItem(CONFIG_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
-export function saveImageGenConfig(config: ImageGenConfig): void {
-  localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+export function saveImageGenConfig(_config: ImageGenConfig): void {
+  // No-op: config is saved server-side via saveConfig in llmClient.ts
+}
+
+export function hasUsableImageGenConfig(
+  config: ImageGenConfig | null | undefined,
+): config is ImageGenConfig {
+  const baseUrl = typeof config?.baseUrl === 'string' ? config.baseUrl.trim() : '';
+  const model = typeof config?.model === 'string' ? config.model.trim() : '';
+  const hasApiKey = typeof config?.apiKey === 'string' ? config.apiKey.trim().length > 0 : false;
+  return !!baseUrl && !!model && (hasApiKey || !!config?.hasApiKey);
 }
 
 /** Parse custom headers, adding x-custom- prefix */
@@ -128,8 +131,9 @@ async function generateImageOpenAI(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`,
+      'X-LLM-Config-Scope': 'imageGen',
       'X-LLM-Target-URL': targetUrl,
+      // API key injected server-side by the proxy
       ...parseCustomHeaders(config.customHeaders),
     },
     body: JSON.stringify(body),
@@ -163,8 +167,9 @@ async function generateImageGemini(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-goog-api-key': config.apiKey,
+      'X-LLM-Config-Scope': 'imageGen',
       'X-LLM-Target-URL': targetUrl,
+      // API key injected server-side by the proxy
       ...parseCustomHeaders(config.customHeaders),
     },
     body: JSON.stringify(body),
