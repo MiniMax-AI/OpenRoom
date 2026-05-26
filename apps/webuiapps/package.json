@@ -16,7 +16,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "framer-motion": "^12.34.0",
+    "framer-motion": "^12.40.0",
     "jszip": "^3.10.1",
     "react-markdown": "^10.1.0",
     "rehype-raw": "^7.0.0",
