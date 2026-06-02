@@ -48,7 +48,7 @@ jobs:
             IMPORTANT: After completing your review, you MUST post your findings as a PR comment.
             Steps to post: 1) Write review to /tmp/review.md using the Write tool, 2) Run: gh pr comment $PR_NUMBER --body-file /tmp/review.md
             Get the PR number first via: gh pr list --state open --json number --jq '.[0].number'
-          claude_args: '--model MiniMax-M2.5 --max-turns 20 --allowedTools "Bash(git:*),Bash(gh:*),Read,Glob,Grep,WebFetch,Write"'
+          claude_args: '--model MiniMax-M3 --max-turns 20 --allowedTools "Bash(git:*),Bash(gh:*),Read,Glob,Grep,WebFetch,Write"'
 
   interactive:
     if: |
@@ -68,4 +68,4 @@ jobs:
           ANTHROPIC_BASE_URL: https://api.minimax.io/anthropic
         with:
           anthropic_api_key: ${{ secrets.MINIMAX_API_KEY }}
-          claude_args: '--model MiniMax-M2.5 --max-turns 20 --allowedTools "Bash(git:*),Bash(gh:*),Read,Glob,Grep,WebFetch,Edit,Write"'
+          claude_args: '--model MiniMax-M3 --max-turns 20 --allowedTools "Bash(git:*),Bash(gh:*),Read,Glob,Grep,WebFetch,Edit,Write"'

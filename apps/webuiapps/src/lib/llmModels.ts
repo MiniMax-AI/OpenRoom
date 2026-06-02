@@ -88,15 +88,11 @@ export const LLM_PROVIDER_CONFIGS: Record<LLMProvider, ProviderModelConfig> = {
   minimax: {
     displayName: 'MiniMax',
     baseUrl: 'https://api.minimax.io/anthropic/v1',
-    defaultModel: 'MiniMax-M2.5',
+    defaultModel: 'MiniMax-M3',
     models: [
-      { id: 'MiniMax-M2.5', name: 'MiniMax M2.5', category: 'flagship' },
-      { id: 'MiniMax-M2.5-highspeed', name: 'MiniMax M2.5 Highspeed', category: 'general' },
-      { id: 'MiniMax-M2.1', name: 'MiniMax M2.1', category: 'coding' },
-      { id: 'MiniMax-M2.1-highspeed', name: 'MiniMax M2.1 Highspeed', category: 'coding' },
+      { id: 'MiniMax-M3', name: 'MiniMax M3', category: 'flagship' },
       { id: 'MiniMax-M2.7', name: 'MiniMax M2.7', category: 'flagship' },
       { id: 'MiniMax-M2.7-highspeed', name: 'MiniMax M2.7 Highspeed', category: 'general' },
-      { id: 'MiniMax-M2', name: 'MiniMax M2', category: 'general' },
     ],
   },
 
@@ -135,13 +131,11 @@ export const LLM_PROVIDER_CONFIGS: Record<LLMProvider, ProviderModelConfig> = {
   openrouter: {
     displayName: 'OpenRouter',
     baseUrl: 'https://openrouter.ai/api/v1',
-    defaultModel: 'minimax/MiniMax-M2.5',
+    defaultModel: 'minimax/MiniMax-M3',
     models: [
-      { id: 'minimax/MiniMax-M2.5', name: 'MiniMax M2.5', category: 'flagship' },
-      { id: 'minimax/MiniMax-M2.5-highspeed', name: 'MiniMax M2.5 Highspeed', category: 'general' },
+      { id: 'minimax/MiniMax-M3', name: 'MiniMax M3', category: 'flagship' },
       { id: 'minimax/MiniMax-M2.7', name: 'MiniMax M2.7', category: 'flagship' },
       { id: 'minimax/MiniMax-M2.7-highspeed', name: 'MiniMax M2.7 Highspeed', category: 'general' },
-      { id: 'minimax/MiniMax-M2.1', name: 'MiniMax M2.1', category: 'coding' },
       { id: 'anthropic/claude-sonnet-4-6', name: 'Claude Sonnet 4.6', category: 'general' },
       { id: 'openai/gpt-5.4', name: 'GPT-5.4', category: 'flagship' },
       { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat', category: 'general' },

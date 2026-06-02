@@ -132,7 +132,7 @@ describe('getDefaultProviderConfig()', () => {
     const cfg = getDefaultProviderConfig('minimax');
     expect(cfg.provider).toBe('minimax');
     expect(cfg.baseUrl).toBe('https://api.minimax.io/anthropic/v1');
-    expect(cfg.model).toBe('MiniMax-M2.5');
+    expect(cfg.model).toBe('MiniMax-M3');
   });
 
   it('returns correct defaults for z.ai', () => {
@@ -153,7 +153,7 @@ describe('getDefaultProviderConfig()', () => {
     const cfg = getDefaultProviderConfig('openrouter');
     expect(cfg.provider).toBe('openrouter');
     expect(cfg.baseUrl).toBe('https://openrouter.ai/api/v1');
-    expect(cfg.model).toBe('minimax/MiniMax-M2.5');
+    expect(cfg.model).toBe('minimax/MiniMax-M3');
   });
 
   it('returns consistent values for the same provider', () => {
@@ -560,7 +560,7 @@ respond_to_user
         provider: 'minimax',
         apiKey: 'minimax-key',
         baseUrl: 'https://api.minimax.io/anthropic',
-        model: 'MiniMax-M2.5',
+        model: 'MiniMax-M3',
       };
       const mockFetch = vi.fn().mockResolvedValueOnce(makeAnthropicResponse('MiniMax response'));
       globalThis.fetch = mockFetch;
