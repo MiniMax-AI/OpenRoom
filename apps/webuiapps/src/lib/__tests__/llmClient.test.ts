@@ -131,7 +131,7 @@ describe('getDefaultProviderConfig()', () => {
   it('returns correct defaults for minimax', () => {
     const cfg = getDefaultProviderConfig('minimax');
     expect(cfg.provider).toBe('minimax');
-    expect(cfg.baseUrl).toBe('https://api.minimax.io/anthropic/v1');
+    expect(cfg.baseUrl).toBe('https://api.minimax.io/anthropic');
     expect(cfg.model).toBe('MiniMax-M3');
   });
 
@@ -570,6 +570,7 @@ respond_to_user
       expect(result.content).toBe('MiniMax response');
       const headers = mockFetch.mock.calls[0][1].headers as Record<string, string>;
       expect(headers['anthropic-version']).toBe('2023-06-01');
+      expect(headers['X-LLM-Target-URL']).toBe('https://api.minimax.io/anthropic/v1/messages');
     });
   });
 

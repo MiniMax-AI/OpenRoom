@@ -87,7 +87,7 @@ export const LLM_PROVIDER_CONFIGS: Record<LLMProvider, ProviderModelConfig> = {
 
   minimax: {
     displayName: 'MiniMax',
-    baseUrl: 'https://api.minimax.io/anthropic/v1',
+    baseUrl: 'https://api.minimax.io/anthropic',
     defaultModel: 'MiniMax-M3',
     models: [
       { id: 'MiniMax-M3', name: 'MiniMax M3', category: 'flagship' },
