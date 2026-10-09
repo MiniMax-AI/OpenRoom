@@ -226,9 +226,10 @@ export async function executeFileTool(
         const parts = filePath.split('/');
         const name = parts.pop()!;
         const dir = parts.join('/');
-        await idb.putTextFilesByJSON({
-          files: [{ path: dir || undefined, name, content }],
-        });
+        await idb.putTextFilesByJSON(
+          { files: [{ path: dir || undefined, name, content }] },
+          { throwOnError: true },
+        );
         return 'success';
       } catch (e) {
         return `error: ${String(e)}`;
@@ -254,7 +255,7 @@ export async function executeFileTool(
       const filePath = (params.file_path || '').replace(/^\/+/, '');
       if (!filePath) return 'error: file_path is required';
       try {
-        await idb.deleteFilesByPaths({ file_paths: [filePath] });
+        await idb.deleteFilesByPaths({ file_paths: [filePath] }, { throwOnError: true });
         return 'success';
       } catch (e) {
         return `error: ${String(e)}`;

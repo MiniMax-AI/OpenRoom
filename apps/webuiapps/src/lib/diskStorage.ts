@@ -70,20 +70,26 @@ export async function getFile(filePath: string): Promise<unknown> {
 /**
  * Write files. Compatible with the old putTextFilesByJSON signature.
  * files: [{ path: "directory", name: "filename", content: "..." }]
+ * Callers that report mutation outcomes can opt into error propagation.
  */
-export async function putTextFilesByJSON(data: {
-  files: Array<{ path?: string; name?: string; content?: string }>;
-}): Promise<void> {
+export async function putTextFilesByJSON(
+  data: { files: Array<{ path?: string; name?: string; content?: string }> },
+  options: { throwOnError?: boolean } = {},
+): Promise<void> {
   const promises = data.files.map(async (file) => {
     const fullPath = file.path ? `${file.path}/${file.name}` : file.name || '';
     if (!fullPath) return;
     try {
-      await fetch(apiUrl(fullPath), {
+      const res = await fetch(apiUrl(fullPath), {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: file.content || '',
       });
+      if (options.throwOnError && !res.ok) {
+        throw new Error(`File write failed (HTTP ${res.status})`);
+      }
     } catch (e) {
+      if (options.throwOnError) throw e;
       console.warn('[diskStorage] putTextFilesByJSON write failed:', e);
     }
   });
@@ -113,11 +119,18 @@ export async function putBinaryFile(
   });
 }
 
-export async function deleteFilesByPaths(data: { file_paths: string[] }): Promise<void> {
+export async function deleteFilesByPaths(
+  data: { file_paths: string[] },
+  options: { throwOnError?: boolean } = {},
+): Promise<void> {
   const promises = data.file_paths.map(async (filePath) => {
     try {
-      await fetch(apiUrl(filePath), { method: 'DELETE' });
-    } catch {
+      const res = await fetch(apiUrl(filePath), { method: 'DELETE' });
+      if (options.throwOnError && !res.ok) {
+        throw new Error(`File delete failed (HTTP ${res.status})`);
+      }
+    } catch (e) {
+      if (options.throwOnError) throw e;
       // silently ignore
     }
   });
