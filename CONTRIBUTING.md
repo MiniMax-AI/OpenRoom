@@ -46,6 +46,45 @@ The fastest way is via the Vibe workflow with [Claude Code](https://docs.anthrop
 
 This automatically generates all boilerplate, integrates with the AI Agent, and registers the app.
 
+#### Optional: research before planning
+
+Use [Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp) in
+Claude Code to find current library documentation and fetch relevant pages before
+running `/vibe`. Anonymous search uses Fast mode and needs no account or API key;
+the free endpoint is intended for exploration and light use.
+
+From the repository root, add it to your local Claude Code configuration:
+
+```bash
+claude mcp add --transport http --scope local parallel-search https://search.parallel.ai/mcp \
+  --header "User-Agent: OpenRoom-contributor-research"
+claude mcp get parallel-search
+```
+
+Start Claude Code in the same directory and run `/mcp` to confirm the connection.
+For example, before adding synced lyrics to MusicApp, ask:
+
+```text
+Use Parallel's web_search to find the React documentation on synchronizing a
+media element with Effects, then web_fetch the relevant page. Summarize the
+playback synchronization and cleanup requirements with source URLs. Do not edit
+files yet.
+```
+
+Use the findings when describing your change to `/vibe MusicApp`. Keep generated
+apps within the existing frontend and data-interaction rules. This setup provides
+research tools to Claude Code, not to the browser's in-app chat; it does not add a
+runtime dependency or shared `.mcp.json`.
+
+To remove the local connection:
+
+```bash
+claude mcp remove --scope local parallel-search
+```
+
+See [Claude Code's MCP guide](https://code.claude.com/docs/en/mcp) for configuration
+scopes and connection troubleshooting.
+
 ### Option 2: Building Manually (no Claude Code required)
 
 You can build an app by hand without any AI tooling. Follow this structure:
