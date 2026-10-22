@@ -1,4 +1,4 @@
-FROM node:20-alpine as builder
+FROM node:24-alpine as builder
 
 ARG ENV
 ARG SENTRY_AUTH_TOKEN
