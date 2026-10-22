@@ -1,0 +1,154 @@
+app_id: 17
+app_name: mystery
+app_display_name: Mystery
+version: "1.0.0"
+description: >
+  Cooperative murder-mystery investigation app. Steven (human) and Kayley (Agent)
+  investigate the Marcus Vale Gala case together. Neither knows the killer;
+  a separate Game Master subprocess (ws://localhost:5182) holds the LOCKED truth
+  and answers investigation actions with narrative, evidence, and suspect demeanor.
+  The Agent and the user both play detectives — every action either party takes
+  is dispatched to the GM over the same WebSocket and the response updates the
+  shared UI (evidence board, suspect demeanor chips, investigation log).
+displayDesc: >
+  Cooperative noir murder mystery — investigate a locked-room killing alongside Kayley.
+
+# ============================================================
+# Actions dispatched from Agent → frontend. The frontend forwards them to the
+# GM subprocess and appends the GM's narrative reply to the investigation log.
+# The LOCKED truth (killer / motive / weapon / method) is never exposed here.
+# ============================================================
+
+actions:
+  - type: INTERROGATE
+    name: Interrogate Suspect
+    description: >
+      Press a suspect with questions. The GM responds with the suspect's in-character
+      answer, any narrative clues, and optional suspect_demeanor updates (calm,
+      nervous, defensive, evasive, rattled, cold).
+    params:
+      - name: suspect_id
+        type: string
+        description: Suspect identifier
+        required: true
+        enum: [priya, jake, mira, cole, aiden]
+
+  - type: EXAMINE_LOCATION
+    name: Examine Location
+    description: >
+      Physically examine a location in the mansion. The GM responds with a
+      description and may unlock new evidence items into the evidence board.
+    params:
+      - name: location_id
+        type: string
+        description: Location identifier
+        required: true
+        enum: [study, balcony, bar, upstairs_bathroom]
+
+  - type: COLLECT_EVIDENCE
+    name: Collect Evidence
+    description: >
+      Formally collect a piece of evidence that has already been revealed. The
+      GM may respond with additional forensic detail or an implication that
+      widens the investigation.
+    params:
+      - name: evidence_id
+        type: string
+        description: Evidence identifier as surfaced by prior EXAMINE_LOCATION / INTERROGATE responses
+        required: true
+
+  - type: READ_DOSSIER
+    name: Read Dossier
+    description: >
+      Open the case file on a suspect — background, motive candidates, opportunity
+      timeline. GM returns a narrative dossier; does NOT reveal the locked truth.
+    params:
+      - name: suspect_id
+        type: string
+        description: Suspect identifier
+        required: true
+        enum: [priya, jake, mira, cole, aiden]
+
+  - type: MAKE_ACCUSATION
+    name: Make Accusation
+    description: >
+      Formally accuse a suspect. This is the endgame — the GM compares killer,
+      motive, weapon, and method against the locked solution and returns a
+      game_over payload. One shot; be specific.
+    params:
+      - name: killer_id
+        type: string
+        description: Who did it
+        required: true
+        enum: [priya, jake, mira, cole, aiden]
+      - name: motive
+        type: string
+        description: Why they did it
+        required: true
+      - name: weapon
+        type: string
+        description: What they used
+        required: true
+      - name: method
+        type: string
+        description: How and when they did it
+        required: true
+
+  - type: FINISH_INVESTIGATION_TURN
+    name: Finish Investigation Turn
+    description: >
+      End your side of the current investigation turn and hand control to your partner.
+      Required after interrogation, dossier read, or location visit (examine + collect).
+      Does not call the GM.
+
+  - type: GET_MYSTERY_STATE
+    name: Get Mystery State
+    description: >
+      Returns a structured text summary of the shared investigation state (turn owner,
+      readiness flags, evidence keys, chat excerpt). Use instead of screenshots.
+      Does not call the GM.
+
+  - type: SET_ACCUSATION_READY
+    name: Set Accusation Readiness
+    description: >
+      Kayley's readiness to open the formal accusation flow. Both partners must be
+      ready before MAKE_ACCUSATION is allowed for the current-turn actor.
+      Does not call the GM.
+    params:
+      - name: ready
+        type: string
+        description: "true" or "false"
+        required: true
+
+  - type: RESET_GAMEOVER
+    name: Reset Game Over
+    description: >
+      Clear a stale gameOver state so investigation can resume. Useful when a
+      prior MAKE_ACCUSATION left a malformed gameOver in React state (e.g.
+      empty object from a GM verdict-normalizer regression) and the next
+      action is being blocked by the !gameOver gate. Does not call the GM.
+
+  - type: SET_OPENING_PICK
+    name: Set Opening Pick
+    description: >
+      Sets who takes the first investigation turn. Only valid before a game has
+      started (turnOwner is null). Unblocks autonomous play when no human is
+      present to click the opening-pick buttons in the UI. Does not call the GM.
+    params:
+      - name: leader
+        type: string
+        description: "human" or "agent"
+        required: true
+
+  - type: CHAT_MESSAGE
+    name: Chat Message
+    description: >
+      Speak into the shared Investigation Log as co-detective banter — observations,
+      theories, suspicions, jokes, push-backs on Steven's reads. Required at least
+      once per turn so the detective dialogue stays alive. Does NOT count as your
+      investigation action and does not call the GM.
+    params:
+      - name: text
+        type: string
+        description: The chat message text (modern noir tone, dry and observant).
+        required: true

@@ -1,0 +1,197 @@
+.wrapper {
+  /* react-rnd applies inline transform/size. This class is purely for
+     z-index / structural layering. */
+}
+
+.window {
+  width: 100%;
+  height: 100%;
+  background: #0f0f11;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+}
+
+/* Header sits ON TOP of the video as a transparent overlay — feels like a
+   live-stream camera feed, not a windowed panel. Subtle gradient at top so
+   the badge/buttons stay legible without a hard bar. */
+.header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.45) 0%,
+    rgba(0, 0, 0, 0.18) 70%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  cursor: move;
+  user-select: none;
+  height: 44px;
+  z-index: 2;
+  pointer-events: auto;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.liveBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #ff3b3b;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.viewerCount {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.addAgentBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+}
+
+.iconBtn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  border-radius: 4px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+  }
+}
+
+/* Body fills the entire window — header overlays it as transparent chrome,
+   no flex column. Character video fills the body, comment overlay floats
+   on top. Matches the hosted openroom.ai live-stream layout: full-frame
+   VTuber video with header overlay on top + comments overlaid lower-left. */
+.body {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0f0f11;
+}
+
+.characterSide {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.characterImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.characterPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 72px;
+  color: rgba(255, 255, 255, 0.15);
+}
+
+/* Comment overlay — floats on top of the video, lower-left, semi-transparent.
+   Fades to fully transparent at the top so older comments dissolve into the
+   stream. Limited width so it doesn't cover the character. */
+.commentList {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  width: min(45%, 240px);
+  max-height: 60%;
+  z-index: 1;
+  padding: 8px 10px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0.35) 60%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  border-radius: 6px;
+  pointer-events: auto;
+  backdrop-filter: blur(2px);
+  /* Hide scrollbar but keep functional */
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+.comment {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.commentUser {
+  color: #7fd4ff;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.commentText {
+  color: rgba(255, 255, 255, 0.95);
+  word-break: break-word;
+}

@@ -1,0 +1,260 @@
+/* HostedHUD — overlay recreating hosted openroom.ai layout elements.
+ * All children use fixed positioning and sit above the desktop, below modals. */
+
+$hud-z: 50000;
+
+/* ── Live / Chat tabs — top-right ─────────────────────────────── */
+
+.tabs {
+  position: fixed;
+  top: 16px;
+  right: 24px;
+  display: flex;
+  gap: 6px;
+  z-index: $hud-z;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(20, 20, 24, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+
+  &:hover {
+    background: rgba(30, 30, 36, 0.85);
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  &.active {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.viewerCount {
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 400;
+}
+
+.liveStub {
+  position: fixed;
+  top: 64px;
+  right: 24px;
+  width: 260px;
+  padding: 16px 18px;
+  background: rgba(20, 20, 24, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 12px;
+  line-height: 1.5;
+  z-index: $hud-z;
+  backdrop-filter: blur(12px);
+}
+
+.liveStubTitle {
+  margin: 0 0 6px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.liveStubBody {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ── Suggested prompts dock — above pill input ────────────────── */
+
+.promptDock {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 96px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 640px;
+  z-index: $hud-z;
+  pointer-events: none;
+
+  > * {
+    pointer-events: auto;
+  }
+}
+
+.promptChip {
+  padding: 8px 14px;
+  background: rgba(20, 20, 24, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12.5px;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  transition: background 0.15s, color 0.15s, transform 0.1s;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/* ── Centered-bottom yellow pill input ────────────────────────── */
+
+.pillWrap {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  /* Default sits above the bottom bar (~52px tall at bottom: 16px) */
+  bottom: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  /* Must exceed bottomBar z-index (99999) so it renders on top */
+  z-index: 100001;
+}
+
+.pillDragHandle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: grab;
+  padding: 2px 0;
+  user-select: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &:hover {
+    color: rgba(255, 255, 255, 0.8);
+  }
+}
+
+.pill {
+  display: flex;
+  align-items: center;
+  width: 560px;
+  max-width: 80vw;
+  background: #f5c84a; /* hosted yellow */
+  border-radius: 999px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(0, 0, 0, 0.1);
+  padding: 4px 6px 4px 20px;
+}
+
+.pillInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 12px 8px;
+  font-size: 14px;
+  color: #1c1d20;
+  font-weight: 500;
+
+  &::placeholder {
+    color: rgba(28, 29, 32, 0.55);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+.pillSend {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #1c1d20;
+  color: #f5c84a;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+
+  &:hover:not(:disabled) {
+    background: #2a2b2f;
+    transform: scale(1.05);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.connectedDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.6);
+}
+
+/* ── Avatar orb — bottom-right ────────────────────────────────── */
+
+.avatarOrb {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #1c1d20;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+  cursor: pointer;
+  z-index: $hud-z;
+  padding: 0;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+
+  &:hover {
+    transform: scale(1.08);
+    border-color: rgba(245, 200, 74, 0.6);
+    box-shadow: 0 6px 24px rgba(245, 200, 74, 0.3);
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+    display: block;
+  }
+}
+
+.avatarInitial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 24px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}

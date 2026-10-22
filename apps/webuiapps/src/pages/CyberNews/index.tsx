@@ -12,7 +12,7 @@ import {
   type CharacterAppAction,
 } from '@/lib';
 import './i18n';
-import { Newspaper, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Newspaper, ArrowLeft, AlertTriangle, Flame } from 'lucide-react';
 import type { Article, Case, Clue, ArticleCategory, AppState } from './types';
 import {
   APP_ID,
@@ -32,6 +32,54 @@ const getArticleImage = (article: Article): string => article.imageUrl || headli
 
 const cyberFileApi = createAppFileApi(APP_NAME);
 
+type HNItem = {
+  id: number;
+  title?: string;
+  url?: string;
+  score?: number;
+  by?: string;
+  descendants?: number;
+  time?: number;
+  type?: string;
+};
+
+async function fetchHackerNewsFrontPage(): Promise<Article[]> {
+  // Uses the official HN Firebase API which returns story IDs in exact front-page rank order.
+  // https://github.com/HackerNews/API
+  const topResp = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json');
+  if (!topResp.ok) throw new Error(`HN topstories fetch failed: ${topResp.status}`);
+  const allIds = (await topResp.json()) as number[];
+  const ids = allIds.slice(0, 30);
+
+  const items = await Promise.all(
+    ids.map((id) =>
+      fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)
+        .then((r) => r.json() as Promise<HNItem>)
+        .catch(() => null),
+    ),
+  );
+
+  // Use fake descending timestamps so the existing publishedAt sort preserves HN rank order
+  const baseTime = Date.now();
+
+  return items
+    .map((item, rank) => {
+      if (!item || !item.title) return null;
+      const hnItemUrl = `https://news.ycombinator.com/item?id=${item.id}`;
+      const targetUrl = item.url || hnItemUrl;
+      return {
+        id: `hn-${item.id}`,
+        title: item.title,
+        category: 'tech' as ArticleCategory,
+        summary: `${item.score ?? 0} points by ${item.by ?? 'unknown'} · ${item.descendants ?? 0} comments`,
+        content: `Source: ${targetUrl}\n\nHN: ${hnItemUrl}`,
+        imageUrl: '',
+        publishedAt: new Date(baseTime - rank * 1000).toISOString(),
+      } satisfies Article;
+    })
+    .filter((a): a is Article => a !== null);
+}
+
 // ============ NavBar ============
 interface NavBarProps {
   activeTab: 'news' | 'case-board';
@@ -43,8 +91,8 @@ const NavBar: React.FC<NavBarProps> = ({ activeTab, onTabChange }) => {
   return (
     <nav className={styles.navBar}>
       <div className={styles.navTitle}>
-        <Newspaper size={18} />
-        NIGHT CITY NEWS
+        <Flame size={18} />
+        HACKER NEWS
       </div>
       <button
         className={`${styles.navTab} ${activeTab === 'news' ? styles.active : ''}`}
@@ -482,6 +530,7 @@ const CyberNews: React.FC = () => {
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [newsFilter, setNewsFilter] = useState<ArticleCategory | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const hnModeRef = useRef(false);
 
   // ============ Image Path Resolution ============
   const resolveArticleImages = useCallback(async (articleList: Article[]) => {
@@ -616,9 +665,9 @@ const CyberNews: React.FC = () => {
         cyberFileApi.listFiles(CASES_DIR),
       ]);
 
-      const articleJsonFiles = articleFiles.filter(
-        (f) => f.type === 'file' && f.name.endsWith('.json'),
-      );
+      const articleJsonFiles = hnModeRef.current
+        ? []
+        : articleFiles.filter((f) => f.type === 'file' && f.name.endsWith('.json'));
       const caseJsonFiles = caseFiles.filter((f) => f.type === 'file' && f.name.endsWith('.json'));
 
       const allFiles = [
@@ -660,7 +709,7 @@ const CyberNews: React.FC = () => {
               }
             }
           });
-          if (loadedArticles.length > 0) {
+          if (!hnModeRef.current && loadedArticles.length > 0) {
             // Temporarily clear unresolved .json imageUrl to prevent browser 404
             const snapshot = loadedArticles.map((a) => ({
               ...a,
@@ -677,13 +726,13 @@ const CyberNews: React.FC = () => {
       });
 
       // Resolve image reference paths
-      if (loadedArticles.length > 0) {
+      if (!hnModeRef.current && loadedArticles.length > 0) {
         await resolveArticleImages(loadedArticles);
         setArticles([...loadedArticles]);
       }
 
       // Seed data fallback
-      if (loadedArticles.length === 0) {
+      if (!hnModeRef.current && loadedArticles.length === 0) {
         setArticles(SEED_ARTICLES);
         await batchConcurrent(SEED_ARTICLES, (article) =>
           cyberFileApi.writeFile(`${ARTICLES_DIR}/${article.id}.json`, article),
@@ -726,6 +775,15 @@ const CyberNews: React.FC = () => {
       setCases(SEED_CASES);
       setIsLoading(false);
     }
+  }, [resolveArticleImages]);
+
+  const loadHackerNews = useCallback(async () => {
+    const hnArticles = await fetchHackerNewsFrontPage();
+    hnModeRef.current = true;
+    setArticles(hnArticles);
+    setIsLoading(false);
+    // Keep the existing case-board experience as-is (seeded / persisted),
+    // but make "news" show real Hacker News by default.
   }, []);
 
   // ============ State persistence ============
@@ -963,7 +1021,16 @@ const CyberNews: React.FC = () => {
         // Force English UI
         const i18nModule = await import('./i18n');
         i18nModule.default.changeLanguage('en');
-        await loadData();
+        // Prefer real Hacker News feed; fall back to the in-repo seeded data if it fails.
+        try {
+          await loadHackerNews();
+          // Still load persisted case-board + state in the background, but
+          // do not overwrite the HN feed articles.
+          loadData();
+        } catch (err) {
+          console.warn('[CyberNews] Hacker News fetch failed; falling back to seeded data:', err);
+          await loadData();
+        }
         reportLifecycle(AppLifecycle.LOADED);
         manager.ready();
       } catch (error) {

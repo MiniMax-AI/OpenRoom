@@ -1,0 +1,181 @@
+// Light app — vertical brightness slider with live percent readout
+// and four preset buttons (On / Cinematic / Dim / Off).
+
+$amber: #fbbf24;
+$amber-dim: rgba(251, 191, 36, 0.5);
+$bg-0: #0f0c0a;
+$bg-1: #1a140d;
+$bg-2: #221a11;
+$text: rgba(243, 230, 200, 0.95);
+$text-muted: rgba(243, 230, 200, 0.6);
+
+.lightApp {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: linear-gradient(180deg, $bg-0 0%, $bg-1 100%);
+  color: $text;
+  padding: 18px 16px 14px;
+  gap: 14px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.header {
+  text-align: center;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.02em;
+  color: $amber;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: $text-muted;
+  letter-spacing: 0.03em;
+}
+
+.readout {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.readoutNumber {
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 1;
+  color: $amber;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 24px rgba(251, 191, 36, 0.35);
+}
+
+.readoutPct {
+  font-size: 22px;
+  font-weight: 500;
+  color: $amber-dim;
+  margin-left: 2px;
+}
+
+.readoutLabel {
+  font-size: 11px;
+  color: $text-muted;
+  margin-left: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sliderRow {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: stretch;
+  gap: 8px;
+  padding: 4px 0;
+  min-height: 200px;
+}
+
+.iconTop,
+.iconBottom {
+  color: $amber-dim;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.track {
+  position: relative;
+  width: 28px;
+  flex: 1;
+  background: rgba(243, 230, 200, 0.08);
+  border-radius: 14px;
+  cursor: pointer;
+  border: 1px solid rgba(243, 230, 200, 0.12);
+  outline: none;
+
+  &:focus-visible {
+    border-color: $amber;
+    box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.3);
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 14px;
+    background: linear-gradient(
+      180deg,
+      rgba(251, 191, 36, 0.18) 0%,
+      rgba(251, 191, 36, 0.05) 100%
+    );
+    pointer-events: none;
+  }
+}
+
+.fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.85) 100%);
+  border-radius: 14px 14px 0 0;
+  pointer-events: none;
+  transition: height 0.08s linear;
+}
+
+.thumb {
+  position: absolute;
+  left: 50%;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ffd966 0%, $amber 60%, #b87f12 100%);
+  box-shadow:
+    0 0 18px rgba(251, 191, 36, 0.55),
+    0 2px 4px rgba(0, 0, 0, 0.5);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: top 0.08s linear;
+  border: 2px solid rgba(255, 235, 180, 0.5);
+}
+
+.presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding-top: 6px;
+}
+
+.presetBtn {
+  background: $bg-2;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  color: $text;
+  padding: 7px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+
+  &:hover {
+    background: rgba(251, 191, 36, 0.12);
+    border-color: $amber;
+    color: $amber;
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+}

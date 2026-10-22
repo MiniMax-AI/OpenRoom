@@ -58,12 +58,16 @@ export function openWindow(appId: number): void {
 
   const size = getAppDefaultSize(appId);
   const offset = (offsetCounter++ % 5) * 30;
+  const baseX =
+    typeof window !== 'undefined' ? Math.floor((window.innerWidth - size.width) / 2) : 200;
+  const baseY =
+    typeof window !== 'undefined' ? Math.floor((window.innerHeight - size.height) / 2) : 150;
 
   const win: WindowState = {
     appId,
     title: getAppDisplayName(appId),
-    x: 80 + offset,
-    y: 40 + offset,
+    x: Math.max(10, baseX + offset),
+    y: Math.max(10, baseY + offset),
     width: size.width,
     height: size.height,
     zIndex: ++nextZ,

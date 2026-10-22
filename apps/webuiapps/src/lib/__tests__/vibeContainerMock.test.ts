@@ -211,4 +211,27 @@ describe('dispatchAgentAction – event-driven listener wait', () => {
     const result = await actionPromise;
     expect(result).toBe('success');
   });
+
+  it('Mystery (app 17) uses extended agent-dispatch timeout', async () => {
+    const MYSTERY_APP_ID = 17;
+    const { openWindow: directOpen } = await import('../windowManager');
+    directOpen(MYSTERY_APP_ID);
+
+    const actionPromise = dispatchAgentAction({
+      app_id: MYSTERY_APP_ID,
+      action_type: 'INTERROGATE',
+      params: { suspect_id: 'priya' },
+    });
+
+    await vi.advanceTimersByTimeAsync(30_000);
+    const early = await Promise.race([
+      actionPromise.then(() => 'settled'),
+      Promise.resolve('pending'),
+    ]);
+    expect(early).toBe('pending');
+
+    await vi.advanceTimersByTimeAsync(45_000);
+    const result = await actionPromise;
+    expect(result).toBe('timeout: no response from app');
+  });
 });

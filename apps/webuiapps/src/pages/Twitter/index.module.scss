@@ -231,6 +231,22 @@ $retweet-bg: rgba(0, 186, 124, 0.15);
   color: $text-primary;
 }
 
+.postImage {
+  margin: 4px 0 12px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid $border-color;
+  max-width: 100%;
+
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 480px;
+    object-fit: cover;
+  }
+}
+
 .postActions {
   display: flex;
   max-width: 425px;

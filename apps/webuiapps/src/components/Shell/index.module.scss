@@ -5,7 +5,8 @@
   background-repeat: no-repeat;
   color: rgba(255, 255, 255, 0.9);
   overflow: hidden;
-  position: relative;
+  position: fixed;
+  inset: 0;
 }
 
 .videoPip {
@@ -170,8 +171,27 @@
   transition: transform 0.2s;
 
   &.chatOpen {
-    /* Shift left to account for the chat panel (320px wide) */
-    transform: translateX(calc(-50% - 160px));
+    /* No shift — chat is free-floating (react-rnd) and doesnt push the bar. */
+    transform: translateX(-50%);
+  }
+}
+
+.barDragGrip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.35);
+  cursor: grab;
+  padding: 0 4px;
+  user-select: none;
+  flex-shrink: 0;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &:hover {
+    color: rgba(255, 255, 255, 0.7);
   }
 }
 
@@ -252,36 +272,6 @@
   }
   50% {
     opacity: 0.4;
-  }
-}
-
-/* Floating add button — positioned to the left of the bottom bar */
-.addBtn {
-  position: fixed;
-  bottom: 22px;
-  left: calc(50% - 140px);
-  transform: translateX(-50%);
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  background: rgba(250, 234, 95, 0.9);
-  color: #121214;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  transition: all 0.2s;
-
-  &:hover {
-    transform: translateX(-50%) scale(1.12);
-    background: #faea5f;
-  }
-
-  &.chatOpen {
-    left: calc(50% - 140px - 160px);
   }
 }
 

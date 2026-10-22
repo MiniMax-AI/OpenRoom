@@ -1,0 +1,48 @@
+PROBLEM:
+A tech billionaire dies in his locked study at midnight. Five guests. One killer.
+
+Victim: Marcus Vale — Founder / CEO of Lumin
+
+
+SUSPECTS:
+
+Priya Shah Co-founder, ex-girlfriend 
+Pushed out of the cap table last month. Showed up anyway.
+
+ACTIONS: Dossier - Interrogate
+
+Jake Ostrowski Head of security
+Ex-Marine. The one who found the body. Master keycard.
+
+ACTIONS: Dossier - Interrogate
+
+Dr. Mira Chen Marcus's therapist
+Here as "a friend." Carrying a small leather case she won't open.
+
+ACTIONS: Dossier - Interrogate
+
+Cole Reyes Investigative journalist (uninvited)
+Blocked from every press list. Got in wearing someone else's badge.
+
+ACTIONS: Dossier - Interrogate
+
+
+Aiden Park Lumin CTO
+Marcus's oldest friend. The other master-keycard holder.
+
+ACTIONS: Dossier - Interrogate
+
+
+LOCATIONS TO SEARCH
+
+Marcus's locked study
+Where the body was found — second floor, door bolted from the inside.
+
+Second-floor balcony 
+Open to the cold air. Guests slipped out here to smoke and scheme.
+
+The main bar
+Downstairs. Loud. Everyone passed through at least once.
+
+Upstairs guest bathroom
+Quieter than the downstairs line. Anyone could have excused themselves.

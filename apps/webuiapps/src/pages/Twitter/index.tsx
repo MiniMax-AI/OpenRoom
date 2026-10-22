@@ -21,6 +21,11 @@ const APP_NAME = 'twitter';
 const POSTS_DIR = '/posts';
 const STATE_FILE = '/state.json';
 
+// Kayley real feed, built by scripts/build-twitter-feed.mjs from captured moments,
+// private journal entries, and selfie metadata. Friend replies (Jessica / Chloe /
+// Emmy / Mateo) are templated on top of the real artifacts.
+const KAYLEY_TWITTER_FEED = '/kayley-twitter-feed.json';
+
 // Create file API with App path prefix (module-level singleton, stable reference)
 const twitterFileApi = createAppFileApi(APP_NAME);
 
@@ -58,6 +63,7 @@ interface Post {
   likes: number;
   isLiked: boolean;
   comments: Comment[];
+  image?: string;
 }
 
 interface AppState {
@@ -327,6 +333,11 @@ const PostCard: React.FC<PostCardProps> = ({
           )}
         </div>
         <div className={styles.postContent}>{post.content}</div>
+        {post.image && (
+          <div className={styles.postImage}>
+            <img src={post.image} alt="" loading="lazy" />
+          </div>
+        )}
         <div className={styles.postActions}>
           <button
             className={`${styles.actionBtn} ${styles.commentBtn} ${showComments ? styles.active : ''}`}
@@ -840,6 +851,28 @@ const Twitter: React.FC = () => {
         const loadedPosts = loadPostsFromFS();
         if (loadedPosts.length > 0) {
           setPosts(loadedPosts);
+        } else {
+          // Seed from Kayley's real in-world feed (built offline from captured
+          // moments, journal entries, and selfie metadata).
+          try {
+            const resp = await fetch(KAYLEY_TWITTER_FEED);
+            if (resp.ok) {
+              const feed = (await resp.json()) as Post[];
+              const normalized = feed
+                .filter((p) => p && p.id && p.content)
+                .map((p) => ({
+                  ...p,
+                  author: p.author || FALLBACK_USER,
+                  comments: p.comments || [],
+                }))
+                .sort((a, b) => b.timestamp - a.timestamp);
+              setPosts(normalized);
+            } else {
+              console.warn('[Twitter] Feed fetch not ok:', resp.status);
+            }
+          } catch (err) {
+            console.warn('[Twitter] Failed to load Kayley feed:', err);
+          }
         }
 
         const savedState = loadState();

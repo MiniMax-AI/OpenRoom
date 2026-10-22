@@ -3,11 +3,15 @@ app_name: twitter
 app_display_name: Twitter
 version: "3.0.0"
 description: >
-  Social media app. Posts stored as fine-grained files in posts/ directory, each post as an independent JSON file.
+  Kayley's social media feed — her posts throughout the day (thoughts, selfies, milestone moments)
+  plus replies from her close friends (Jessica Park, Chloe Parker, Emmy Carter, Mateo Rivera).
+  The feed is seeded from Kayley's real artifacts: captured moments, private journal entries, and
+  selfie metadata. The agent can scroll, write new posts, like/unlike, comment, or reference any past post.
+  Posts stored as fine-grained files in posts/ directory, each post as an independent JSON file.
   Supports CREATE_POST/UPDATE_POST/DELETE_POST/LIKE_POST/UNLIKE_POST/COMMENT_POST mutation actions.
   This file only defines actions dispatched from Agent to frontend. User local operations are handled and reported by frontend code.
 displayDesc: >
-  Your personal social feed — share thoughts, like and comment, capture every moment of inspiration.
+  Kayley's social feed — her day in posts, plus replies from her people.
 
 # ============================================================
 # The following actions are only for Agent → Frontend command dispatch.

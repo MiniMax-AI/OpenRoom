@@ -1,0 +1,86 @@
+app_id: 3
+app_name: youtube
+app_display_name: YouTube
+version: "1.1.0"
+description: >
+  YouTube 搜索与播放。Kayley 可以搜索任意关键词 —— 视频、歌曲、演讲、教程 ——
+  结果以可点击的卡片形式在应用内展示。点击卡片后使用 YouTube IFrame Player
+  API 内嵌播放，支持程序化的播放/暂停/音量/队列控制，Kayley 可以当 DJ。
+  无需 API key。
+displayDesc: >
+  搜索 YouTube 并内嵌播放结果。Kayley 通过
+  SEARCH / PLAY / PAUSE / RESUME / NEXT / SET_VOLUME / QUEUE 触发。
+
+actions:
+  - type: SEARCH
+    name: 搜索 YouTube
+    description: >
+      搜索 YouTube 并把结果以卡片网格形式渲染在 YouTube 应用里。
+      点击卡片会内嵌播放视频。搜索派发成功后返回 "success"。
+    params:
+      - name: query
+        type: string
+        description: 搜索关键词（自由文本，例如 "fleetwood mac landslide live"）
+        required: true
+      - name: max_results
+        type: number
+        description: 最大返回结果数。默认 10，最大 25。
+        required: false
+
+  - type: PLAY
+    name: 播放视频
+    description: >
+      内嵌 YouTube IFrame 播放器并自动播放。可传 video_id，或传 query
+      （播放第一个匹配结果）。
+    params:
+      - name: video_id
+        type: string
+        description: YouTube 视频 id（例如 "dQw4w9WgXcQ"）。已知时优先使用。
+        required: false
+      - name: query
+        type: string
+        description: 自由文本搜索，播放第一个结果。video_id 未知时使用。
+        required: false
+
+  - type: PAUSE
+    name: 暂停播放
+    description: 暂停当前视频。无参数。
+    params: []
+
+  - type: RESUME
+    name: 继续播放
+    description: 暂停后继续播放。无参数。
+    params: []
+
+  - type: NEXT
+    name: 下一首
+    description: >
+      前进到队列中的下一个视频。若队列已空，则基于最近一次搜索关键词
+      做相关搜索并播放一个新结果。
+    params: []
+
+  - type: SET_VOLUME
+    name: 设置音量
+    description: 设置播放器音量（0–100），超出范围会被夹紧。
+    params:
+      - name: volume
+        type: number
+        description: 整数 0–100。0 静音，100 最大。
+        required: true
+
+  - type: QUEUE
+    name: 队列视频
+    description: >
+      建立播放队列。可传 video_ids（JSON 数组或逗号分隔的 id 列表），
+      或传 query（前若干个搜索结果被排入队列）。立即开始播放第一首。
+    params:
+      - name: video_ids
+        type: string
+        description: >
+          YouTube 视频 id 的 JSON 数组或 CSV
+          （例如 '["dQw4w9WgXcQ","Zi_XLOBDo_Y"]'）。
+        required: false
+      - name: query
+        type: string
+        description: 自由文本搜索，前 10 个结果（上限 25）排入队列。
+        required: false

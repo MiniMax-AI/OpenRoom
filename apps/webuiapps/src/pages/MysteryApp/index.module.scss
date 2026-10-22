@@ -1,0 +1,881 @@
+// MysteryApp — noir detective theme
+// Dark ground, amber accents, serif headers, boxy rules
+
+$bg-1: #0f0d0a;
+$bg-2: #17130d;
+$bg-3: #1f1913;
+$amber: #d4a574;
+$amber-dim: #8a6a47;
+$parchment: #e8dcc4;
+$blood: #b5343b;
+$muted: rgba(232, 220, 196, 0.55);
+$faint: rgba(232, 220, 196, 0.2);
+
+.mystery {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(circle at 20% 10%, #1a140d 0%, #0a0807 70%);
+  color: $parchment;
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 18px 22px 16px;
+  border-bottom: 1px solid $faint;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.headerLeft {
+  flex: 1;
+  min-width: 0;
+}
+
+.caseLabel {
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: $amber-dim;
+  margin-bottom: 4px;
+}
+
+.title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: $amber;
+  letter-spacing: 0.02em;
+}
+
+.tagline {
+  font-size: 13px;
+  color: $muted;
+  margin: 0 0 6px;
+  font-style: italic;
+}
+
+.victim {
+  font-size: 12px;
+  color: $parchment;
+  opacity: 0.75;
+}
+
+.headerRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: $muted;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.errorText {
+  font-size: 11px;
+  color: $blood;
+  max-width: 240px;
+  text-align: right;
+}
+
+.accuseButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: $blood;
+  color: $parchment;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  padding: 8px 14px;
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 120ms ease;
+
+  &:hover:not(:disabled) {
+    background: lighten($blood, 5%);
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.turnBanner {
+  font-size: 12px;
+  font-weight: 600;
+  color: $amber;
+  letter-spacing: 0.04em;
+}
+
+.openingPick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  font-size: 12px;
+  color: $muted;
+}
+
+.openingBtn {
+  background: $bg-3;
+  color: $parchment;
+  border: 1px solid $faint;
+  padding: 6px 12px;
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+  &:hover {
+    border-color: $amber-dim;
+    color: $amber;
+  }
+}
+
+.readyRow {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  font-size: 11px;
+  color: $muted;
+}
+
+.readyLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: $parchment;
+}
+
+.readyHint {
+  font-size: 10px;
+  opacity: 0.75;
+  max-width: 280px;
+  text-align: right;
+}
+
+.readyBadge {
+  font-size: 11px;
+  color: $amber-dim;
+}
+
+.finishTurnBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: $bg-3;
+  color: $amber;
+  border: 1px solid $amber-dim;
+  padding: 8px 14px;
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  &:hover:not(:disabled) {
+    background: lighten($bg-3, 4%);
+  }
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+}
+
+.body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(320px, 1.3fr) minmax(240px, 0.9fr);
+  gap: 0;
+  min-height: 0;
+}
+
+.leftCol,
+.chatPanel,
+.evidenceCol {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.leftCol {
+  border-right: 1px solid $faint;
+  overflow-y: auto;
+  padding: 14px;
+  gap: 16px;
+}
+
+.chatPanel {
+  border-right: 1px solid $faint;
+}
+
+.evidenceCol {
+  padding: 14px 14px 18px;
+}
+
+.panel {
+  background: rgba(26, 20, 13, 0.5);
+  border: 1px solid $faint;
+  border-radius: 3px;
+  padding: 12px;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 14px;
+  color: $amber;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid $faint;
+}
+
+.suspectGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.suspectCard {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid $faint;
+  border-radius: 3px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 4px 10px;
+  align-items: start;
+}
+
+.headshot {
+  grid-row: 1 / 4;
+  width: 48px;
+  height: 60px;
+  background: linear-gradient(135deg, $bg-3 0%, $bg-2 100%);
+  border: 1px solid $amber-dim;
+  color: $amber;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.05em;
+}
+
+.suspectName {
+  font-weight: 600;
+  color: $parchment;
+  font-size: 13px;
+}
+
+.suspectRole {
+  font-size: 11px;
+  color: $amber-dim;
+  font-style: italic;
+}
+
+.suspectBlurb {
+  grid-column: 1 / 3;
+  font-size: 11px;
+  color: $muted;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+.demeanorChip {
+  grid-column: 1 / 3;
+  justify-self: start;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border: 1px solid $blood;
+  color: $blood;
+  border-radius: 2px;
+  margin-top: 4px;
+}
+
+.suspectActions {
+  grid-column: 1 / 3;
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+
+  button {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: transparent;
+    border: 1px solid $amber-dim;
+    color: $amber;
+    padding: 5px 8px;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 120ms ease;
+
+    &:hover:not(:disabled) {
+      background: rgba(212, 165, 116, 0.15);
+      border-color: $amber;
+    }
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+}
+
+// Once a Dossier or Interrogate has been triggered for a suspect, the
+// corresponding button flips to the green "done" treatment — matches the
+// EvidenceBoard "Read Notes" green pattern so the player can see at a glance
+// who they've already worked.
+.suspectActions button.suspectActionDone {
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #22c55e;
+
+  &:hover:not(:disabled) {
+    background: rgba(34, 197, 94, 0.08);
+    border-color: rgba(34, 197, 94, 0.7);
+  }
+}
+
+.locationList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.locationBtn {
+  width: 100%;
+  text-align: left;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid $faint;
+  border-left: 3px solid $amber-dim;
+  color: $parchment;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 120ms ease;
+
+  &:hover:not(:disabled) {
+    border-left-color: $amber;
+    background: rgba(212, 165, 116, 0.08);
+  }
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+// Visited locations get the green left-border + faint green wash so the
+// player can scan the location panel and see at a glance which rooms have
+// been examined this session.
+.locationBtn.locationVisited {
+  border-left-color: #22c55e;
+  background: rgba(34, 197, 94, 0.05);
+
+  &:hover:not(:disabled) {
+    border-left-color: #22c55e;
+    background: rgba(34, 197, 94, 0.1);
+  }
+}
+
+.locationName {
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.locationVisitedBadge {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  padding: 1px 6px;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+.locationHint {
+  font-size: 11px;
+  color: $muted;
+  margin-top: 3px;
+  font-style: italic;
+}
+
+.chatScroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.chat_narrative {
+  background: rgba(26, 20, 13, 0.6);
+  border-left: 3px solid $amber;
+  padding: 10px 12px;
+  color: $parchment;
+  font-style: italic;
+  white-space: pre-wrap;
+}
+
+.chat_action {
+  color: $amber;
+  font-weight: 500;
+  padding-left: 6px;
+  border-left: 2px solid $amber-dim;
+  &::before {
+    content: '▸ ';
+  }
+}
+
+.chat_system {
+  color: $muted;
+  font-size: 12px;
+  font-style: italic;
+  text-align: center;
+  padding: 4px 8px;
+}
+
+.chat_error {
+  color: $blood;
+  font-size: 12px;
+  border-left: 2px solid $blood;
+  padding-left: 8px;
+}
+
+.chat_chat {
+  color: $parchment;
+  padding: 6px 10px;
+  border-left: 2px solid $amber-dim;
+  background: rgba(212, 165, 116, 0.06);
+  font-size: 13px;
+  line-height: 1.45;
+
+  &[data-author='kayley'] {
+    border-left-color: $amber;
+  }
+}
+
+.chatComposer {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-top: 1px solid $faint;
+  background: rgba(15, 13, 10, 0.6);
+  flex-shrink: 0;
+}
+
+.chatComposerInput {
+  flex: 1;
+  background: rgba(26, 20, 13, 0.6);
+  border: 1px solid $faint;
+  border-radius: 3px;
+  color: $parchment;
+  padding: 6px 10px;
+  font-size: 13px;
+  outline: none;
+
+  &:focus {
+    border-color: $amber-dim;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+.chatComposerSend {
+  background: $amber-dim;
+  color: $bg-1;
+  border: none;
+  border-radius: 3px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: $amber;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+// ========== Interrogation question bar ==========
+.questionBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid $amber-dim;
+  background: rgba(26, 20, 13, 0.8);
+  flex-shrink: 0;
+}
+
+.questionLabel {
+  font-size: 11px;
+  color: $amber;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.questionInput {
+  flex: 1;
+  background: $bg-1;
+  border: 1px solid $faint;
+  color: $parchment;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  border-radius: 2px;
+
+  &:focus {
+    outline: none;
+    border-color: $amber;
+  }
+
+  &::placeholder {
+    color: $muted;
+    font-style: italic;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+  }
+}
+
+.questionSend {
+  background: $amber-dim;
+  color: $parchment;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 120ms ease;
+
+  &:hover:not(:disabled) {
+    background: $amber;
+    color: $bg-1;
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.questionClose {
+  background: transparent;
+  border: 0;
+  color: $muted;
+  cursor: pointer;
+  padding: 4px;
+
+  &:hover {
+    color: $parchment;
+  }
+}
+
+.emptyEvidence {
+  font-size: 12px;
+  color: $muted;
+  font-style: italic;
+  padding: 12px;
+  border: 1px dashed $faint;
+  border-radius: 3px;
+  text-align: center;
+}
+
+.evidenceList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.evidenceItem {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid $faint;
+  padding: 10px;
+  border-radius: 3px;
+}
+
+.evidenceId {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: $amber-dim;
+  margin-bottom: 4px;
+}
+
+.evidenceDesc {
+  font-size: 12px;
+  color: $parchment;
+  line-height: 1.45;
+}
+
+.evidenceSource {
+  font-size: 10px;
+  color: $muted;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.evidenceCollect {
+  margin-top: 6px;
+  background: transparent;
+  border: 1px solid $amber-dim;
+  color: $amber;
+  padding: 4px 10px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  border-radius: 2px;
+
+  &:hover:not(:disabled) {
+    background: rgba(212, 165, 116, 0.12);
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.evidenceCollected {
+  margin-top: 6px;
+  background: transparent;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  color: #22c55e;
+  padding: 4px 10px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  border-radius: 2px;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(34, 197, 94, 0.08);
+  }
+}
+
+.evidenceNotes {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-left: 2px solid $amber-dim;
+  font-size: 11px;
+  color: $parchment;
+  line-height: 1.5;
+  font-style: italic;
+  white-space: pre-wrap;
+}
+
+// ========== Modal ==========
+.modalOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal {
+  background: $bg-2;
+  border: 1px solid $amber-dim;
+  border-radius: 4px;
+  padding: 20px 24px;
+  width: min(420px, calc(100% - 48px));
+  max-height: calc(100% - 48px);
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  color: $parchment;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  h2 {
+    font-family: 'Playfair Display', Georgia, serif;
+    color: $amber;
+    margin: 0 0 4px;
+    font-size: 20px;
+    letter-spacing: 0.04em;
+  }
+}
+
+.modalClose {
+  background: transparent;
+  border: 0;
+  color: $muted;
+  cursor: pointer;
+  padding: 4px;
+
+  &:hover {
+    color: $parchment;
+  }
+}
+
+.modalSubtitle {
+  font-size: 12px;
+  color: $muted;
+  font-style: italic;
+  margin: 0 0 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+
+  span {
+    font-size: 11px;
+    color: $amber-dim;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  input,
+  select,
+  textarea {
+    background: $bg-1;
+    border: 1px solid $faint;
+    color: $parchment;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    border-radius: 2px;
+
+    &:focus {
+      outline: none;
+      border-color: $amber;
+    }
+  }
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+
+  button {
+    background: transparent;
+    border: 1px solid $faint;
+    color: $parchment;
+    padding: 8px 14px;
+    cursor: pointer;
+    border-radius: 2px;
+    font-size: 13px;
+
+    &:hover:not(:disabled) {
+      border-color: $amber;
+    }
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.modalPrimary {
+  background: $blood !important;
+  border-color: rgba(0, 0, 0, 0.3) !important;
+  font-weight: 600 !important;
+}
+
+.verdictWin {
+  color: #22c55e !important;
+}
+
+.verdictLose {
+  color: $blood !important;
+}
+
+.reveal {
+  font-size: 13px;
+  color: $parchment;
+  line-height: 1.55;
+  font-style: italic;
+  border-left: 3px solid $amber;
+  padding-left: 12px;
+  margin: 12px 0;
+}
+
+.solutionBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: $muted;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid $faint;
+  padding: 10px 12px;
+  border-radius: 3px;
+
+  strong {
+    color: $amber;
+    margin-right: 6px;
+  }
+}
+
+.hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: $blood;
+  margin-top: 10px;
+}

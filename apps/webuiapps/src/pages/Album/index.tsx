@@ -26,7 +26,11 @@ interface ImageItem {
   id: string;
   src: string;
   createdAt: number;
+  title?: string;
+  tags?: string[];
 }
+
+const KAYLEY_SELFIES_INDEX = '/kayley-selfies-index.json';
 
 // ============ SVG Icons ============
 const Icons = {
@@ -99,6 +103,7 @@ const Album: React.FC = () => {
   const { initFromCloud, getChildrenByPath } = useFileSystem({ fileApi: albumFileApi });
 
   const loadImagesFromFS = useCallback((): ImageItem[] => {
+    // Legacy cloud-FS path retained so Agent-written images still appear.
     const children = getChildrenByPath(IMAGES_DIR);
     return children
       .filter((node) => node.type === 'file' && node.content !== null)
@@ -125,15 +130,37 @@ const Album: React.FC = () => {
       .sort((a, b) => b.createdAt - a.createdAt);
   }, [getChildrenByPath]);
 
+  const loadKayleySelfies = useCallback(async (): Promise<ImageItem[]> => {
+    try {
+      const res = await fetch(KAYLEY_SELFIES_INDEX, { cache: 'no-cache' });
+      if (!res.ok) return [];
+      const data = (await res.json()) as ImageItem[];
+      return data
+        .filter((x) => x && typeof x.id === 'string' && typeof x.src === 'string')
+        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    } catch (error) {
+      console.warn('[Album] Failed to load Kayley selfies index:', error);
+      return [];
+    }
+  }, []);
+
   const refreshFromCloud = useCallback(async () => {
     try {
       await initFromCloud();
-      const loaded = loadImagesFromFS();
-      setItems(loaded);
+      const cloudItems = loadImagesFromFS();
+      const kayleyItems = await loadKayleySelfies();
+      // Merge: cloud (agent-added) first, then Kayley selfies, dedup by id.
+      const seen = new Set<string>();
+      const merged = [...cloudItems, ...kayleyItems].filter((item) => {
+        if (seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      });
+      setItems(merged);
     } catch (error) {
       console.warn('[Album] refreshFromCloud failed:', error);
     }
-  }, [initFromCloud, loadImagesFromFS]);
+  }, [initFromCloud, loadImagesFromFS, loadKayleySelfies]);
 
   const handleAgentAction = useCallback(
     async (action: CharacterAppAction): Promise<string> => {
@@ -184,8 +211,15 @@ const Album: React.FC = () => {
           console.warn('[Album] Cloud init failed:', error);
         }
 
-        const loaded = loadImagesFromFS();
-        setItems(loaded);
+        const cloudItems = loadImagesFromFS();
+        const kayleyItems = await loadKayleySelfies();
+        const seen = new Set<string>();
+        const merged = [...cloudItems, ...kayleyItems].filter((item) => {
+          if (seen.has(item.id)) return false;
+          seen.add(item.id);
+          return true;
+        });
+        setItems(merged);
         setIsLoading(false);
 
         reportLifecycle(AppLifecycle.LOADED);

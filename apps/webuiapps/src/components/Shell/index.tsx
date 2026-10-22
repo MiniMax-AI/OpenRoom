@@ -2,6 +2,8 @@ import React, { useState, useCallback, useEffect, useRef, useSyncExternalStore }
 import {
   MessageCircle,
   Twitter,
+  Youtube,
+  Flame,
   Music,
   BookOpen,
   Image,
@@ -14,14 +16,15 @@ import {
   Radio,
   Video,
   VideoOff,
-  Plus,
   X,
   Upload,
   FileImage,
   FileArchive,
+  GripHorizontal,
   type LucideIcon,
 } from 'lucide-react';
-import ChatPanel from '../ChatPanel';
+import ChatWindow from '../ChatWindow';
+import HostedHUD from '../HostedHUD';
 import AppWindow from '../AppWindow';
 import { getWindows, subscribe, openWindow, claimZIndex } from '@/lib/windowManager';
 import { getDesktopApps } from '@/lib/appRegistry';
@@ -49,11 +52,13 @@ function useWindows() {
 }
 
 /** Lucide icon name to component mapping */
-const ICON_MAP: Record<string, LucideIcon> = {
+export const ICON_MAP: Record<string, LucideIcon> = {
   Twitter,
+  Youtube,
   Music,
   BookOpen,
   Image,
+  Flame,
   Circle,
   LayoutGrid,
   Mail,
@@ -62,6 +67,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Newspaper,
   Radio,
   MessageCircle,
+  X,
 };
 
 const DESKTOP_APPS = getDesktopApps().map((app) => ({
@@ -85,7 +91,9 @@ function isVideoUrl(url: string): boolean {
 }
 
 const Shell: React.FC = () => {
-  const [chatOpen, setChatOpen] = useState(true);
+  // Hosted-layout default: Chat drawer collapsed — users open it via the
+  // avatar orb or the Live/Chat tab button. Matches openroom.ai hosted UX.
+  const [chatOpen, setChatOpen] = useState(false);
   const [reportEnabled, setReportEnabled] = useState(true);
   const [lang, setLang] = useState<'en' | 'zh'>('en');
   const [liveWallpaper, setLiveWallpaper] = useState(false);
@@ -94,6 +102,7 @@ const Shell: React.FC = () => {
   const [extractResult, setExtractResult] = useState<ExtractResult | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [modGenerating, setModGenerating] = useState(false);
+  const [barPos, setBarPos] = useState<{ x: number; y: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -284,6 +293,29 @@ const Shell: React.FC = () => {
     seedMetaFiles();
   }, []);
 
+  const handleBarDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = barRef.current?.getBoundingClientRect() ?? { left: 0, top: 0 };
+    const startPosX = rect.left;
+    const startPosY = rect.top;
+    setBarPos({ x: startPosX, y: startPosY });
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const onMove = (ev: MouseEvent) => {
+      setBarPos({
+        x: startPosX + ev.clientX - startX,
+        y: startPosY + ev.clientY - startY,
+      });
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, []);
+
   // Pause user action reporting while upload or mod generation is in progress
   useEffect(() => {
     const shouldListen = !uploadOpen && !modGenerating;
@@ -291,11 +323,21 @@ const Shell: React.FC = () => {
     setReportEnabled(shouldListen);
   }, [uploadOpen, modGenerating]);
 
+  // Wallpaper dimmer scrim — 0 = fully bright, 1 = fully dark. Driven by
+  // the os/SET_OPACITY vibe action so Kayley can create ambient / date-night
+  // vibes on the desktop without touching individual app windows.
+  const [wallpaperDim, setWallpaperDim] = useState<number>(0);
+
   // Listen for OS events (e.g. wallpaper changes from agent)
   useEffect(() => {
     return onOSEvent((event) => {
       if (event.type === 'SET_WALLPAPER' && typeof event.wallpaper_url === 'string') {
         setWallpaper(event.wallpaper_url);
+      }
+      if (event.type === 'SET_OPACITY' && typeof event.opacity === 'number') {
+        // Clamp to [0, 1] — agents may pass arbitrary values.
+        const clamped = Math.max(0, Math.min(1, event.opacity));
+        setWallpaperDim(clamped);
       }
     });
   }, []);
@@ -310,6 +352,20 @@ const Shell: React.FC = () => {
         backgroundPosition: 'center',
       }}
     >
+      {/* Wallpaper dimmer scrim — sits above the wallpaper, below all windows + HUD.
+          pointer-events: none so it never blocks clicks. Smooth 300ms fade for
+          ambient-mode transitions. */}
+      <div
+        data-testid="wallpaper-dimmer"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: `rgba(0, 0, 0, ${wallpaperDim})`,
+          pointerEvents: 'none',
+          zIndex: 50,
+          transition: 'background 300ms ease',
+        }}
+      />
       {showVideo && pipPos && (
         <div
           ref={pipRef}
@@ -355,12 +411,25 @@ const Shell: React.FC = () => {
         <AppWindow key={win.appId} win={win} />
       ))}
 
-      {/* Chat Panel — always mounted to preserve chat history */}
-      <ChatPanel
-        onClose={() => setChatOpen(false)}
+      {/* Floating, draggable + resizable Chat window.
+          Replaces the right-stuck drawer. Always mounted when visible so
+          chat history and the Kayley WebSocket stay alive across hide/show. */}
+      <ChatWindow
         visible={chatOpen}
+        onClose={() => setChatOpen(false)}
         zIndex={chatZIndex}
         onFocus={() => setChatZIndex(claimZIndex())}
+      />
+
+      {/* Hosted-layout HUD — centered-bottom pill, suggested prompts,
+          avatar orb, Live/Chat tabs. Keeps the hosted openroom.ai feel
+          while the ChatPanel drawer serves as the full chat history. */}
+      <HostedHUD
+        chatOpen={chatOpen}
+        onToggleChat={() => {
+          setChatOpen((prev) => !prev);
+          setChatZIndex(claimZIndex());
+        }}
       />
 
       {/* Upload Modal */}
@@ -442,17 +511,22 @@ const Shell: React.FC = () => {
         </div>
       )}
 
-      {/* Floating add button */}
-      <button
-        className={`${styles.addBtn} ${chatOpen ? styles.chatOpen : ''}`}
-        onClick={() => setUploadOpen(true)}
-        title="Upload files"
-        data-testid="upload-toggle"
+      <div
+        ref={barRef}
+        className={`${styles.bottomBar} ${chatOpen ? styles.chatOpen : ''}`}
+        style={
+          barPos
+            ? { position: 'fixed', left: barPos.x, top: barPos.y, transform: 'none', bottom: 'auto' }
+            : undefined
+        }
       >
-        <Plus size={20} />
-      </button>
-
-      <div className={`${styles.bottomBar} ${chatOpen ? styles.chatOpen : ''}`}>
+        <div
+          className={styles.barDragGrip}
+          onMouseDown={handleBarDragStart}
+          title="Drag to reposition"
+        >
+          <GripHorizontal size={14} />
+        </div>
         <button
           className={`${styles.barBtn} ${liveWallpaper ? styles.liveOn : styles.liveOff}`}
           onClick={() => setLiveWallpaper((prev) => !prev)}
@@ -462,13 +536,14 @@ const Shell: React.FC = () => {
           {liveWallpaper ? <Video size={16} /> : <VideoOff size={16} />}
         </button>
 
+        {/* Upload button (same behavior as the old yellow +) */}
         <button
-          className={`${styles.barBtn} ${styles.langBtn}`}
-          onClick={handleToggleLang}
-          title={lang === 'en' ? 'Switch to Chinese' : 'Switch to English'}
-          data-testid="lang-toggle"
+          className={styles.barBtn}
+          onClick={() => setUploadOpen(true)}
+          title="Upload files"
+          data-testid="upload-toggle"
         >
-          {lang === 'en' ? 'EN' : 'ZH'}
+          <Upload size={16} />
         </button>
 
         <button

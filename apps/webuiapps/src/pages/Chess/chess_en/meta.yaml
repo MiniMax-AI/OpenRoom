@@ -60,3 +60,67 @@ actions:
         type: string
         description: The state file path written by the Agent, fixed as /state.json
         required: true
+
+  # ============================================================
+  # Headless per-app actions — invoked by vibe_action from Kayley's brain.
+  # These are handled directly by the dispatcher (vibeContainerMock.ts) using
+  # a shared chess engine; the Chess window does not need to be open. When
+  # the window IS open, a follow-up AGENT_MOVE / NEW_GAME / SYNC_STATE
+  # notification refreshes the UI from disk.
+  # ============================================================
+
+  - type: START_GAME
+    name: Start Game
+    description: >
+      Reset the board and start a new game. By convention Steven plays white, Kayley plays black.
+      Returns { fen: string } with the starting position.
+    params:
+      - name: opponent
+        type: string
+        description: "'human' or 'kayley' — who Steven is playing against (informational)"
+        required: false
+      - name: difficulty
+        type: string
+        description: "'easy' | 'medium' | 'hard' (reserved, not yet used by the engine)"
+        required: false
+
+  - type: MAKE_MOVE
+    name: Make Move
+    description: >
+      Play a move for the side-to-move. Validates the move against the engine's legal move list.
+      Auto-promotes pawns to Queen. Returns { fen, last_move, turn, game_over? }.
+    params:
+      - name: from
+        type: string
+        description: Source square in algebraic notation (e.g., "e2")
+        required: true
+      - name: to
+        type: string
+        description: Target square in algebraic notation (e.g., "e4")
+        required: true
+      - name: promotion
+        type: string
+        description: "Promotion piece ('q'|'r'|'b'|'n') — optional; defaults to queen"
+        required: false
+
+  - type: GET_BOARD
+    name: Get Board
+    description: >
+      Return the current game state without changing it.
+      Response shape { fen: string, turn: 'w'|'b', legal_moves: string[] }.
+    params: []
+
+  - type: SURRENDER
+    name: Surrender
+    description: >
+      Concede the current game. Called by Kayley (who plays black), so Steven wins.
+      Returns { result: 'steven_won' }.
+    params: []
+
+  - type: HINT
+    name: Hint
+    description: >
+      Return a suggested move for the current player using a simple heuristic
+      (prefers checkmate, then highest-value capture, else a developing move).
+      Response shape { suggested_move: string, reason: string }.
+    params: []

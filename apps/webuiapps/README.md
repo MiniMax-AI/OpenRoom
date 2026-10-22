@@ -2,6 +2,18 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
+## YouTube API key (for YouTubeApp search)
+
+`YouTubeApp` can use the official YouTube Data API v3 to return real search results.
+
+Create `apps/webuiapps/.env.local` (not committed) with:
+
+```bash
+VITE_YOUTUBE_API_KEY=your_api_key_here
+```
+
+Restart the dev server after adding/changing the key.
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md)

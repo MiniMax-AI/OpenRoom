@@ -370,7 +370,10 @@ function jsonFilePlugin(name: string, apiPath: string, filePath: string): Plugin
 }
 
 const config = ({ mode }: ConfigEnv): UserConfigExport => {
-  const env = loadEnv(mode, process.cwd(), '');
+  // Turbo/dev commands may run with repo-root cwd; ensure we load env files
+  // from this Vite project directory (apps/webuiapps).
+  const envDir = __dirname;
+  const env = loadEnv(mode, envDir, '');
   const isProd = env.NODE_ENV === 'production';
   const isTest = env.NODE_ENV === 'test';
   const isAnalyze = env.ANALYZE === 'analyze';
@@ -442,6 +445,7 @@ const config = ({ mode }: ConfigEnv): UserConfigExport => {
   }
 
   return {
+    envDir,
     plugins,
     css: {
       postcss: {

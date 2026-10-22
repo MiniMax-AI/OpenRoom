@@ -28,6 +28,24 @@ CLAUDE.local.md
 # Cursor
 .cursor/
 
+# Kayley data (symlinked/generated — lives in Kayley_Cowork + ~/.kayley-journal)
+apps/webuiapps/public/kayley-selfies
+apps/webuiapps/public/kayley-selfies/
+apps/webuiapps/public/kayley-selfies-index.json
+apps/webuiapps/public/kayley-moments
+apps/webuiapps/public/kayley-moments/
+apps/webuiapps/public/kayley-moments-index.json
+apps/webuiapps/public/kayley-journal
+apps/webuiapps/public/kayley-journal/
+apps/webuiapps/public/kayley-journal-index.json
+apps/webuiapps/public/kayley-story
+apps/webuiapps/public/kayley-story/
+apps/webuiapps/public/kayley-weeks-index.json
+apps/webuiapps/public/kayley-promises-index.json
+apps/webuiapps/public/kayley-storylines-index.json
+apps/webuiapps/public/kayley-email-index.json
+apps/webuiapps/public/kayley-twitter-feed.json
+
 # Internal CI/CD & Scripts
 scripts/
 .gitlab-ci.yml

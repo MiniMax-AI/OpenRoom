@@ -1,5 +1,6 @@
-import React, { useRef, useCallback, lazy, Suspense } from 'react';
-import { X, Minus } from 'lucide-react';
+import React, { useState, useCallback, lazy, Suspense } from 'react';
+import { Rnd } from 'react-rnd';
+import { X, Minus, Maximize2 } from 'lucide-react';
 import {
   type WindowState,
   closeWindow,
@@ -31,123 +32,101 @@ interface Props {
 }
 
 const AppWindow: React.FC<Props> = ({ win }) => {
-  const dragRef = useRef<{ startX: number; startY: number; winX: number; winY: number } | null>(
-    null,
-  );
-  const resizeRef = useRef<{ startX: number; startY: number; winW: number; winH: number } | null>(
-    null,
-  );
+  const [maximized, setMaximized] = useState(false);
+  const [preMaxState, setPreMaxState] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
 
-  const handleResizeMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      e.preventDefault();
-      focusWindow(win.appId);
-      resizeRef.current = {
-        startX: e.clientX,
-        startY: e.clientY,
-        winW: win.width,
-        winH: win.height,
-      };
-
-      const handleMouseMove = (ev: MouseEvent) => {
-        if (!resizeRef.current) return;
-        const dx = ev.clientX - resizeRef.current.startX;
-        const dy = ev.clientY - resizeRef.current.startY;
-        resizeWindow(win.appId, resizeRef.current.winW + dx, resizeRef.current.winH + dy);
-      };
-
-      const handleMouseUp = () => {
-        resizeRef.current = null;
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    },
-    [win.appId, win.width, win.height],
-  );
-
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      focusWindow(win.appId);
-      dragRef.current = {
-        startX: e.clientX,
-        startY: e.clientY,
-        winX: win.x,
-        winY: win.y,
-      };
-
-      const handleMouseMove = (ev: MouseEvent) => {
-        if (!dragRef.current) return;
-        const dx = ev.clientX - dragRef.current.startX;
-        const dy = ev.clientY - dragRef.current.startY;
-        moveWindow(win.appId, dragRef.current.winX + dx, dragRef.current.winY + dy);
-      };
-
-      const handleMouseUp = () => {
-        dragRef.current = null;
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    },
-    [win.appId, win.x, win.y],
-  );
+  const toggleMax = useCallback(() => {
+    if (!maximized) {
+      setPreMaxState({ x: win.x, y: win.y, width: win.width, height: win.height });
+      // Inset from edges to keep the bottom dock (wallpaper, upload, chat toggle) accessible.
+      const inset = 8;
+      const dockHeight = 80;
+      moveWindow(win.appId, inset, inset);
+      resizeWindow(
+        win.appId,
+        window.innerWidth - inset * 2,
+        window.innerHeight - inset * 2 - dockHeight,
+      );
+      setMaximized(true);
+    } else {
+      if (preMaxState) {
+        moveWindow(win.appId, preMaxState.x, preMaxState.y);
+        resizeWindow(win.appId, preMaxState.width, preMaxState.height);
+      }
+      setMaximized(false);
+      setPreMaxState(null);
+    }
+  }, [maximized, preMaxState, win.appId, win.x, win.y, win.width, win.height]);
 
   const AppComp = APP_COMPONENTS[win.appId];
   if (!AppComp) return null;
-
   if (win.minimized) return null;
 
   return (
-    <div
+    <Rnd
       className={styles.window}
       data-testid={`app-window-${win.appId}`}
-      style={{
-        left: win.x,
-        top: win.y,
-        width: win.width,
-        height: win.height,
-        zIndex: win.zIndex,
-      }}
+      size={{ width: win.width, height: win.height }}
+      position={{ x: win.x, y: win.y }}
+      minWidth={300}
+      minHeight={200}
+      bounds="window"
+      dragHandleClassName={styles.titleBar}
+      enableResizing={!maximized}
+      disableDragging={maximized}
+      style={{ zIndex: win.zIndex }}
       onMouseDown={() => focusWindow(win.appId)}
+      onDragStop={(_, d) => moveWindow(win.appId, d.x, d.y)}
+      onResizeStop={(_, __, ref, ___, pos) => {
+        resizeWindow(win.appId, ref.offsetWidth, ref.offsetHeight);
+        moveWindow(win.appId, pos.x, pos.y);
+      }}
     >
-      <div className={styles.titleBar} onMouseDown={handleMouseDown}>
-        <span className={styles.title}>{win.title}</span>
-        <div className={styles.actions}>
-          <button
-            className={styles.actionBtn}
-            onClick={() => minimizeWindow(win.appId)}
-            title="Minimize"
-          >
-            <Minus size={12} />
-          </button>
-          <button
-            className={`${styles.actionBtn} ${styles.closeBtn}`}
-            onClick={() => {
-              closeWindow(win.appId);
-              reportUserOsAction('CLOSE_APP', { app_id: String(win.appId) });
-            }}
-            title="Close"
-            data-testid={`window-close-${win.appId}`}
-          >
-            <X size={12} />
-          </button>
+      <div className={styles.windowInner}>
+        <div className={styles.titleBar}>
+          <span className={styles.title}>{win.title}</span>
+          <div className={styles.actions}>
+            <button
+              className={styles.actionBtn}
+              onClick={() => minimizeWindow(win.appId)}
+              title="Minimize"
+            >
+              <Minus size={12} />
+            </button>
+            <button
+              className={styles.actionBtn}
+              onClick={toggleMax}
+              title={maximized ? 'Restore' : 'Maximize'}
+            >
+              <Maximize2 size={12} />
+            </button>
+            <button
+              className={`${styles.actionBtn} ${styles.closeBtn}`}
+              onClick={() => {
+                closeWindow(win.appId);
+                reportUserOsAction('CLOSE_APP', { app_id: String(win.appId) });
+              }}
+              title="Close"
+              data-testid={`window-close-${win.appId}`}
+            >
+              <X size={12} />
+            </button>
+          </div>
+        </div>
+        <div className={styles.content}>
+          <div className={styles.contentInner}>
+            <Suspense fallback={<div className={styles.loading}>Loading...</div>}>
+              <AppComp />
+            </Suspense>
+          </div>
         </div>
       </div>
-      <div className={styles.content}>
-        <div className={styles.contentInner}>
-          <Suspense fallback={<div className={styles.loading}>Loading...</div>}>
-            <AppComp />
-          </Suspense>
-        </div>
-      </div>
-      <div className={styles.resizeHandle} onMouseDown={handleResizeMouseDown} />
-    </div>
+    </Rnd>
   );
 };
 

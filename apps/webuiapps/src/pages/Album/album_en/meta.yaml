@@ -3,10 +3,12 @@ app_name: album
 app_display_name: Album
 version: "1.0.0"
 description: >
-  Album app, read-only browsing mode. Image data stored in cloud images/ directory.
-  Only supports REFRESH action to notify frontend to re-sync image list, no write actions.
+  Kayley's selfie album — 542 photos of her in different outfits, locations, and moods
+  (Austin apartment, couch, date nights, daily check-ins). The character can browse,
+  filter mentally by date or location, and reference specific photos in conversation.
+  Read-only; supports REFRESH to re-sync after the Agent adds/removes images.
 displayDesc: >
-  A beautiful photo gallery — browse your photos in a grid layout with full-size preview on click.
+  Kayley's selfie album — 542 photos across outfits, locations, and moods. Grid view with full-size preview on click.
 
 # ============================================================
 # The following actions are only for Agent → Frontend command dispatch.

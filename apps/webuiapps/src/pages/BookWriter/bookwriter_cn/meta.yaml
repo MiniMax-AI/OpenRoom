@@ -1,0 +1,10 @@
+app_id: 15
+app_name: bookwriter
+app_display_name: Book Writer
+version: "0.1.0"
+description: >
+  Steven's novel — chapters, drafts, notes, co-writing with Kayley. Placeholder stub for v1.
+displayDesc: >
+  A writing space for Steven's book — chapters, drafts, notes, and co-writing sessions with Kayley.
+
+actions: []

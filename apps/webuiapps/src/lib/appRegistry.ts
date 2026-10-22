@@ -52,21 +52,21 @@ const APP_STATIC_REGISTRY: AppStaticDef[] = [
     appId: 2,
     appName: 'twitter',
     route: '/twitter',
-    displayName: 'Twitter',
+    displayName: 'X',
     sourceDir: 'Twitter',
-    icon: 'Twitter',
-    color: '#1da1f2',
+    icon: 'X',
+    color: '#ffffff',
     defaultSize: { width: 400, height: 500 },
   },
   {
     appId: 3,
-    appName: 'musicPlayer',
-    route: '/musicPlayer',
-    displayName: 'Music Player',
-    sourceDir: 'MusicApp',
-    icon: 'Music',
-    color: '#1db954',
-    defaultSize: { width: 760, height: 640 },
+    appName: 'youtube',
+    route: '/youtube',
+    displayName: 'YouTube',
+    sourceDir: 'YouTubeApp',
+    icon: 'Youtube',
+    color: '#ff0000',
+    defaultSize: { width: 960, height: 640 },
   },
   {
     appId: 4,
@@ -142,11 +142,51 @@ const APP_STATIC_REGISTRY: AppStaticDef[] = [
     appId: 14,
     appName: 'cyberNews',
     route: '/cyberNews',
-    displayName: 'CyberNews',
+    displayName: 'Hacker News',
     sourceDir: 'CyberNews',
-    icon: 'Newspaper',
-    color: '#FAEA5F',
+    icon: 'Flame',
+    color: '#ff6600',
     defaultSize: { width: 1100, height: 750 },
+  },
+  {
+    appId: 15,
+    appName: 'bookwriter',
+    route: '/bookwriter',
+    displayName: 'Book Writer',
+    sourceDir: 'BookWriter',
+    icon: 'BookOpen',
+    color: '#d4a574',
+    defaultSize: { width: 880, height: 600 },
+  },
+  {
+    appId: 16,
+    appName: 'memoryvault',
+    route: '/memoryvault',
+    displayName: 'Memory Vault',
+    sourceDir: 'MemoryVault',
+    icon: 'Heart',
+    color: '#ff7aa2',
+    defaultSize: { width: 880, height: 600 },
+  },
+  {
+    appId: 17,
+    appName: 'mystery',
+    route: '/mystery',
+    displayName: 'Mystery',
+    sourceDir: 'MysteryApp',
+    icon: 'Search',
+    color: '#d4a574',
+    defaultSize: { width: 960, height: 680 },
+  },
+  {
+    appId: 18,
+    appName: 'light',
+    route: '/light',
+    displayName: 'Light',
+    sourceDir: 'Light',
+    icon: 'Lightbulb',
+    color: '#fbbf24',
+    defaultSize: { width: 320, height: 520 },
   },
 ];
 
@@ -191,6 +231,17 @@ const OS_ACTIONS: AppActionDef[] = [
 
 export function getAppDisplayName(appId: number): string {
   return APP_STATIC_REGISTRY.find((a) => a.appId === appId)?.displayName ?? `App ${appId}`;
+}
+
+/**
+ * Reverse-lookup an app's numeric id by its canonical short name
+ * (e.g. "chess" → 12). Case-insensitive. Returns null if no match.
+ */
+export function findAppIdByName(name: string): number | null {
+  if (!name) return null;
+  const needle = name.toLowerCase();
+  const hit = APP_STATIC_REGISTRY.find((a) => a.appName.toLowerCase() === needle);
+  return hit ? hit.appId : null;
 }
 
 export function getAppDefaultSize(appId: number): { width: number; height: number } {

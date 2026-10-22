@@ -1,0 +1,17 @@
+app_id: 15
+app_name: bookwriter
+app_display_name: Book Writer
+version: "0.1.0"
+description: >
+  Steven's novel — chapter list, drafts, notes. Kayley reads alongside and can co-write.
+  Chapters are loaded from /kayley-book/index.json (junctioned from Kayley_Cowork/book/chapters/).
+  Ships with a graceful empty state when no chapters exist yet.
+displayDesc: >
+  Steven's novel — chapter list, drafts, notes. Kayley reads alongside and can co-write.
+
+# ============================================================
+# Stub app — UI placeholder only.
+# No Agent → Frontend action instructions are provided yet.
+# ============================================================
+
+actions: []

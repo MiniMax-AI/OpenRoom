@@ -1,0 +1,94 @@
+app_id: 3
+app_name: youtube
+app_display_name: YouTube
+version: "1.1.0"
+description: >
+  YouTube search and playback. Kayley can search any query — videos, songs,
+  talks, tutorials — and the results render as clickable cards inside this
+  app. Clicking a card embeds the YouTube IFrame player inline with
+  programmatic play/pause/volume/queue control, so Kayley can DJ.
+  Backed by a public-scrape fallback so no API key is required.
+displayDesc: >
+  Search YouTube and play results inline. Kayley drives search and playback
+  via SEARCH / PLAY / PAUSE / RESUME / NEXT / SET_VOLUME / QUEUE actions.
+
+# ============================================================
+# The following actions are only used for Agent → Frontend commands.
+# ============================================================
+
+actions:
+  - type: SEARCH
+    name: Search YouTube
+    description: >
+      Search YouTube for a query and render the results as a clickable
+      grid of cards inside the YouTube app. Each card embeds the video
+      when clicked. Returns "success" once the search dispatches.
+    params:
+      - name: query
+        type: string
+        description: The search query (free text, e.g. "fleetwood mac landslide live")
+        required: true
+      - name: max_results
+        type: number
+        description: Maximum number of results to return. Default 10, max 25.
+        required: false
+
+  - type: PLAY
+    name: Play a video
+    description: >
+      Embed the YouTube IFrame player and autoplay a video. Either supply
+      a direct video_id or a free-text query (first match plays).
+    params:
+      - name: video_id
+        type: string
+        description: YouTube video id (e.g. "dQw4w9WgXcQ"). Preferred when known.
+        required: false
+      - name: query
+        type: string
+        description: Free-text search; the first result plays. Use if video_id unknown.
+        required: false
+
+  - type: PAUSE
+    name: Pause playback
+    description: Pause the currently playing video. No params.
+    params: []
+
+  - type: RESUME
+    name: Resume playback
+    description: Resume playback after a pause. No params.
+    params: []
+
+  - type: NEXT
+    name: Next track
+    description: >
+      Advance to the next video in the queue. If the queue is exhausted
+      or empty, performs a related search seeded by the last query and
+      plays a fresh result.
+    params: []
+
+  - type: SET_VOLUME
+    name: Set volume
+    description: Set player volume (0–100). Out-of-range values are clamped.
+    params:
+      - name: volume
+        type: number
+        description: Integer 0–100. 0 mutes, 100 is full volume.
+        required: true
+
+  - type: QUEUE
+    name: Queue videos
+    description: >
+      Build a playback queue. Either supply video_ids as a JSON array (or
+      comma-separated list) of YouTube ids, or a free-text query — the
+      top results are queued. Starts playing the first entry immediately.
+    params:
+      - name: video_ids
+        type: string
+        description: >
+          JSON array or CSV of YouTube video ids
+          (e.g. '["dQw4w9WgXcQ","Zi_XLOBDo_Y"]').
+        required: false
+      - name: query
+        type: string
+        description: Free-text search; top 10 results (max 25) are queued.
+        required: false

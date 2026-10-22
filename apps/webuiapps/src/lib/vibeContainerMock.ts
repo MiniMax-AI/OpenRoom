@@ -9,6 +9,17 @@ import i18next from 'i18next';
 import * as idb from './diskStorage';
 import { logger } from './logger';
 import { isReportUserActionsEnabled } from './action';
+import {
+  newGame as chessNewGame,
+  executeMove as chessExecuteMove,
+  legalMovesFor as chessLegalMovesFor,
+  legalMovesAlgebraic as chessLegalMovesAlgebraic,
+  boardToFen as chessBoardToFen,
+  suggestMove as chessSuggestMove,
+  fromNotation as chessFromNotation,
+  isValidState as chessIsValidState,
+  type GameState as ChessGameState,
+} from '../pages/Chess/engine';
 
 // ============ AppLifecycle Enum ============
 
@@ -67,9 +78,55 @@ export function onOSEvent(callback: OSEventCallback): () => void {
   return () => osEventCallbacks.delete(callback);
 }
 
+// Wallpaper-dimmer state retained at module scope so newly-mounted apps
+// (notably the Light app) can render with the correct initial value
+// instead of starting at 0 and snapping to the real value on the first
+// SET_OPACITY event. Updated by both the OS SET_OPACITY action handler
+// (agent-driven) and setOpacityFromUI (user-driven via Light slider).
+let currentWallpaperOpacity = 0;
+
+/**
+ * Returns the latest known wallpaper-dimmer opacity in [0, 1]. 0 = bright,
+ * 1 = pitch black. Used by the Light app to show the correct slider
+ * position on mount.
+ */
+export function getCurrentWallpaperOpacity(): number {
+  return currentWallpaperOpacity;
+}
+
+/**
+ * Dispatch a SET_OPACITY action from a user-driven UI surface (e.g. the
+ * Light app's slider drag). Updates the retained state, fires the OS event
+ * to redraw the scrim, and reports the user action so the agent sees that
+ * the user dimmed the lights manually.
+ */
+export function setOpacityFromUI(value: number): void {
+  const clamped = Math.max(0, Math.min(1, value));
+  currentWallpaperOpacity = clamped;
+  osEventCallbacks.forEach((cb) => cb({ type: 'SET_OPACITY', opacity: clamped }));
+  reportUserOsAction('SET_OPACITY', { opacity: String(clamped) });
+}
+
 // ============ OS Window Manager ============
 
 import { openWindow, closeWindow, getWindows as getWins } from './windowManager';
+import { findAppIdByName } from './appRegistry';
+
+/**
+ * Resolve a caller-supplied app identifier (numeric string like "12" or
+ * a human-friendly app name like "chess") to a numeric app_id. Returns
+ * NaN if the value can't be resolved. Centralizing this here keeps the
+ * OS OPEN_APP / CLOSE_APP handlers tolerant of either shape — Kayley's
+ * brain naturally thinks in app names, while the internal registry is
+ * keyed by numeric id.
+ */
+function resolveTargetAppId(raw: string | undefined): number {
+  if (!raw) return NaN;
+  const asNumber = Number(raw);
+  if (Number.isFinite(asNumber) && asNumber > 0) return asNumber;
+  const byName = findAppIdByName(raw);
+  return byName ?? NaN;
+}
 
 // ============ Listener-Ready Notification ============
 // Tracks callback count at the moment each window was opened so we can detect
@@ -120,6 +177,193 @@ function translateActionParams(action: {
  * For REFRESH / query-type actions, returns a data summary string; otherwise returns null.
  */
 
+// ============ Chess Per-App Action Handler ============
+// Chess state lives at this disk path — matches what createAppFileApi('chess') writes.
+const CHESS_STATE_PATH = '/apps/chess/data/state.json';
+const CHESS_APP_ID = 12;
+
+/**
+ * Read the current chess game state from disk. Returns null if no game exists
+ * or the file is invalid / missing.
+ */
+async function loadChessState(): Promise<ChessGameState | null> {
+  try {
+    const raw = await idb.getFile(CHESS_STATE_PATH);
+    if (!raw) return null;
+    return chessIsValidState(raw) ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Persist a chess game state to disk (the same path the UI reads from).
+ */
+async function saveChessState(state: ChessGameState): Promise<void> {
+  await idb.putTextFilesByJSON({
+    files: [
+      {
+        path: '/apps/chess/data',
+        name: 'state.json',
+        content: JSON.stringify(state),
+      },
+    ],
+  });
+}
+
+/**
+ * Dispatch a Chess UI-notification action to the frontend if the window is
+ * open. If it's not open, this is a no-op — the headless handler has already
+ * persisted state.json, so whenever the window opens next it will load the
+ * latest game from disk. Fire-and-forget: the Agent's authoritative result
+ * comes from the headless engine, not the UI.
+ */
+function notifyChessUi(
+  actionType: 'AGENT_MOVE' | 'SYNC_STATE' | 'NEW_GAME',
+  extra: Record<string, string> = {},
+): void {
+  const wins = getWins();
+  const isOpen = wins.some((w) => w.appId === CHESS_APP_ID);
+  if (!isOpen) return;
+  const payload = {
+    app_id: CHESS_APP_ID,
+    action_type: actionType,
+    action_id: Date.now(),
+    timestamp_ms: Date.now(),
+    trigger_by: 2,
+    params: { filePath: CHESS_STATE_PATH, ...extra },
+  };
+  const content = JSON.stringify(payload);
+  agentMessageCallbacks.forEach((cb) => cb({ content }));
+}
+
+/**
+ * Per-app action dispatcher for Chess. All moves are validated by the engine
+ * before mutating state; invalid input returns a descriptive error string.
+ */
+async function handleChessAction(action: {
+  app_id: number;
+  action_type: string;
+  params?: Record<string, string>;
+}): Promise<string> {
+  const type = action.action_type;
+  const p = action.params ?? {};
+
+  if (type === 'START_GAME') {
+    const fresh = chessNewGame();
+    await saveChessState(fresh);
+    notifyChessUi('NEW_GAME', { gameId: fresh.gameId });
+    return JSON.stringify({ fen: chessBoardToFen(fresh) });
+  }
+
+  if (type === 'GET_BOARD') {
+    const state = await loadChessState();
+    if (!state) {
+      return 'error: no active game — call chess/START_GAME first';
+    }
+    return JSON.stringify({
+      fen: chessBoardToFen(state),
+      turn: state.currentTurn,
+      legal_moves: chessLegalMovesAlgebraic(state),
+    });
+  }
+
+  if (type === 'MAKE_MOVE') {
+    const state = await loadChessState();
+    if (!state) {
+      return 'error: no active game — call chess/START_GAME first';
+    }
+    if (
+      state.gameStatus === 'checkmate' ||
+      state.gameStatus === 'stalemate' ||
+      state.gameStatus === 'draw'
+    ) {
+      return `error: game is over (${state.gameStatus})`;
+    }
+
+    const fromSq = p.from;
+    const toSq = p.to;
+    if (!fromSq || !toSq) {
+      return 'error: missing required params "from" and "to" (e.g. from="e2", to="e4")';
+    }
+    const from = chessFromNotation(fromSq);
+    const to = chessFromNotation(toSq);
+    if (!from || !to) {
+      return `error: invalid square notation — from="${fromSq}", to="${toSq}" (expected e.g. "e2")`;
+    }
+
+    const piece = state.board[from[0]][from[1]];
+    if (!piece) {
+      return `error: no piece on ${fromSq}`;
+    }
+    if (piece.color !== state.currentTurn) {
+      return `error: it is ${state.currentTurn}'s turn — ${fromSq} is a ${piece.color} piece`;
+    }
+
+    const legal = chessLegalMovesFor(
+      state.board,
+      from[0],
+      from[1],
+      state.castlingRights,
+      state.enPassantTarget,
+    );
+    const isLegal = legal.some((t) => t[0] === to[0] && t[1] === to[1]);
+    if (!isLegal) {
+      return `error: illegal move ${fromSq}->${toSq}`;
+    }
+
+    const nextState = chessExecuteMove(state, from, to);
+    await saveChessState(nextState);
+    notifyChessUi('AGENT_MOVE', { from: fromSq, to: toSq });
+
+    const result: Record<string, unknown> = {
+      fen: chessBoardToFen(nextState),
+      last_move: `${fromSq}${toSq}`,
+      turn: nextState.currentTurn,
+    };
+    if (
+      nextState.gameStatus === 'checkmate' ||
+      nextState.gameStatus === 'stalemate' ||
+      nextState.gameStatus === 'draw'
+    ) {
+      result.game_over = nextState.gameStatus;
+    }
+    return JSON.stringify(result);
+  }
+
+  if (type === 'SURRENDER') {
+    const state = await loadChessState();
+    if (!state) {
+      return 'error: no active game — call chess/START_GAME first';
+    }
+    // By convention Kayley plays black, Steven plays white. SURRENDER is
+    // called by Kayley's brain — so Steven wins.
+    const surrendered: ChessGameState = {
+      ...state,
+      gameStatus: 'checkmate',
+      winner: 'w',
+      isAgentThinking: false,
+    };
+    await saveChessState(surrendered);
+    notifyChessUi('SYNC_STATE');
+    return JSON.stringify({ result: 'steven_won' });
+  }
+
+  if (type === 'HINT') {
+    const state = await loadChessState();
+    if (!state) {
+      return 'error: no active game — call chess/START_GAME first';
+    }
+    const hint = chessSuggestMove(state);
+    if (!hint) {
+      return 'error: no legal moves available';
+    }
+    return JSON.stringify({ suggested_move: hint.move, reason: hint.reason });
+  }
+
+  return `error: unknown chess action_type "${type}" — valid: START_GAME, MAKE_MOVE, GET_BOARD, SURRENDER, HINT`;
+}
+
 /**
  * Called by ChatPanel: dispatch an LLM-returned Action to the App.
  * Returns a Promise that resolves when the App handler finishes processing and returns a result.
@@ -133,15 +377,32 @@ export async function dispatchAgentAction(action: {
   // OS actions (app_id=1) are handled directly here
   if (action.app_id === 1) {
     if (action.action_type === 'OPEN_APP') {
-      const targetAppId = Number(action.params?.app_id);
+      const targetAppId = resolveTargetAppId(action.params?.app_id);
+      if (!Number.isFinite(targetAppId)) {
+        return `error: unknown app_id "${action.params?.app_id ?? ''}" — pass a numeric id or canonical app name (e.g. "chess", "album", "diary")`;
+      }
       openWindow(targetAppId);
       windowOpenSnapshots.set(targetAppId, { callbackCount: agentMessageCallbacks.size });
       return 'success';
     }
     if (action.action_type === 'CLOSE_APP') {
-      const targetAppId = Number(action.params?.app_id);
+      const targetAppId = resolveTargetAppId(action.params?.app_id);
+      if (!Number.isFinite(targetAppId)) {
+        return `error: unknown app_id "${action.params?.app_id ?? ''}" — pass a numeric id or canonical app name (e.g. "chess", "album", "diary")`;
+      }
       closeWindow(targetAppId);
       windowOpenSnapshots.delete(targetAppId);
+      return 'success';
+    }
+    if (action.action_type === 'SET_OPACITY') {
+      const raw = action.params?.opacity;
+      const parsed = typeof raw === 'string' ? Number(raw) : NaN;
+      if (!Number.isFinite(parsed)) {
+        return 'error: SET_OPACITY requires numeric opacity param in [0.0, 1.0]';
+      }
+      const clamped = Math.max(0, Math.min(1, parsed));
+      currentWallpaperOpacity = clamped;
+      osEventCallbacks.forEach((cb) => cb({ type: 'SET_OPACITY', opacity: clamped }));
       return 'success';
     }
     if (action.action_type === 'SET_WALLPAPER') {
@@ -160,6 +421,39 @@ export async function dispatchAgentAction(action: {
       return 'success';
     }
     return 'error: unknown OS action';
+  }
+
+  // Chess actions (app_id=12) are handled directly — we own an authoritative
+  // headless chess engine in the dispatcher so Kayley can play even if the
+  // Chess window isn't open. state.json stays the source of truth so when
+  // the UI is open, a subsequent SYNC_STATE notification refreshes it.
+  if (action.app_id === 12) {
+    return handleChessAction(action);
+  }
+
+  /** Mystery GM responses can exceed 10s (Haiku); keep below browser GM client timeout. */
+  const MYSTERY_APP_ID = 17;
+  const mysteryDispatchTimeoutMs = action.app_id === MYSTERY_APP_ID ? 72_000 : 0;
+  if (action.app_id === MYSTERY_APP_ID) {
+    void import('./mysteryLogger')
+      .then(({ mysteryLog }) => {
+        mysteryLog(
+          'info',
+          'vibeContainerMock',
+          'dispatchAgentAction.enter',
+          `Mystery dispatch entered: ${action.action_type}`,
+          {
+            action_type: action.action_type,
+            action_id: action.action_id,
+            params_keys: Object.keys(action.params ?? {}),
+            callback_count: agentMessageCallbacks.size,
+            dispatch_timeout_ms: mysteryDispatchTimeoutMs,
+          },
+        );
+      })
+      .catch(() => {
+        /* noop — logger import shouldn't block dispatch */
+      });
   }
 
   // Translate Action params
@@ -194,6 +488,8 @@ export async function dispatchAgentAction(action: {
     };
 
     let resolved = false;
+    const defaultMs = needsListenerWait ? 20000 : 10000;
+    const timeoutMs = mysteryDispatchTimeoutMs > 0 ? mysteryDispatchTimeoutMs : defaultMs;
     const timeout = setTimeout(
       () => {
         if (!resolved) {
@@ -201,7 +497,7 @@ export async function dispatchAgentAction(action: {
           resolve('timeout: no response from app');
         }
       },
-      needsListenerWait ? 20000 : 10000,
+      timeoutMs,
     );
 
     const originalSend = mockManager.sendAgentMessage;
@@ -215,6 +511,26 @@ export async function dispatchAgentAction(action: {
           if (Object.keys(extraInfo).length > 0) {
             result += ' ' + JSON.stringify(extraInfo);
           }
+          if (action.app_id === MYSTERY_APP_ID) {
+            void import('./mysteryLogger')
+              .then(({ mysteryLog }) => {
+                mysteryLog(
+                  'info',
+                  'vibeContainerMock',
+                  'dispatchAgentAction.resolved',
+                  `Mystery action_result received for ${action.action_type}`,
+                  {
+                    action_type: action.action_type,
+                    action_id: fullAction.action_id,
+                    result_length: result.length,
+                    result_prefix: result.slice(0, 120),
+                  },
+                );
+              })
+              .catch(() => {
+                /* noop */
+              });
+          }
           resolve(result);
         }
         mockManager.sendAgentMessage = originalSend;
@@ -226,6 +542,25 @@ export async function dispatchAgentAction(action: {
     const dispatch = () => {
       if (resolved) return;
       const payload = { content: JSON.stringify(fullAction) };
+      if (action.app_id === MYSTERY_APP_ID) {
+        void import('./mysteryLogger')
+          .then(({ mysteryLog }) => {
+            mysteryLog(
+              'info',
+              'vibeContainerMock',
+              'dispatchAgentAction.broadcast',
+              `Broadcasting to ${agentMessageCallbacks.size} listener(s)`,
+              {
+                action_type: action.action_type,
+                action_id: fullAction.action_id,
+                listener_count: agentMessageCallbacks.size,
+              },
+            );
+          })
+          .catch(() => {
+            /* noop */
+          });
+      }
       agentMessageCallbacks.forEach((cb) => cb(payload));
     };
 

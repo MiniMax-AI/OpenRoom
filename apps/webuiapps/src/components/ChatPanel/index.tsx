@@ -9,8 +9,11 @@ import {
   ChevronRight,
   Pencil,
   List,
+  Mic,
+  X,
 } from 'lucide-react';
 import { chat, loadConfig, loadConfigSync, saveConfig, type ChatMessage } from '@/lib/llmClient';
+import { useKayleyChannel } from '@/hooks/useKayleyChannel';
 import {
   PROVIDER_MODELS,
   getDefaultProviderConfig,
@@ -35,6 +38,7 @@ import {
 } from '@/lib/appRegistry';
 import { seedMetaFiles } from '@/lib/seedMeta';
 import { dispatchAgentAction, onUserAction } from '@/lib/vibeContainerMock';
+import { sendKayleyWsPayload } from '@/lib/kayleyWsBridge';
 import { closeAllWindows } from '@/lib/windowManager';
 import { getFileToolDefinitions, isFileTool, executeFileTool } from '@/lib/fileTools';
 import { setSessionPath } from '@/lib/sessionPath';
@@ -84,6 +88,10 @@ import {
 import CharacterPanel from './CharacterPanel';
 import ModPanel from './ModPanel';
 import styles from './index.module.scss';
+
+// If the Kayley brain (MCP) doesn't respond within this window we release the
+// UI so `loading` can't stick forever.
+const KAYLEY_SEND_TIMEOUT_MS = 90_000;
 
 // ---------------------------------------------------------------------------
 // Extended DisplayMessage with character-specific fields
@@ -388,7 +396,13 @@ const ChatPanel: React.FC<{
   visible?: boolean;
   zIndex?: number;
   onFocus?: () => void;
-}> = ({ onClose, visible = true, zIndex, onFocus }) => {
+  /**
+   * When true, the panel renders filling its parent (for use inside a
+   * floating/resizable window wrapper like ChatWindow). Defaults to false,
+   * which keeps the legacy right-stuck drawer behavior.
+   */
+  windowed?: boolean;
+}> = ({ onClose, visible = true, zIndex, onFocus, windowed = false }) => {
   // Character + Mod state (collection-based)
   const [charCollection, setCharCollection] = useState<CharacterCollection>(
     () => loadCharacterCollectionSync() ?? DEFAULT_CHAR_COLLECTION,
@@ -451,6 +465,7 @@ const ChatPanel: React.FC<{
   // Pending tool calls for current response (grouped per assistant turn)
   const pendingToolCallsRef = useRef<string[]>([]);
 
+  const messagesWrapRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
@@ -458,6 +473,14 @@ const ChatPanel: React.FC<{
   chatHistoryRef.current = chatHistory;
   const suggestedRepliesRef = useRef(suggestedReplies);
   suggestedRepliesRef.current = suggestedReplies;
+
+  // ── Kayley channel (ws://localhost:5180) ──────────────────────
+  // When connected, bypasses local LLM and routes all chat through the
+  // Claude Opus brain with full MCPs + memory. Falls back to local LLM if
+  // Kayley server is not running.
+  const kayley = useKayleyChannel();
+  const kayleyRef = useRef(kayley);
+  kayleyRef.current = kayley;
 
   // Debounced save
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -624,12 +647,45 @@ const ChatPanel: React.FC<{
   }, [modCollection, seedPrologue]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = messagesWrapRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
   }, [messages, loading]);
 
   const addMessage = useCallback((msg: CharacterDisplayMessage) => {
     setMessages((prev) => [...prev, msg]);
   }, []);
+
+  // ── Kayley send timeout ───────────────────────────────────────
+  // If the Kayley brain stalls (MCP doesn't reply), clear `loading` after
+  // KAYLEY_SEND_TIMEOUT_MS so the UI doesn't lock forever. Cleared whenever a
+  // new reply arrives or the component unmounts.
+  const kayleySendTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearKayleySendTimeout = useCallback(() => {
+    if (kayleySendTimeoutRef.current) {
+      clearTimeout(kayleySendTimeoutRef.current);
+      kayleySendTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => clearKayleySendTimeout();
+  }, [clearKayleySendTimeout]);
+
+  // ── Kayley response handler ───────────────────────────────────
+  // Each new latestMessage is a unique object (different timestamp), so this
+  // effect fires exactly once per incoming reply.
+  useEffect(() => {
+    if (!kayley.latestMessage) return;
+    clearKayleySendTimeout();
+    addMessage({
+      id: String(kayley.latestMessage.timestamp),
+      role: 'assistant',
+      content: kayley.latestMessage.text,
+    });
+    setLoading(false);
+  }, [kayley.latestMessage, addMessage, clearKayleySendTimeout]);
 
   const configRef = useRef(config);
   configRef.current = config;
@@ -675,9 +731,6 @@ const ChatPanel: React.FC<{
   // Listen for user actions from apps
   useEffect(() => {
     const unsubscribe = onUserAction((event: unknown) => {
-      const cfg = configRef.current;
-      if (!hasUsableLLMConfig(cfg)) return;
-
       const evt = event as {
         app_action?: {
           app_id: number;
@@ -697,17 +750,57 @@ const ChatPanel: React.FC<{
       if (!app) return;
 
       const actionMsg = `[User performed action in ${app.displayName} (appName: ${app.appName})] action_type: ${action.action_type}, params: ${JSON.stringify(action.params || {})}`;
+
+      if (kayleyRef.current.connected) {
+        sendKayleyWsPayload({
+          type: 'openroom_user_action',
+          line: actionMsg,
+        });
+        return;
+      }
+
+      const cfg = configRef.current;
+      if (!hasUsableLLMConfig(cfg)) return;
+
       actionQueueRef.current.push(actionMsg);
       processActionQueue();
     });
     return unsubscribe;
   }, [processActionQueue]);
 
-  // Send message
+  // Send message — routes to Kayley brain if connected, local LLM otherwise
   const handleSend = useCallback(
     async (overrideText?: string) => {
       const text = overrideText ?? input.trim();
       if (!text || loading) return;
+
+      const kRef = kayleyRef.current;
+
+      if (kRef.connected) {
+        // ── Kayley brain mode — bypass local LLM ────────────────
+        if (!overrideText) setInput('');
+        setSuggestedReplies([]);
+        addMessage({ id: String(Date.now()), role: 'user', content: text });
+        setLoading(true);
+        kRef.sendText(text);
+
+        // 90-second stall guard — if MCP doesn't reply, release the UI and
+        // surface an inline notice. Cleared when latestMessage arrives or on unmount.
+        clearKayleySendTimeout();
+        kayleySendTimeoutRef.current = setTimeout(() => {
+          kayleySendTimeoutRef.current = null;
+          setLoading(false);
+          addMessage({
+            id: String(Date.now()),
+            role: 'assistant',
+            content:
+              "Kayley's thinking took too long — try again or check the connection.",
+          });
+        }, KAYLEY_SEND_TIMEOUT_MS);
+        return;
+      }
+
+      // ── Local LLM mode (fallback when Kayley is not running) ──
       if (!hasUsableLLMConfig(config)) {
         setShowSettings(true);
         return;
@@ -740,8 +833,24 @@ const ChatPanel: React.FC<{
         setLoading(false);
       }
     },
-    [input, loading, config, chatHistory, addMessage],
+    [input, loading, config, chatHistory, addMessage, clearKayleySendTimeout],
   );
+
+  // ── Bridge from HostedHUD pill input ──────────────────────────
+  // HostedHUD handles Kayley-connected sends itself. When Kayley is NOT
+  // connected, it dispatches `hosted-hud-send` so the local-LLM fallback
+  // path (handleSend) runs here with full tool-loop support.
+  useEffect(() => {
+    const onHudSend = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ text: string }>).detail;
+      if (!detail?.text) return;
+      handleSend(detail.text);
+    };
+    window.addEventListener('hosted-hud-send', onHudSend as EventListener);
+    return () => {
+      window.removeEventListener('hosted-hud-send', onHudSend as EventListener);
+    };
+  }, [handleSend]);
 
   // Core conversation loop
   const runConversation = async (history: ChatMessage[], cfg: LLMConfig) => {
@@ -1041,7 +1150,7 @@ const ChatPanel: React.FC<{
   return (
     <>
       <div
-        className={styles.panel}
+        className={`${styles.panel} ${windowed ? styles.windowed : ''}`}
         data-testid="chat-panel"
         style={zIndex !== null && zIndex !== undefined ? { zIndex } : undefined}
         onMouseDown={onFocus}
@@ -1057,6 +1166,9 @@ const ChatPanel: React.FC<{
 
         {/* Right: Chat */}
         <div className={styles.chatSide}>
+          {/* Internal header hidden in windowed mode — ChatWindow renders
+              its own header with min/max/close. */}
+          {!windowed && (
           <div className={styles.header}>
             <div
               className={styles.headerLeft}
@@ -1064,49 +1176,76 @@ const ChatPanel: React.FC<{
               style={{ cursor: 'pointer' }}
             >
               <span className={styles.characterName}>{character.character_name}</span>
+              {kayley.connected && (
+                <span className={styles.kayleyDot} title="Connected to Kayley brain" />
+              )}
               <ChevronRight size={14} style={{ color: 'rgba(255,255,255,0.4)' }} />
             </div>
             <div className={styles.headerActions}>
-              <div onClick={() => setShowModPanel(true)} style={{ cursor: 'pointer' }}>
-                <StageIndicator modManager={modManager} />
-              </div>
-              <button
-                className={styles.iconBtn}
-                onClick={handleResetSession}
-                title="Reset session"
-                data-testid="reset-session"
-              >
-                <RotateCcw size={16} />
-              </button>
-              <button
-                className={styles.iconBtn}
-                onClick={handleClearHistory}
-                title="Clear chat"
-                data-testid="clear-chat"
-              >
-                <Trash2 size={16} />
-              </button>
-              <button
-                className={styles.iconBtn}
-                onClick={() => setShowSettings(true)}
-                title="Settings"
-                data-testid="settings-btn"
-              >
-                <Settings size={16} />
-              </button>
+              {/* Stage / Reset / Clear / Settings / Maximize: only shown in
+                  the original (non-windowed) layout. Steven's windowed UI
+                  prefers a minimal header — Min + Close only. */}
+              {!windowed && (
+                <>
+                  <div onClick={() => setShowModPanel(true)} style={{ cursor: 'pointer' }}>
+                    <StageIndicator modManager={modManager} />
+                  </div>
+                  <button
+                    className={styles.iconBtn}
+                    onClick={handleResetSession}
+                    title="Reset session"
+                    data-testid="reset-session"
+                  >
+                    <RotateCcw size={16} />
+                  </button>
+                  <button
+                    className={styles.iconBtn}
+                    onClick={handleClearHistory}
+                    title="Clear chat"
+                    data-testid="clear-chat"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                  <button
+                    className={styles.iconBtn}
+                    onClick={() => setShowSettings(true)}
+                    title="Settings"
+                    data-testid="settings-btn"
+                  >
+                    <Settings size={16} />
+                  </button>
+                  <button className={styles.iconBtn} title="Maximize">
+                    <Maximize2 size={16} />
+                  </button>
+                </>
+              )}
               <button className={styles.iconBtn} onClick={onClose} title="Minimize">
                 <Minus size={16} />
               </button>
-              <button className={styles.iconBtn} title="Maximize">
-                <Maximize2 size={16} />
-              </button>
+              {windowed && (
+                <button
+                  className={styles.iconBtn}
+                  onClick={onClose}
+                  title="Close"
+                  data-testid="chat-panel-close"
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
           </div>
+          )}
 
-          <div className={styles.messages} data-testid="chat-messages">
+          <div
+            ref={messagesWrapRef}
+            className={styles.messages}
+            data-testid="chat-messages"
+          >
             {messages.length === 0 && (
               <div className={styles.emptyState}>
-                {hasUsableLLMConfig(config)
+                {kayley.connected
+                  ? 'Kayley is ready — type anything or tap the mic'
+                  : hasUsableLLMConfig(config)
                   ? `${character.character_name} is ready to chat...`
                   : 'Click the gear icon to configure your LLM connection'}
               </div>
@@ -1137,14 +1276,57 @@ const ChatPanel: React.FC<{
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Suggested Replies */}
-          {suggestedReplies.length > 0 && !loading && (
+          {/* Suggested Replies — hidden in windowed (Kayley) layout per
+              Steven's preference for a minimal chat surface. */}
+          {!windowed && suggestedReplies.length > 0 && !loading && (
             <div className={styles.suggestedReplies}>
               {suggestedReplies.map((reply, i) => (
                 <button key={i} className={styles.suggestedReply} onClick={() => handleSend(reply)}>
                   {reply}
                 </button>
               ))}
+            </div>
+          )}
+
+          {/* STT draft confirmation bar — shown after Whisper transcribes mic audio */}
+          {kayley.sttDraft !== null && (
+            <div className={styles.sttDraftBar}>
+              <span className={styles.sttDraftText}>{kayley.sttDraft}</span>
+              <button
+                className={styles.sttDraftConfirm}
+                onClick={() => {
+                  // Confirm via the hook so its `confirmDraft` side-effects
+                  // (resetPlayback + sendText + draft clear) stay co-located.
+                  // We still do UI bookkeeping here so the user bubble appears
+                  // and the send-stall guard is armed.
+                  const draft = kayley.sttDraft;
+                  if (!draft || loading) return;
+                  addMessage({ id: String(Date.now()), role: 'user', content: draft });
+                  setLoading(true);
+                  clearKayleySendTimeout();
+                  kayleySendTimeoutRef.current = setTimeout(() => {
+                    kayleySendTimeoutRef.current = null;
+                    setLoading(false);
+                    addMessage({
+                      id: String(Date.now()),
+                      role: 'assistant',
+                      content:
+                        "Kayley's thinking took too long — try again or check the connection.",
+                    });
+                  }, KAYLEY_SEND_TIMEOUT_MS);
+                  kayley.confirmDraft();
+                }}
+                data-testid="stt-confirm-btn"
+              >
+                Send
+              </button>
+              <button
+                className={styles.sttDraftDismiss}
+                onClick={kayley.dismissDraft}
+                data-testid="stt-dismiss-btn"
+              >
+                ✕
+              </button>
             </div>
           )}
 
@@ -1167,6 +1349,16 @@ const ChatPanel: React.FC<{
             >
               Send
             </button>
+            {kayley.connected && (
+              <button
+                className={`${styles.micBtn} ${kayley.isRecording ? styles.micActive : ''}`}
+                onClick={() => kayley.isRecording ? kayley.stopVoice() : kayley.startVoice()}
+                title={kayley.isRecording ? 'Stop recording' : 'Voice input (Kayley STT)'}
+                data-testid="mic-btn"
+              >
+                <Mic size={16} />
+              </button>
+            )}
           </div>
         </div>
       </div>

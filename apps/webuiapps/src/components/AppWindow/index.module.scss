@@ -1,5 +1,12 @@
 .window {
   position: absolute;
+  min-width: 300px;
+  min-height: 200px;
+}
+
+.windowInner {
+  width: 100%;
+  height: 100%;
   border-radius: 10px;
   overflow: hidden;
   background: var(--bg-2, #1c1d20);
@@ -8,8 +15,6 @@
     0 0 0 1px rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
-  min-width: 300px;
-  min-height: 200px;
 }
 
 .titleBar {
@@ -83,27 +88,6 @@
   > * {
     height: 100% !important;
     max-height: 100%;
-  }
-}
-
-.resizeHandle {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 16px;
-  height: 16px;
-  cursor: nwse-resize;
-  z-index: 10;
-
-  &::after {
-    content: '';
-    position: absolute;
-    right: 3px;
-    bottom: 3px;
-    width: 8px;
-    height: 8px;
-    border-right: 2px solid rgba(255, 255, 255, 0.3);
-    border-bottom: 2px solid rgba(255, 255, 255, 0.3);
   }
 }
 

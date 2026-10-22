@@ -29,6 +29,38 @@ const COMPACT_BREAKPOINT = 560;
 const diaryFileApi = createAppFileApi(APP_NAME);
 const getEntryFilePath = (entryId: string): string => `${ENTRIES_DIR}/${entryId}.json`;
 
+// Kayley real-writing index files (built by scripts/build-diary-index.mjs).
+// Sourced from captured_moments/ and ~/.kayley-journal/ via junctions in public/.
+const KAYLEY_MOMENTS_INDEX = '/kayley-moments-index.json';
+const KAYLEY_JOURNAL_INDEX = '/kayley-journal-index.json';
+
+interface KayleyMomentEntry {
+  id: string;
+  slug: string;
+  date: string;
+  title: string;
+  summary: string;
+  lineThatStays: string;
+  body: string;
+  createdAt: number;
+  updatedAt: number;
+  source: 'captured_moment';
+}
+
+interface KayleyJournalEntry {
+  id: string;
+  date: string;
+  time: string;
+  emotion: string;
+  intensity: number | null;
+  excerpt: string;
+  body: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  source: 'private_journal';
+}
+
 // ============ Type Definitions ============
 type DiaryMood =
   | 'happy'
@@ -678,6 +710,85 @@ const pageVariants = {
   }),
 };
 
+// ============ Kayley Real-Writing Loaders ============
+// Fetches pre-built JSON indexes (moments + journal) and maps them into the
+// component's DiaryEntry shape so they merge seamlessly with cloud entries.
+
+const MOOD_FROM_EMOTION: Record<string, DiaryMood> = {
+  love: 'happy',
+  peace: 'hopeful',
+  joy: 'happy',
+  happy: 'happy',
+  excited: 'excited',
+  sad: 'sad',
+  grief: 'sad',
+  fear: 'anxious',
+  anxious: 'anxious',
+  anger: 'angry',
+  angry: 'angry',
+  tired: 'tired',
+  hope: 'hopeful',
+  hopeful: 'hopeful',
+};
+
+function emotionToMood(emotion: string): DiaryMood | undefined {
+  if (!emotion) return undefined;
+  const first = emotion.split(/[+,/&]/)[0]?.trim().toLowerCase() ?? '';
+  return MOOD_FROM_EMOTION[first];
+}
+
+function momentToDiaryEntry(m: KayleyMomentEntry): DiaryEntry {
+  // Prepend a "Line That Stays" callout if present, followed by the full body.
+  // The body already contains the H1 title, so don't duplicate.
+  const lineBlock = m.lineThatStays ? `> ${m.lineThatStays.replace(/^>\s*/, '')}\n\n` : '';
+  const content = `${lineBlock}${m.body}`.trim();
+  return {
+    id: m.id,
+    date: m.date,
+    title: m.title,
+    content,
+    mood: 'hopeful',
+    createdAt: m.createdAt,
+    updatedAt: m.updatedAt,
+  };
+}
+
+function journalToDiaryEntry(j: KayleyJournalEntry): DiaryEntry {
+  const emotionBadge = j.emotion
+    ? `*${j.emotion}${j.intensity ? ` · intensity ${j.intensity}` : ''}*\n\n`
+    : '';
+  const content = `${emotionBadge}${j.body}`.trim();
+  const mood = emotionToMood(j.emotion);
+  return {
+    id: j.id,
+    date: j.date,
+    title: j.title,
+    content,
+    mood,
+    createdAt: j.createdAt,
+    updatedAt: j.updatedAt,
+  };
+}
+
+async function loadKayleyDiaryEntries(): Promise<DiaryEntry[]> {
+  const fetchJson = async <T,>(url: string): Promise<T[]> => {
+    try {
+      const res = await fetch(url, { cache: 'no-cache' });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? (data as T[]) : [];
+    } catch (error) {
+      console.warn(`[Diary] Failed to load ${url}:`, error);
+      return [];
+    }
+  };
+  const [moments, journal] = await Promise.all([
+    fetchJson<KayleyMomentEntry>(KAYLEY_MOMENTS_INDEX),
+    fetchJson<KayleyJournalEntry>(KAYLEY_JOURNAL_INDEX),
+  ]);
+  return [...moments.map(momentToDiaryEntry), ...journal.map(journalToDiaryEntry)];
+}
+
 // ============ Main Component ============
 const Diary: React.FC = () => {
   const { t, i18n } = useTranslation('diary');
@@ -1116,7 +1227,17 @@ const Diary: React.FC = () => {
           console.warn('[Diary] Cloud init failed:', error);
         }
         const loaded = loadEntriesFromFS();
-        if (loaded.length > 0) setEntries(loaded);
+        const kayleyEntries = await loadKayleyDiaryEntries();
+        // Merge: cloud/user entries take precedence on id collision, then
+        // Kayley real-writing entries. Sorted by date desc in derived state.
+        const seen = new Set<string>();
+        const merged: DiaryEntry[] = [];
+        for (const e of [...loaded, ...kayleyEntries]) {
+          if (seen.has(e.id)) continue;
+          seen.add(e.id);
+          merged.push(e);
+        }
+        if (merged.length > 0) setEntries(merged);
 
         const savedState = loadState();
         if (savedState?.selectedDate) {

@@ -10,6 +10,17 @@
   flex-direction: row;
 }
 
+/* When wrapped in a floating/resizable window (ChatWindow), fill the parent
+   instead of clinging to the viewport edge. */
+.panel.windowed {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-left: none;
+  min-width: 0;
+  min-height: 0;
+}
+
 /* ---- Left: Character Avatar ---- */
 
 .avatarSide {
@@ -451,4 +462,94 @@
   font-size: 11px;
   color: rgba(250, 234, 95, 0.7);
   margin-top: 4px;
+}
+
+// ── Kayley channel additions ────────────────────────────────────────────────
+
+.kayleyDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ade80;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.sttDraftBar {
+  padding: 8px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(250, 234, 95, 0.06);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sttDraftText {
+  flex: 1;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  font-style: italic;
+}
+
+.sttDraftConfirm {
+  background: #faea5f;
+  color: #121214;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+
+  &:hover {
+    background: #f5e04a;
+  }
+}
+
+.sttDraftDismiss {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 12px;
+
+  &:hover {
+    color: rgba(255, 255, 255, 0.8);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+}
+
+.micBtn {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+
+  &:hover {
+    color: rgba(255, 255, 255, 0.9);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+}
+
+.micActive {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.4);
+  animation: micPulse 1s ease-in-out infinite;
+}
+
+@keyframes micPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }

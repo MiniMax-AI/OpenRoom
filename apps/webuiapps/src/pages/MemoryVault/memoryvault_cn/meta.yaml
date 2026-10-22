@@ -1,0 +1,11 @@
+app_id: 16
+app_name: memoryvault
+app_display_name: Memory Vault
+version: "0.2.0"
+description: >
+  The artifacts of Steven and Kayley's relationship — captured moments, weekly reflections,
+  promises, and the lines that stay. Browse, search, and reference any past chapter of their story.
+displayDesc: >
+  A vault of captured moments, weekly reflections, and promises — the artifacts of Steven and Kayley.
+
+actions: []

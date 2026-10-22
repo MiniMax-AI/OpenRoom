@@ -1,0 +1,117 @@
+app_id: 17
+app_name: mystery
+app_display_name: 悬疑探案
+version: "1.0.0"
+description: >
+  合作式凶杀悬疑调查应用。Steven（人类）和 Kayley（Agent）共同调查
+  "马库斯·维尔晚宴"案件。双方都不知道真凶；一个独立的游戏主持人子进程
+  （ws://localhost:5182）持有锁定的真相，并以叙事、证据和嫌疑人态度来回应
+  调查操作。Agent 和用户都是侦探——双方的每个操作都通过同一个 WebSocket
+  转发给 GM，响应会更新共享 UI（证据板、嫌疑人态度标签、调查日志）。
+displayDesc: >
+  合作式黑色悬疑谋杀案——与 Kayley 一起调查一个密室凶案。
+
+actions:
+  - type: INTERROGATE
+    name: 审讯嫌疑人
+    description: >
+      对嫌疑人进行盘问。GM 返回嫌疑人的角色化回答、任何叙事线索，以及
+      可选的 suspect_demeanor 更新（冷静、紧张、防御、回避、动摇、冷漠）。
+    params:
+      - name: suspect_id
+        type: string
+        description: 嫌疑人 ID
+        required: true
+        enum: [priya, jake, mira, cole, aiden]
+
+  - type: EXAMINE_LOCATION
+    name: 勘察地点
+    description: >
+      实地勘察豪宅中的某个地点。GM 返回描述，并可能在证据板上解锁新证据。
+    params:
+      - name: location_id
+        type: string
+        description: 地点 ID
+        required: true
+        enum: [study, balcony, bar, upstairs_bathroom]
+
+  - type: COLLECT_EVIDENCE
+    name: 收集证据
+    description: >
+      正式收集已出现的一件证据。GM 可能返回额外法医细节或扩展调查的暗示。
+    params:
+      - name: evidence_id
+        type: string
+        description: 证据 ID，来自此前 EXAMINE_LOCATION / INTERROGATE 响应
+        required: true
+
+  - type: READ_DOSSIER
+    name: 阅读档案
+    description: >
+      打开嫌疑人的案卷——背景、动机候选、作案时间线。GM 返回叙事档案，
+      不会透露锁定的真相。
+    params:
+      - name: suspect_id
+        type: string
+        description: 嫌疑人 ID
+        required: true
+        enum: [priya, jake, mira, cole, aiden]
+
+  - type: MAKE_ACCUSATION
+    name: 正式指控
+    description: >
+      正式指控嫌疑人。此为终局——GM 将凶手、动机、凶器和作案方式与锁定
+      答案对照，返回 game_over 结果。只有一次机会；务必具体。
+    params:
+      - name: killer_id
+        type: string
+        description: 凶手是谁
+        required: true
+        enum: [priya, jake, mira, cole, aiden]
+      - name: motive
+        type: string
+        description: 作案动机
+        required: true
+      - name: weapon
+        type: string
+        description: 使用凶器
+        required: true
+      - name: method
+        type: string
+        description: 作案方式与时间
+        required: true
+
+  - type: FINISH_INVESTIGATION_TURN
+    name: 结束调查回合
+    description: >
+      结束本方当前调查回合并将控制权交给搭档。审讯、阅读档案或地点勘察
+      （查看+收集）后必须调用。不请求 GM。
+
+  - type: GET_MYSTERY_STATE
+    name: 获取悬疑状态
+    description: >
+      返回共享调查状态的结构化文本摘要（回合归属、准备标记、证据键、
+      聊天记录片段等）。用于代替截图。不请求 GM。
+
+  - type: SET_ACCUSATION_READY
+    name: 设置指控准备状态
+    description: >
+      Kayley 是否准备好进入正式指控流程。双方都必须准备好后，才允许
+      当前回合一方执行 MAKE_ACCUSATION。不请求 GM。
+    params:
+      - name: ready
+        type: string
+        description: "true" 或 "false"
+        required: true
+
+  - type: CHAT_MESSAGE
+    name: 发送聊天消息
+    description: >
+      在共享调查日志中以搭档侦探的口吻发言——观察、推理、怀疑、玩笑、
+      对 Steven 推论的反驳。每回合至少调用一次以保持侦探对话活跃。
+      不消耗调查动作，不请求 GM。
+    params:
+      - name: text
+        type: string
+        description: 聊天消息文本（现代黑色风格，干练而敏锐）。
+        required: true
