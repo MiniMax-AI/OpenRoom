@@ -49,8 +49,8 @@ Agent 不只是打开应用 —— 它真的在**操作**它们。它读取数�
 
 | 工具 | 版本 | 检查 | 安装 |
 |------|------|------|------|
-| **Node.js** | 18+ | `node -v` | [nodejs.org](https://nodejs.org/) |
-| **pnpm** | 9+ | `pnpm -v` | `npm install -g pnpm@9` |
+| **Node.js** | 24+ (26 LTS recommended, see `.nvmrc`) | `node -v` | [nodejs.org](https://nodejs.org/) |
+| **pnpm** | 12+ | `pnpm -v` | `npm install -g pnpm@12` |
 
 > **国内用户？** 取消 `.npmrc` 中的镜像注释行，通过 npmmirror 加速下载。
 
@@ -202,11 +202,25 @@ cp apps/webuiapps/.env.example apps/webuiapps/.env
 
 | 变量 | 必须 | 说明 |
 |------|------|------|
+| `ALLOWED_HOSTS` | 否 | 开发服务器额外允许的主机，逗号分隔（见下文） |
 | `CDN_PREFIX` | 否 | 静态资源 CDN 前缀 |
 | `VITE_RUM_SITE` | 否 | RUM 监控端点 |
 | `VITE_RUM_CLIENT_TOKEN` | 否 | RUM 客户端 Token |
 
 全部可选。不配置也能正常运行。
+
+### 从其他设备访问开发服务器
+
+Vite 默认只接受 `localhost` 请求。若需从手机、局域网其他机器或反向代理域名访问，在 `apps/webuiapps/.env` 中配置 `ALLOWED_HOSTS`：
+
+```bash
+ALLOWED_HOSTS=myapp.example.com,192.168.1.10
+```
+
+- 多个条目用逗号分隔，空格会被忽略。
+- 设为 `ALLOWED_HOSTS=true` 允许任意主机（仅限可信网络）。
+- 留空则保持 Vite 默认行为（仅 localhost）。
+- `.env` 已被 gitignore，机器相关的主机请写在这里而不是 `vite.config.ts`。修改后需重启 `pnpm dev`。
 
 ## 参与贡献
 

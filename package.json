@@ -44,7 +44,6 @@
     "@types/three": "^0.170.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
-    "@vitejs/plugin-legacy": "5.4.1",
     "@vitejs/plugin-react-swc": "^3.6.0",
     "autoprefixer": "^10.4.16",
     "css-loader": "^6.7.3",
@@ -95,11 +94,10 @@
     "three": "^0.170.0",
     "tiptap-markdown": "^0.9.0"
   },
-  "packageManager": "pnpm@9.0.0",
-  "pnpm": {
-    "overrides": {
-      "test-exclude": "^8.0.0"
-    }
+  "packageManager": "pnpm@12.18.0",
+  "engines": {
+    "node": ">=24",
+    "pnpm": ">=12"
   },
   "browserslist": {
     "production": [

@@ -50,8 +50,8 @@ Each app is fully integrated with the AI Agent — meaning you can interact with
 
 | Tool | Version | Check | Install |
 |------|---------|-------|---------|
-| **Node.js** | 18+ | `node -v` | [nodejs.org](https://nodejs.org/) |
-| **pnpm** | 9+ | `pnpm -v` | `npm install -g pnpm@9` |
+| **Node.js** | 24+ (26 LTS recommended, see `.nvmrc`) | `node -v` | [nodejs.org](https://nodejs.org/) |
+| **pnpm** | 12+ | `pnpm -v` | `npm install -g pnpm@12` |
 
 > **In China?** Uncomment the mirror lines in `.npmrc` for faster downloads via npmmirror.
 
@@ -203,6 +203,7 @@ cp apps/webuiapps/.env.example apps/webuiapps/.env
 
 | Variable | Required | Description |
 |----------|----------|-------------|
+| `ALLOWED_HOSTS` | No | Extra hosts the dev server accepts, comma-separated (see below) |
 | `CDN_PREFIX` | No | CDN prefix for static assets |
 | `VITE_RUM_SITE` | No | RUM monitoring endpoint |
 | `VITE_RUM_CLIENT_TOKEN` | No | RUM client token |
@@ -211,6 +212,19 @@ cp apps/webuiapps/.env.example apps/webuiapps/.env
 | `SENTRY_PROJECT` | No | Sentry project slug |
 
 All optional. The app runs fine without any of them.
+
+### Accessing the dev server from other devices
+
+By default Vite only accepts requests addressed to `localhost`. To open the dev server from a phone, another machine on your LAN, or through a reverse-proxy domain, list those hostnames/IPs in `ALLOWED_HOSTS` in `apps/webuiapps/.env`:
+
+```bash
+ALLOWED_HOSTS=myapp.example.com,192.168.1.10
+```
+
+- Separate entries with commas; whitespace is ignored.
+- Set `ALLOWED_HOSTS=true` to accept any host — only do this on a trusted network.
+- Leave it empty to keep Vite's default (localhost only).
+- `.env` is gitignored, so keep machine-specific hosts there rather than in `vite.config.ts`. Restart `pnpm dev` after changing it.
 
 ## Contributing
 

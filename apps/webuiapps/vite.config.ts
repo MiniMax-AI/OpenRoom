@@ -1,6 +1,6 @@
 import { UserConfigExport, ConfigEnv, loadEnv } from 'vite';
+import { parseAllowedHosts } from './src/lib/allowedHosts';
 import type { PluginOption, Plugin } from 'vite';
-import legacy from '@vitejs/plugin-legacy';
 import react from '@vitejs/plugin-react-swc';
 import { resolve } from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
@@ -258,6 +258,12 @@ function llmProxyPlugin(): Plugin {
     name: 'llm-proxy',
     configureServer(server) {
       server.middlewares.use('/api/llm-proxy', async (req, res) => {
+        // Availability probe from the client (isProxyAvailable) — must succeed
+        if (req.method === 'OPTIONS') {
+          res.writeHead(204);
+          res.end();
+          return;
+        }
         const targetUrl = req.headers['x-llm-target-url'] as string;
         if (!targetUrl) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -271,7 +277,23 @@ function llmProxyPlugin(): Plugin {
             const body = Buffer.concat(chunks).toString();
             const headers: Record<string, string> = {};
             // Forward all headers except host/connection/internal ones
-            const skipKeys = new Set(['host', 'connection', 'content-length', 'x-llm-target-url']);
+            const skipKeys = new Set([
+              'host',
+              'connection',
+              'content-length',
+              'x-llm-target-url',
+              // Strip reverse-proxy attribution headers so upstream gateways don't reject us
+              'x-forwarded-for',
+              'x-forwarded-host',
+              'x-forwarded-proto',
+              'x-forwarded-port',
+              'x-real-ip',
+              'forwarded',
+              'via',
+              'cf-connecting-ip',
+              'origin',
+              'referer',
+            ]);
             for (const [key, val] of Object.entries(req.headers)) {
               if (typeof val !== 'string') continue;
               if (skipKeys.has(key)) continue;
@@ -390,7 +412,6 @@ const config = ({ mode }: ConfigEnv): UserConfigExport => {
     }
     return '/';
   };
-  const skipLegacy = env.VITE_SKIP_LEGACY === 'true';
   const plugins: PluginOption[] = [
     llmConfigPlugin(),
     sessionDataPlugin(),
@@ -403,17 +424,9 @@ const config = ({ mode }: ConfigEnv): UserConfigExport => {
       projectRoot: resolve(__dirname, '../..'),
       srcDir: resolve(__dirname, 'src'),
     }),
+    // No legacy bundles: Vite's default target (ES2020 — Chrome 87+, Safari/iOS 14+,
+    // Firefox 78+, Edge 88+) covers current mobile browsers and keeps builds ~3x faster.
     react(),
-    ...(skipLegacy
-      ? []
-      : [
-          legacy({
-            targets: ['defaults', 'not ie <= 11', 'chrome 80'],
-            additionalLegacyPolyfills: ['regenerator-runtime/runtime'],
-            renderLegacyChunks: true,
-            modernPolyfills: true,
-          }),
-        ]),
   ];
 
   /** Only import when running in analyze mode */
@@ -458,6 +471,8 @@ const config = ({ mode }: ConfigEnv): UserConfigExport => {
     server: {
       host: true,
       port: 3000,
+      // Extra hostnames/IPs the dev server accepts (e.g. LAN IP, reverse-proxy domain)
+      allowedHosts: parseAllowedHosts(env.ALLOWED_HOSTS),
     },
     define: {
       __APP__: JSON.stringify(env.APP_ENVIRONMENT),

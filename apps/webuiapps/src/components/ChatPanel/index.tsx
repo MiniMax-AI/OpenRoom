@@ -38,6 +38,7 @@ import { dispatchAgentAction, onUserAction } from '@/lib/vibeContainerMock';
 import { closeAllWindows } from '@/lib/windowManager';
 import { getFileToolDefinitions, isFileTool, executeFileTool } from '@/lib/fileTools';
 import { setSessionPath } from '@/lib/sessionPath';
+import { isTouchDevice } from '@/lib/device';
 import {
   getMemoryToolDefinitions,
   isMemoryTool,
@@ -452,6 +453,7 @@ const ChatPanel: React.FC<{
   const pendingToolCallsRef = useRef<string[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
   const chatHistoryRef = useRef(chatHistory);
@@ -1033,6 +1035,8 @@ const ChatPanel: React.FC<{
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+      // On touch devices, dismiss the on-screen keyboard so the reply area gets the space back
+      if (isTouchDevice()) inputRef.current?.blur();
     }
   };
 
@@ -1150,13 +1154,18 @@ const ChatPanel: React.FC<{
 
           <div className={styles.inputArea}>
             <textarea
+              ref={inputRef}
               className={styles.input}
+              enterKeyHint="send"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type a message..."
               rows={1}
-              disabled={loading}
+              // readOnly (not disabled) so focus isn't stolen while waiting for a reply:
+              // desktop keeps typing focus; on touch devices handleKeyDown blurs explicitly
+              readOnly={loading}
+              aria-busy={loading}
               data-testid="chat-input"
             />
             <button

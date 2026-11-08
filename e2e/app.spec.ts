@@ -1,4 +1,33 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+/**
+ * Give the app a usable LLM config and a canned LLM reply, so sending a message
+ * works the same on every machine (no ~/.openroom/config.json or network needed).
+ */
+async function mockLLM(page: Page) {
+  const llm = {
+    provider: 'openai',
+    apiKey: 'test-key',
+    baseUrl: 'http://llm.test/v1',
+    model: 'test-model',
+  };
+  await page.route('**/api/llm-config', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ llm }) }),
+  );
+  const reply = {
+    choices: [{ message: { role: 'assistant', content: 'Mock reply' }, finish_reason: 'stop' }],
+  };
+  const fulfillLLM = (route: import('@playwright/test').Route) =>
+    route.request().method() === 'OPTIONS'
+      ? route.fulfill({ status: 204 })
+      : route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(reply),
+        });
+  await page.route('**/api/llm-proxy', fulfillLLM);
+  await page.route('http://llm.test/**', fulfillLLM);
+}
 
 test.describe('Shell – main UI', () => {
   test.beforeEach(async ({ page }) => {
@@ -102,6 +131,7 @@ test.describe('Chat panel – input interaction', () => {
   });
 
   test('typing a message and clicking send adds it to the messages area', async ({ page }) => {
+    await mockLLM(page);
     await page.goto('/');
     const input = page.locator('[data-testid="chat-input"]');
     const sendBtn = page.locator('[data-testid="send-btn"]');
@@ -114,6 +144,73 @@ test.describe('Chat panel – input interaction', () => {
     await expect(messages).toContainText('Test message from E2E');
     // Input should be cleared after sending
     await expect(input).toHaveValue('');
+  });
+
+  test('pressing Enter on desktop sends and keeps the input focused', async ({ page }) => {
+    await mockLLM(page);
+    await page.goto('/');
+    const input = page.locator('[data-testid="chat-input"]');
+
+    await input.fill('Desktop enter message');
+    await input.press('Enter');
+
+    await expect(page.locator('[data-testid="chat-messages"]')).toContainText(
+      'Desktop enter message',
+    );
+    await expect(input).toBeFocused();
+  });
+});
+
+test.describe('Chat panel – mobile keyboard', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test('pressing Enter sends the message and dismisses the keyboard', async ({ page }) => {
+    await mockLLM(page);
+    await page.goto('/');
+    const input = page.locator('[data-testid="chat-input"]');
+    await expect(input).toHaveAttribute('enterkeyhint', 'send');
+
+    await input.tap();
+    await input.fill('Mobile enter message');
+    await expect(input).toBeFocused();
+    await input.press('Enter');
+
+    await expect(page.locator('[data-testid="chat-messages"]')).toContainText(
+      'Mobile enter message',
+    );
+    await expect(input).toHaveValue('');
+    // Blurring the textarea is what closes the on-screen keyboard
+    await expect(input).not.toBeFocused();
+  });
+
+  test('chat panel fits the visible viewport height', async ({ page }) => {
+    await page.goto('/');
+    const box = await page.locator('[data-testid="chat-panel"]').boundingBox();
+    const viewportHeight = await page.evaluate(() => window.innerHeight);
+    expect(box).not.toBeNull();
+    expect(Math.round(box!.height)).toBeLessThanOrEqual(viewportHeight);
+    await expect(page.locator('[data-testid="chat-input"]')).toBeInViewport();
+  });
+
+  test('chat input and send button are not covered by the floating controls', async ({ page }) => {
+    await page.goto('/');
+    for (const testId of ['chat-input', 'send-btn']) {
+      const target = page.locator(`[data-testid="${testId}"]`);
+      await expect(target).toBeVisible();
+      const hitsSelf = await target.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const points = [
+          [r.left + 4, r.top + r.height / 2],
+          [r.left + r.width / 2, r.top + r.height / 2],
+          [r.right - 4, r.top + r.height / 2],
+        ];
+        return points.every(([x, y]) => {
+          const hit = document.elementFromPoint(x, y);
+          return !!hit && (hit === el || el.contains(hit));
+        });
+      });
+      expect(hitsSelf, `${testId} is covered by another element`).toBe(true);
+    }
   });
 });
 

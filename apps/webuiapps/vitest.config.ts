@@ -6,6 +6,11 @@ export default defineConfig({
     environment: 'happy-dom',
     globals: true,
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    // Node 25+ ships a built-in global localStorage that shadows happy-dom's; turn it off in workers
+    pool: 'forks',
+    poolOptions: {
+      forks: { execArgv: ['--no-experimental-webstorage'] },
+    },
     coverage: {
       provider: 'istanbul',
       reporter: ['text', 'lcov', 'html'],

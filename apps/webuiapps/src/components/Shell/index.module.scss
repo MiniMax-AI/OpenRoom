@@ -616,8 +616,15 @@
     height: 38px;
     z-index: 100002;
 
+    /* With chat open, sit beside the bottom bar instead of floating over the chat input */
     &.chatOpen {
-      left: 50%;
+      left: 12px;
+      bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+      transform: none;
+
+      &:hover {
+        transform: scale(1.08);
+      }
     }
 
     &:hover {
@@ -660,5 +667,9 @@
     bottom: 40px;
     width: 34px;
     height: 34px;
+
+    &.chatOpen {
+      bottom: 6px;
+    }
   }
 }

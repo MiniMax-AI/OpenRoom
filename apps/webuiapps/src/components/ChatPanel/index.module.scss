@@ -267,6 +267,10 @@
     border-color: rgba(250, 234, 95, 0.4);
   }
 
+  &[readonly] {
+    opacity: 0.6;
+  }
+
   &::placeholder {
     color: rgba(255, 255, 255, 0.35);
   }
@@ -460,6 +464,8 @@
   .panel {
     width: 100vw;
     height: 100vh;
+    /* Track the visible viewport so the on-screen keyboard can't cover the input/bubbles */
+    height: 100dvh;
     right: 0;
     top: 0;
     border-left: none;
@@ -559,7 +565,8 @@
   /* Input area: dark, solid background at bottom */
   .inputArea {
     padding: 8px 12px;
-    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    /* Leave room for the Shell's fixed bottom control bar (~48px tall, 8px from bottom) */
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
     background: rgba(0, 0, 0, 0.85);
     backdrop-filter: blur(12px);
     border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -627,6 +634,7 @@
   }
 
   .inputArea {
-    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+    /* Shell bottom bar is ~40px tall, 4px from bottom in landscape */
+    padding-bottom: calc(50px + env(safe-area-inset-bottom, 0px));
   }
 }
