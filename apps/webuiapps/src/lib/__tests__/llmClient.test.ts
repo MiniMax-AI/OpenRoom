@@ -894,3 +894,158 @@ describe('Anthropic tool_use input parsing', () => {
     });
   });
 });
+
+// ─── URL building ────────────────────────────────────────────────────────────
+
+describe('target URL building', () => {
+  const targetUrlFor = async (config: LLMConfig) => {
+    const isAnthropic = config.provider === 'anthropic' || config.provider === 'minimax';
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(isAnthropic ? makeAnthropicResponse('ok') : makeOpenAIResponse('ok'));
+    globalThis.fetch = mockFetch;
+    await chat(MOCK_MESSAGES, [], config);
+    return (mockFetch.mock.calls[0][1].headers as Record<string, string>)['X-LLM-Target-URL'];
+  };
+
+  it.each([
+    ['https://api.openai.com/v1', 'https://api.openai.com/v1/chat/completions'],
+    ['https://api.openai.com/v1/', 'https://api.openai.com/v1/chat/completions'],
+    ['https://api.z.ai/api/coding/paas/v4', 'https://api.z.ai/api/coding/paas/v4/chat/completions'],
+    ['http://localhost:8080/', 'http://localhost:8080/v1/chat/completions'],
+    ['http://localhost:8080///', 'http://localhost:8080/v1/chat/completions'],
+  ])('OpenAI-compatible baseUrl %s → %s', async (baseUrl, expected) => {
+    await expect(targetUrlFor({ ...MOCK_OPENAI_CONFIG, baseUrl })).resolves.toBe(expected);
+  });
+
+  it.each([
+    ['https://api.anthropic.com/', 'https://api.anthropic.com/v1/messages'],
+    ['https://api.anthropic.com/v1/', 'https://api.anthropic.com/v1/messages'],
+    ['https://api.minimax.io/anthropic/v1', 'https://api.minimax.io/anthropic/v1/messages'],
+  ])('Anthropic-compatible baseUrl %s → %s', async (baseUrl, expected) => {
+    await expect(targetUrlFor({ ...MOCK_ANTHROPIC_CONFIG, baseUrl })).resolves.toBe(expected);
+  });
+});
+
+// ─── Anthropic response edge cases ───────────────────────────────────────────
+
+describe('Anthropic response parsing edge cases', () => {
+  const respondWith = (data: unknown) =>
+    vi.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(data),
+    } as unknown as Response);
+
+  it('ignores non-text/tool_use blocks such as thinking blocks', async () => {
+    globalThis.fetch = respondWith({
+      content: [
+        { type: 'thinking', thinking: 'secret reasoning' },
+        { type: 'text', text: 'Part 1. ' },
+        { type: 'tool_use', id: 't1', name: 'get_weather', input: {} },
+        { type: 'text', text: 'Part 2.' },
+      ],
+    });
+
+    const result = await chat(MOCK_MESSAGES, MOCK_TOOLS, MOCK_ANTHROPIC_CONFIG);
+
+    expect(result.content).toBe('Part 1. Part 2.');
+    expect(result.content).not.toContain('secret');
+    expect(result.toolCalls).toEqual([
+      { id: 't1', type: 'function', function: { name: 'get_weather', arguments: '{}' } },
+    ]);
+  });
+
+  it('returns empty result when response has no content array', async () => {
+    globalThis.fetch = respondWith({ stop_reason: 'end_turn' });
+
+    await expect(chat(MOCK_MESSAGES, [], MOCK_ANTHROPIC_CONFIG)).resolves.toEqual({
+      content: '',
+      toolCalls: [],
+    });
+  });
+
+  it('omits system and tools from the body when not provided', async () => {
+    const mockFetch = vi.fn().mockResolvedValueOnce(makeAnthropicResponse('ok'));
+    globalThis.fetch = mockFetch;
+
+    await chat(MOCK_MESSAGES, [], MOCK_ANTHROPIC_CONFIG);
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body).toEqual({
+      model: 'claude-opus-4-6',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: 'Hello' }],
+    });
+  });
+
+  it('maps ToolDef to Anthropic tool schema', async () => {
+    const mockFetch = vi.fn().mockResolvedValueOnce(makeAnthropicResponse('ok'));
+    globalThis.fetch = mockFetch;
+
+    await chat(MOCK_MESSAGES, MOCK_TOOLS, MOCK_ANTHROPIC_CONFIG);
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.tools).toEqual([
+      {
+        name: 'get_weather',
+        description: 'Get weather for a city',
+        input_schema: MOCK_TOOLS[0].function.parameters,
+      },
+    ]);
+  });
+});
+
+// ─── Think-tag & inline-call variants ────────────────────────────────────────
+
+describe('think-tag and inline tool-call variants', () => {
+  it('removes multiple think blocks and stray unmatched tags', async () => {
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        makeOpenAIResponse('<think>a</think>One <THINK type="x">b</THINK>Two</think>'),
+      );
+
+    const result = await chat(MOCK_MESSAGES, [], MOCK_LLAMACPP_CONFIG);
+
+    expect(result.content).toBe('One Two');
+  });
+
+  it('parses the "(name ... </tool_call>" inline form and keeps surrounding text', async () => {
+    const content = `Sure thing. (lookup
+<arg_key>q</arg_key><arg_value>{"term":"x"}</arg_value>
+</tool_call>`;
+    globalThis.fetch = vi.fn().mockResolvedValueOnce(makeOpenAIResponse(content));
+
+    const result = await chat(MOCK_MESSAGES, MOCK_TOOLS, MOCK_LLAMACPP_CONFIG);
+
+    expect(result.content).toBe('Sure thing.');
+    expect(result.toolCalls).toHaveLength(1);
+    expect(result.toolCalls[0].function.name).toBe('lookup');
+    expect(JSON.parse(result.toolCalls[0].function.arguments)).toEqual({ q: { term: 'x' } });
+  });
+
+  it('does not treat content with arg tags but no tool_call wrapper as a tool call', async () => {
+    const content = 'Literal <arg_key>k</arg_key><arg_value>v</arg_value> text';
+    globalThis.fetch = vi.fn().mockResolvedValueOnce(makeOpenAIResponse(content));
+
+    const result = await chat(MOCK_MESSAGES, MOCK_TOOLS, MOCK_LLAMACPP_CONFIG);
+
+    expect(result.toolCalls).toEqual([]);
+    expect(result.content).toBe(content);
+  });
+});
+
+describe('malformed tool definitions', () => {
+  it('forwards tools missing a function block without crashing', async () => {
+    const malformed = [{ type: 'function' }] as unknown as ToolDef[];
+    const fetchMock = vi.fn().mockResolvedValueOnce(makeOpenAIResponse('ok'));
+    globalThis.fetch = fetchMock;
+
+    const result = await chat(MOCK_MESSAGES, malformed, MOCK_OPENAI_CONFIG);
+
+    expect(result.content).toBe('ok');
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(sent.tools).toEqual(malformed);
+  });
+});
