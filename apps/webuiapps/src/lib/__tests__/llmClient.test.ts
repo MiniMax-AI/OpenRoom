@@ -36,6 +36,13 @@ const MOCK_ANTHROPIC_CONFIG: LLMConfig = {
   model: 'claude-opus-4-6',
 };
 
+const MOCK_LLAMACPP_CONFIG: LLMConfig = {
+  provider: 'llama.cpp',
+  apiKey: '',
+  baseUrl: 'http://athena:8081',
+  model: 'Qwen_Qwen3.5-35B-A3B',
+};
+
 const MOCK_MESSAGES: ChatMessage[] = [{ role: 'user', content: 'Hello' }];
 
 const MOCK_TOOLS: ToolDef[] = [
@@ -112,6 +119,13 @@ describe('getDefaultProviderConfig()', () => {
     expect(cfg.provider).toBe('deepseek');
     expect(cfg.baseUrl).toBe('https://api.deepseek.com/v1');
     expect(cfg.model).toBe('deepseek-chat');
+  });
+
+  it('returns correct defaults for llama.cpp', () => {
+    const cfg = getDefaultProviderConfig('llama.cpp');
+    expect(cfg.provider).toBe('llama.cpp');
+    expect(cfg.baseUrl).toBe('http://localhost:8080');
+    expect(cfg.model).toBe('local-model');
   });
 
   it('returns correct defaults for minimax', () => {
@@ -419,6 +433,51 @@ describe('chat()', () => {
       expect(result.content).toBe('DeepSeek response');
       const headers = mockFetch.mock.calls[0][1].headers as Record<string, string>;
       expect(headers['X-LLM-Target-URL']).toContain('deepseek.com');
+    });
+  });
+
+  describe('llama.cpp provider (OpenAI-compatible)', () => {
+    it('routes to OpenAI path without requiring an API key', async () => {
+      const mockFetch = vi.fn().mockResolvedValueOnce(makeOpenAIResponse('Local response'));
+      globalThis.fetch = mockFetch;
+
+      const result = await chat(MOCK_MESSAGES, [], MOCK_LLAMACPP_CONFIG);
+
+      expect(result.content).toBe('Local response');
+      const headers = mockFetch.mock.calls[0][1].headers as Record<string, string>;
+      expect(headers['Authorization']).toBeUndefined();
+      expect(headers['X-LLM-Target-URL']).toBe('http://athena:8081/v1/chat/completions');
+    });
+
+    it('strips Qwen-style think tags from assistant content', async () => {
+      const mockFetch = vi
+        .fn()
+        .mockResolvedValueOnce(makeOpenAIResponse('<think>hidden reasoning</think>Hello there'));
+      globalThis.fetch = mockFetch;
+
+      const result = await chat(MOCK_MESSAGES, [], MOCK_LLAMACPP_CONFIG);
+
+      expect(result.content).toBe('Hello there');
+    });
+
+    it('converts inline XML-style tool call content into structured tool calls', async () => {
+      const inlineToolContent = `<tool_call>
+respond_to_user
+<arg_key>character_expression</arg_key>
+<arg_value>{"content":"What? Did I catch you off guard?","emotion":"happy"}</arg_value>
+<arg_key>user_interaction</arg_key>
+<arg_value>{"suggested_replies":["Just hanging around","What reunion?","Tell me more"]}</arg_value>
+</tool_call>`;
+      globalThis.fetch = vi.fn().mockResolvedValueOnce(makeOpenAIResponse(inlineToolContent));
+
+      const result = await chat(MOCK_MESSAGES, MOCK_TOOLS, MOCK_LLAMACPP_CONFIG);
+
+      expect(result.content).toBe('');
+      expect(result.toolCalls).toHaveLength(1);
+      expect(result.toolCalls[0].function.name).toBe('respond_to_user');
+      expect(result.toolCalls[0].function.arguments).toBe(
+        '{"character_expression":{"content":"What? Did I catch you off guard?","emotion":"happy"},"user_interaction":{"suggested_replies":["Just hanging around","What reunion?","Tell me more"]}}',
+      );
     });
   });
 

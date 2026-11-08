@@ -95,6 +95,10 @@ interface CharacterDisplayMessage extends DisplayMessage {
   toolCalls?: string[]; // collapsed tool call summaries
 }
 
+function hasUsableLLMConfig(config: LLMConfig | null | undefined): config is LLMConfig {
+  return !!config?.baseUrl.trim() && !!config.model.trim();
+}
+
 // ---------------------------------------------------------------------------
 // Tool definitions for character system
 // ---------------------------------------------------------------------------
@@ -649,7 +653,7 @@ const ChatPanel: React.FC<{
     while (actionQueueRef.current.length > 0) {
       const actionMsg = actionQueueRef.current.shift()!;
       const cfg = configRef.current;
-      if (!cfg?.apiKey) break;
+      if (!hasUsableLLMConfig(cfg)) break;
 
       const newHistory: ChatMessage[] = [
         ...chatHistoryRef.current,
@@ -672,7 +676,7 @@ const ChatPanel: React.FC<{
   useEffect(() => {
     const unsubscribe = onUserAction((event: unknown) => {
       const cfg = configRef.current;
-      if (!cfg?.apiKey) return;
+      if (!hasUsableLLMConfig(cfg)) return;
 
       const evt = event as {
         app_action?: {
@@ -704,7 +708,7 @@ const ChatPanel: React.FC<{
     async (overrideText?: string) => {
       const text = overrideText ?? input.trim();
       if (!text || loading) return;
-      if (!config?.apiKey) {
+      if (!hasUsableLLMConfig(config)) {
         setShowSettings(true);
         return;
       }
@@ -1102,9 +1106,9 @@ const ChatPanel: React.FC<{
           <div className={styles.messages} data-testid="chat-messages">
             {messages.length === 0 && (
               <div className={styles.emptyState}>
-                {config?.apiKey
+                {hasUsableLLMConfig(config)
                   ? `${character.character_name} is ready to chat...`
-                  : 'Click the gear icon to configure your LLM API key'}
+                  : 'Click the gear icon to configure your LLM connection'}
               </div>
             )}
             {messages.map((msg) => (
@@ -1287,6 +1291,7 @@ const SettingsModal: React.FC<{
             <option value="openai">OpenAI</option>
             <option value="anthropic">Anthropic</option>
             <option value="deepseek">DeepSeek</option>
+            <option value="llama.cpp">llama.cpp</option>
             <option value="minimax">MiniMax</option>
             <option value="z.ai">Z.ai</option>
             <option value="kimi">Kimi</option>
@@ -1301,7 +1306,7 @@ const SettingsModal: React.FC<{
             type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            placeholder="sk-..."
+            placeholder="Optional for local servers"
           />
         </div>
 

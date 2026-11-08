@@ -2,6 +2,7 @@ export type LLMProvider =
   | 'openai'
   | 'anthropic'
   | 'deepseek'
+  | 'llama.cpp'
   | 'minimax'
   | 'z.ai'
   | 'kimi'
@@ -75,6 +76,13 @@ export const LLM_PROVIDER_CONFIGS: Record<LLMProvider, ProviderModelConfig> = {
       { id: 'deepseek-chat', name: 'DeepSeek Chat', category: 'general' },
       { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner', category: 'thinking' },
     ],
+  },
+
+  'llama.cpp': {
+    displayName: 'llama.cpp',
+    baseUrl: 'http://localhost:8080',
+    defaultModel: 'local-model',
+    models: [],
   },
 
   minimax: {
