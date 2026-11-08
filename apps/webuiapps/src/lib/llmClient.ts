@@ -110,6 +110,25 @@ function parseInlineArgValue(rawValue: string): unknown {
   }
 }
 
+/**
+ * Parse an OpenAI-style tool-call `arguments` string into an Anthropic `tool_use.input`
+ * object. Some models (often local ones) send '' for no arguments or malformed JSON;
+ * fall back to {} instead of throwing, matching how ChatPanel executes tool calls.
+ */
+function parseToolInput(rawArguments: string | undefined): Record<string, unknown> {
+  if (!rawArguments?.trim()) return {};
+  try {
+    const parsed: unknown = JSON.parse(rawArguments);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    logger.warn('LLM', 'Tool arguments are not a JSON object, using {}:', rawArguments);
+  } catch {
+    logger.warn('LLM', 'Invalid tool arguments JSON, using {}:', rawArguments);
+  }
+  return {};
+}
+
 function extractInlineToolCalls(rawContent: string): InlineToolParseResult {
   const content = stripThinkTags(rawContent);
   if (!content.includes('<arg_key>') || !content.includes('<arg_value>')) {
@@ -356,7 +375,7 @@ async function chatAnthropic(
             type: 'tool_use' as const,
             id: tc.id,
             name: tc.function.name,
-            input: JSON.parse(tc.function.arguments),
+            input: parseToolInput(tc.function.arguments),
           })),
         ],
       };

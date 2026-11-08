@@ -851,3 +851,46 @@ describe('Anthropic message conversion', () => {
     expect(body.messages[3].content[0].type).toBe('tool_use');
   });
 });
+
+// ─── Tool-call arguments → Anthropic tool_use.input ──────────────────────────
+
+describe('Anthropic tool_use input parsing', () => {
+  const sendWithArguments = async (args: string) => {
+    const mockFetch = vi.fn().mockResolvedValueOnce(makeAnthropicResponse('ok'));
+    globalThis.fetch = mockFetch;
+    await chat(
+      [
+        { role: 'user', content: 'hi' },
+        {
+          role: 'assistant',
+          content: '',
+          tool_calls: [{ id: 'tu', type: 'function', function: { name: 'f', arguments: args } }],
+        },
+      ],
+      MOCK_TOOLS,
+      MOCK_ANTHROPIC_CONFIG,
+    );
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    return body.messages[1].content[0].input;
+  };
+
+  it.each([
+    ['empty string', ''],
+    ['whitespace', '   '],
+    ['malformed JSON', '{"city":'],
+    ['JSON null', 'null'],
+    ['JSON array', '[1,2]'],
+    ['JSON string', '"text"'],
+  ])('uses {} instead of throwing for %s', async (_label, args) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await expect(sendWithArguments(args)).resolves.toEqual({});
+    warn.mockRestore();
+  });
+
+  it('passes valid object arguments through unchanged', async () => {
+    await expect(sendWithArguments('{"city":"SF","days":3}')).resolves.toEqual({
+      city: 'SF',
+      days: 3,
+    });
+  });
+});
