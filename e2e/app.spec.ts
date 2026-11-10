@@ -253,3 +253,151 @@ test.describe('Language toggle', () => {
     await expect(langBtn).toContainText('EN');
   });
 });
+
+/**
+ * Mock an LLM that answers with a respond_to_user tool call (the real chat format),
+ * and record speech instead of playing it.
+ */
+async function mockCharacterReply(page: Page, content: string, replies: string[]) {
+  await page.addInitScript(() => {
+    const w = window as unknown as Record<string, unknown>;
+    const spoken: string[] = [];
+    w.__spoken = spoken;
+    class FakeUtterance {
+      text: string;
+      voice: unknown = null;
+      lang = '';
+      rate = 1;
+      pitch = 1;
+      volume = 1;
+      constructor(text: string) {
+        this.text = text;
+      }
+    }
+    const synth = {
+      getVoices: () => [
+        { name: 'Fred', lang: 'en-US', localService: true },
+        { name: 'Samantha', lang: 'en-US', localService: true },
+      ],
+      speak: (u: FakeUtterance) => {
+        if (u.volume > 0) spoken.push(`${(u.voice as { name: string } | null)?.name}: ${u.text}`);
+      },
+      cancel: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    };
+    Object.defineProperty(window, 'speechSynthesis', { value: synth, configurable: true });
+    Object.defineProperty(window, 'SpeechSynthesisUtterance', {
+      value: FakeUtterance,
+      configurable: true,
+    });
+  });
+  await mockLLM(page);
+  // Start from an empty session and keep test chats out of ~/.openroom/sessions
+  await page.route('**/api/session-data**', (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill({ status: 404, contentType: 'application/json', body: '{}' })
+      : route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }),
+  );
+  const toolReply = {
+    choices: [
+      {
+        finish_reason: 'tool_calls',
+        message: {
+          role: 'assistant',
+          content: null,
+          tool_calls: [
+            {
+              id: 'call_1',
+              type: 'function',
+              function: {
+                name: 'respond_to_user',
+                arguments: JSON.stringify({
+                  character_expression: { content, emotion: 'happy' },
+                  user_interaction: { suggested_replies: replies },
+                }),
+              },
+            },
+          ],
+        },
+      },
+    ],
+  };
+  // After the tool result comes back, end the turn like a real model does.
+  const done = {
+    choices: [{ message: { role: 'assistant', content: '' }, finish_reason: 'stop' }],
+  };
+  const fulfill = (route: import('@playwright/test').Route) => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204 });
+    const body = JSON.parse(route.request().postData() ?? '{}') as {
+      messages?: Array<{ role: string }>;
+    };
+    const afterTool = body.messages?.at(-1)?.role === 'tool';
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(afterTool ? done : toolReply),
+    });
+  };
+  await page.unroute('**/api/llm-proxy');
+  await page.unroute('http://llm.test/**');
+  await page.route('**/api/llm-proxy', fulfill);
+  await page.route('http://llm.test/**', fulfill);
+}
+
+test.describe('Chat panel – user name placeholders', () => {
+  test('replaces [name] in replies and hides placeholder suggestions', async ({ page }) => {
+    await mockCharacterReply(page, "(grins) I don't take 'just [name]' for an answer.", [
+      "It's [name]. And yours?",
+      'Why does it matter?',
+    ]);
+    await page.goto('/');
+    await page.locator('[data-testid="chat-input"]').fill('Hello');
+    await page.locator('[data-testid="send-btn"]').click();
+
+    const messages = page.locator('[data-testid="chat-messages"]');
+    await expect(messages).toContainText("I don't take 'just you' for an answer.");
+    await expect(messages).not.toContainText('[name]');
+    const suggestions = page.locator('[data-testid="suggested-reply"]');
+    await expect(suggestions).toHaveCount(1);
+    await expect(suggestions.first()).toHaveText('Why does it matter?');
+  });
+});
+
+test.describe('Chat panel – voice', () => {
+  test('voice toggle reads replies aloud with a female voice, and mutes', async ({ page }) => {
+    await mockCharacterReply(page, '(smiles) Welcome aboard, traveler!', ['Thanks!']);
+    await page.goto('/');
+    const toggle = page.locator('[data-testid="tts-toggle"]');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+
+    await page.locator('[data-testid="chat-input"]').fill('Hi');
+    await page.locator('[data-testid="send-btn"]').click();
+    await expect(page.locator('[data-testid="chat-messages"]')).toContainText('Welcome aboard');
+    await expect
+      .poll(() => page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken))
+      .toEqual(['Samantha: Welcome aboard, traveler!']);
+
+    // Preference survives a reload
+    await page.reload();
+    await expect(page.locator('[data-testid="tts-toggle"]')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    // Muting stops further speech
+    await page.locator('[data-testid="tts-toggle"]').click();
+    await expect(page.locator('[data-testid="tts-toggle"]')).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    await page.locator('[data-testid="chat-input"]').fill('Again');
+    await page.locator('[data-testid="send-btn"]').click();
+    await expect(page.locator('[data-testid="chat-message"]').last()).toContainText('Welcome');
+    expect(
+      await page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken),
+    ).toEqual([]);
+  });
+});

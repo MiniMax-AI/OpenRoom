@@ -14,7 +14,7 @@ export default defineConfig({
     coverage: {
       provider: 'istanbul',
       reporter: ['text', 'lcov', 'html'],
-      include: ['src/lib/llmClient.ts'],
+      include: ['src/lib/llmClient.ts', 'src/lib/tts.ts', 'src/lib/userName.ts'],
       thresholds: {
         lines: 75,
         functions: 85,

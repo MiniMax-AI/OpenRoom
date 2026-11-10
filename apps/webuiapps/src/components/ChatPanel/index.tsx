@@ -9,6 +9,8 @@ import {
   ChevronRight,
   Pencil,
   List,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { chat, loadConfig, loadConfigSync, saveConfig, type ChatMessage } from '@/lib/llmClient';
 import {
@@ -48,6 +50,19 @@ import {
   type MemoryEntry,
 } from '@/lib/memoryManager';
 import { logger } from '@/lib/logger';
+import {
+  buildUserNamePrompt,
+  replaceNamePlaceholders,
+  sanitizeSuggestedReplies,
+} from '@/lib/userName';
+import {
+  isTtsSupported,
+  loadTtsEnabled,
+  saveTtsEnabled,
+  speak,
+  stopSpeaking,
+  unlockSpeech,
+} from '@/lib/tts';
 import {
   getImageGenToolDefinitions,
   isImageGenTool,
@@ -208,6 +223,7 @@ When you receive "[User performed action in ... (appName: xxx)]", the appName is
 
 IMPORTANT: You MUST use the respond_to_user tool to send all messages to the user. Do NOT output plain text responses. Include your emotion and 3 suggested replies.${hasImageGen ? '\n\nYou can use generate_image to create images from text prompts. The generated image will be displayed in chat.' : ''}`;
 
+  prompt += buildUserNamePrompt();
   prompt += buildMemoryPrompt(memories);
 
   return prompt;
@@ -432,6 +448,19 @@ const ChatPanel: React.FC<{
   const [showModPanel, setShowModPanel] = useState(false);
   const [initialEditModId, setInitialEditModId] = useState<string | undefined>();
   const [currentEmotion, setCurrentEmotion] = useState<string | undefined>();
+  const [ttsEnabled, setTtsEnabled] = useState(() => isTtsSupported() && loadTtsEnabled());
+  const ttsEnabledRef = useRef(ttsEnabled);
+  ttsEnabledRef.current = ttsEnabled;
+
+  const toggleTts = useCallback(() => {
+    setTtsEnabled((prev) => {
+      const next = !prev;
+      saveTtsEnabled(next);
+      if (next) unlockSpeech();
+      else stopSpeaking();
+      return next;
+    });
+  }, []);
 
   // Open mod editor when triggered from Shell (e.g. after card import mod generation)
   useEffect(() => {
@@ -517,7 +546,7 @@ const ChatPanel: React.FC<{
         setChatHistory(loadedHistory);
         // Restore suggested replies from saved data, or from mod config if only prologue
         if (data?.suggestedReplies?.length) {
-          setSuggestedReplies(data.suggestedReplies);
+          setSuggestedReplies(sanitizeSuggestedReplies(data.suggestedReplies));
         } else {
           const onlyPrologue = loadedMessages.length === 1 && loadedMessages[0].id === 'prologue';
           if (onlyPrologue) {
@@ -817,9 +846,10 @@ const ChatPanel: React.FC<{
             (params.character_expression as { content?: string; emotion?: string }) ?? {};
           const interaction = (params.user_interaction as { suggested_replies?: string[] }) ?? {};
 
-          const content = expr.content ?? '';
+          const content = replaceNamePlaceholders(expr.content ?? '');
           const emotion = expr.emotion;
-          const replies = interaction.suggested_replies ?? [];
+          const replies = sanitizeSuggestedReplies(interaction.suggested_replies ?? []);
+          if (ttsEnabledRef.current) void speak(content);
 
           addMessage({
             id: String(Date.now()),
@@ -1090,6 +1120,21 @@ const ChatPanel: React.FC<{
               >
                 <Trash2 size={16} />
               </button>
+              {isTtsSupported() && (
+                <button
+                  className={styles.iconBtn}
+                  onClick={toggleTts}
+                  title={
+                    ttsEnabled
+                      ? 'Voice on (click to mute)'
+                      : 'Voice off (click to read replies aloud)'
+                  }
+                  aria-pressed={ttsEnabled}
+                  data-testid="tts-toggle"
+                >
+                  {ttsEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                </button>
+              )}
               <button
                 className={styles.iconBtn}
                 onClick={() => setShowSettings(true)}
@@ -1145,7 +1190,12 @@ const ChatPanel: React.FC<{
           {suggestedReplies.length > 0 && !loading && (
             <div className={styles.suggestedReplies}>
               {suggestedReplies.map((reply, i) => (
-                <button key={i} className={styles.suggestedReply} onClick={() => handleSend(reply)}>
+                <button
+                  key={i}
+                  className={styles.suggestedReply}
+                  onClick={() => handleSend(reply)}
+                  data-testid="suggested-reply"
+                >
                   {reply}
                 </button>
               ))}
