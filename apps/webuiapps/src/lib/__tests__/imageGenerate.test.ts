@@ -12,7 +12,11 @@ import {
   getDefaultImageGenConfig,
   type ImageGenConfig,
 } from '../imageGenClient';
-import { executeImageGenTool } from '../imageGenTools';
+import {
+  executeImageGenTool,
+  buildImageGenPrompt,
+  getImageGenToolDefinitions,
+} from '../imageGenTools';
 
 const POLLINATIONS: ImageGenConfig = {
   provider: 'pollinations',
@@ -220,5 +224,23 @@ describe('executeImageGenTool', () => {
     const { result, dataUrl } = await executeImageGenTool({ prompt: 'x' }, POLLINATIONS);
     expect(result).toMatch(/^success: image generated/);
     expect(dataUrl).toBe('data:image/jpeg;base64,iVBORw==');
+  });
+});
+
+describe('image prompt instructions', () => {
+  it('tells the character to write self-contained prompts with setting, looks and style', () => {
+    const p = buildImageGenPrompt();
+    expect(p).toContain('generate_image');
+    expect(p).toContain('sees ONLY your prompt');
+    expect(p).toContain('setting and genre');
+    expect(p).toContain('your appearance');
+    expect(p).toContain('consistent art style');
+  });
+
+  it('repeats the key rules in the tool parameter description', () => {
+    const [tool] = getImageGenToolDefinitions();
+    const prompt = tool.function.parameters.properties.prompt as { description: string };
+    expect(prompt.description).toMatch(/Self-contained/);
+    expect(prompt.description).toMatch(/setting and genre/);
   });
 });

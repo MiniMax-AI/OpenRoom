@@ -69,6 +69,7 @@ import {
 } from '@/lib/tts';
 import {
   getImageGenToolDefinitions,
+  buildImageGenPrompt,
   isImageGenTool,
   executeImageGenTool,
 } from '@/lib/imageGenTools';
@@ -225,7 +226,9 @@ Rules:
 
 When you receive "[User performed action in ... (appName: xxx)]", the appName is already provided. Read its meta.yaml to understand available actions, then respond accordingly. For games, respond with your own move — think strategically.
 
-IMPORTANT: You MUST use the respond_to_user tool to send all messages to the user. Do NOT output plain text responses. Include your emotion and 3 suggested replies.${hasImageGen ? '\n\nYou can use generate_image to create images from text prompts. The generated image will be displayed in chat.' : ''}`;
+IMPORTANT: You MUST use the respond_to_user tool to send all messages to the user. Do NOT output plain text responses. Include your emotion and 3 suggested replies.`;
+
+  if (hasImageGen) prompt += buildImageGenPrompt();
 
   prompt += buildUserNamePrompt();
   prompt += buildMemoryPrompt(memories);
