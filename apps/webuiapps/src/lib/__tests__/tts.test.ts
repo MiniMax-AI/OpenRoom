@@ -10,6 +10,9 @@ import {
   announceVoiceOn,
   splitForSpeech,
   activeUtteranceCount,
+  primeSpeech,
+  isSpeechPrimed,
+  resetSpeechPrimed,
 } from '../tts';
 import { logger } from '../logger';
 
@@ -162,12 +165,15 @@ describe('speech (unsupported browser)', () => {
     await expect(speak('Hello')).resolves.toBeUndefined();
     expect(() => stopSpeaking()).not.toThrow();
     expect(() => announceVoiceOn()).not.toThrow();
+    primeSpeech();
+    expect(isSpeechPrimed()).toBe(false);
   });
 });
 
 describe('speech (supported browser)', () => {
   afterEach(() => {
     stopSpeaking();
+    resetSpeechPrimed();
     uninstallSynth();
     vi.useRealTimers();
   });
@@ -258,6 +264,31 @@ describe('speech (supported browser)', () => {
     expect(u.voice?.name).toBe('Samantha');
     stopSpeaking();
     expect(synth.cancel).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('primeSpeech', () => {
+  afterEach(() => {
+    resetSpeechPrimed();
+    uninstallSynth();
+  });
+
+  it('speaks one silent utterance per page load', () => {
+    const synth = installSynth([voice('Samantha')]);
+    expect(isSpeechPrimed()).toBe(false);
+    primeSpeech();
+    primeSpeech();
+    expect(synth.speak).toHaveBeenCalledTimes(1);
+    expect((synth.speak.mock.calls[0][0] as FakeUtterance).volume).toBe(0);
+    expect(isSpeechPrimed()).toBe(true);
+  });
+
+  it('counts the "Voice on." announcement as the unlock', () => {
+    const synth = installSynth([voice('Samantha')]);
+    announceVoiceOn();
+    primeSpeech();
+    expect(synth.speak).toHaveBeenCalledTimes(1);
+    expect(isSpeechPrimed()).toBe(true);
   });
 });
 

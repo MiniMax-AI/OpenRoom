@@ -279,6 +279,7 @@ async function mockCharacterReply(
     const w = window as unknown as Record<string, unknown>;
     const spoken: string[] = [];
     w.__spoken = spoken;
+    w.__silent = 0;
     class FakeUtterance {
       text: string;
       voice: unknown = null;
@@ -297,6 +298,7 @@ async function mockCharacterReply(
       ],
       speak: (u: FakeUtterance) => {
         if (u.volume > 0) spoken.push(`${(u.voice as { name: string } | null)?.name}: ${u.text}`);
+        else w.__silent = (w.__silent as number) + 1;
       },
       cancel: () => {},
       resume: () => {},
@@ -395,12 +397,18 @@ test.describe('Chat panel – voice', () => {
       .poll(() => page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken))
       .toEqual(['Samantha: Voice on.', 'Samantha: Welcome aboard, traveler!']);
 
-    // Preference survives a reload
+    // Preference survives a reload; the first tap of the new page load unlocks speech (Safari)
     await page.reload();
     await expect(page.locator('[data-testid="tts-toggle"]')).toHaveAttribute(
       'aria-pressed',
       'true',
     );
+    const silent = () => page.evaluate(() => (window as unknown as { __silent: number }).__silent);
+    expect(await silent()).toBe(0);
+    await page.locator('[data-testid="chat-input"]').click();
+    expect(await silent()).toBe(1);
+    await page.locator('[data-testid="chat-input"]').click();
+    expect(await silent()).toBe(1);
 
     // Muting stops further speech
     await page.locator('[data-testid="tts-toggle"]').click();

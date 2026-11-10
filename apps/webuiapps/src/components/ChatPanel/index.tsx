@@ -62,6 +62,8 @@ import {
   speak,
   stopSpeaking,
   announceVoiceOn,
+  isSpeechPrimed,
+  primeSpeech,
 } from '@/lib/tts';
 import {
   getImageGenToolDefinitions,
@@ -452,15 +454,29 @@ const ChatPanel: React.FC<{
   const ttsEnabledRef = useRef(ttsEnabled);
   ttsEnabledRef.current = ttsEnabled;
 
+  // Speech calls run directly in the click handler (not in a state updater):
+  // Safari only allows speech that starts inside the user gesture itself.
   const toggleTts = useCallback(() => {
-    setTtsEnabled((prev) => {
-      const next = !prev;
-      saveTtsEnabled(next);
-      if (next) announceVoiceOn();
-      else stopSpeaking();
-      return next;
-    });
+    const next = !ttsEnabledRef.current;
+    if (next) announceVoiceOn();
+    else stopSpeaking();
+    saveTtsEnabled(next);
+    ttsEnabledRef.current = next;
+    setTtsEnabled(next);
   }, []);
+
+  // With the voice already on from a previous visit, unlock speech on the first
+  // tap/click/key press of this page load (Safari blocks it otherwise).
+  useEffect(() => {
+    if (!ttsEnabled || isSpeechPrimed()) return;
+    const events = ['click', 'touchend', 'keydown'] as const;
+    const unlock = () => {
+      primeSpeech();
+      events.forEach((e) => document.removeEventListener(e, unlock, true));
+    };
+    events.forEach((e) => document.addEventListener(e, unlock, true));
+    return () => events.forEach((e) => document.removeEventListener(e, unlock, true));
+  }, [ttsEnabled]);
 
   // Open mod editor when triggered from Shell (e.g. after card import mod generation)
   useEffect(() => {

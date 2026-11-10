@@ -192,5 +192,32 @@ export function stopSpeaking(): void {
  */
 export function announceVoiceOn(lang = 'en'): void {
   if (!isTtsSupported()) return;
+  primed = true;
   queueSpeech('Voice on.', window.speechSynthesis.getVoices(), lang);
+}
+
+let primed = false;
+
+/** Whether speech has been unlocked by a user gesture in this page load. */
+export function isSpeechPrimed(): boolean {
+  return primed;
+}
+
+/** Forget the unlock (for tests). */
+export function resetSpeechPrimed(): void {
+  primed = false;
+}
+
+/**
+ * Unlock speech for the rest of this page load. Safari (iOS especially) only
+ * lets a page speak after speech has been started inside a user gesture
+ * (click/tap/key), and replies arrive seconds after the tap. Call this
+ * synchronously from a gesture handler; it speaks a silent utterance once.
+ */
+export function primeSpeech(): void {
+  if (primed || !isTtsSupported()) return;
+  primed = true;
+  const utterance = new window.SpeechSynthesisUtterance(' ');
+  utterance.volume = 0;
+  window.speechSynthesis.speak(utterance);
 }
