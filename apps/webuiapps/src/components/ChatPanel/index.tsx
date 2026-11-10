@@ -61,7 +61,7 @@ import {
   saveTtsEnabled,
   speak,
   stopSpeaking,
-  unlockSpeech,
+  announceVoiceOn,
 } from '@/lib/tts';
 import {
   getImageGenToolDefinitions,
@@ -456,7 +456,7 @@ const ChatPanel: React.FC<{
     setTtsEnabled((prev) => {
       const next = !prev;
       saveTtsEnabled(next);
-      if (next) unlockSpeech();
+      if (next) announceVoiceOn();
       else stopSpeaking();
       return next;
     });
@@ -802,6 +802,8 @@ const ChatPanel: React.FC<{
     let iterations = 0;
     const maxIterations = 10;
     pendingToolCallsRef.current = [];
+    // Set once respond_to_user has shown a reply this turn; some models then echo it as plain text.
+    let deliveredReply = false;
 
     while (iterations < maxIterations) {
       iterations++;
@@ -809,15 +811,17 @@ const ChatPanel: React.FC<{
 
       if (response.toolCalls.length === 0) {
         // No tool calls — fallback plain text (shouldn't happen with respond_to_user requirement)
-        if (response.content) {
+        const text = replaceNamePlaceholders(response.content?.trim() ?? '');
+        if (text && !deliveredReply) {
           addMessage({
             id: String(Date.now()),
             role: 'assistant',
-            content: response.content,
+            content: text,
             toolCalls:
               pendingToolCallsRef.current.length > 0 ? [...pendingToolCallsRef.current] : undefined,
           });
-          setChatHistory((prev) => [...prev, { role: 'assistant', content: response.content }]);
+          setChatHistory((prev) => [...prev, { role: 'assistant', content: text }]);
+          if (ttsEnabledRef.current) void speak(text);
           pendingToolCallsRef.current = [];
         }
         break;
@@ -850,6 +854,7 @@ const ChatPanel: React.FC<{
           const emotion = expr.emotion;
           const replies = sanitizeSuggestedReplies(interaction.suggested_replies ?? []);
           if (ttsEnabledRef.current) void speak(content);
+          deliveredReply = true;
 
           addMessage({
             id: String(Date.now()),

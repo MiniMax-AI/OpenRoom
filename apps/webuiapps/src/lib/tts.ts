@@ -3,6 +3,8 @@
  * Web Speech API (free, offline, no server). Prefers a friendly female voice.
  */
 
+import { logger } from './logger';
+
 const LS_TTS_ENABLED = 'openroom_tts_enabled';
 
 /** Well-known female system voices across macOS/iOS, Windows, Chrome and Android. */
@@ -111,35 +113,84 @@ function getVoices(timeoutMs = 1000): Promise<SpeechSynthesisVoice[]> {
   });
 }
 
-/** Speak a character message aloud. Cancels anything currently speaking. */
+/**
+ * Split text into sentence groups of at most ~maxLen characters. Chrome stops
+ * speaking a single long utterance after ~15 seconds, so long replies are
+ * queued as several shorter ones.
+ */
+export function splitForSpeech(text: string, maxLen = 200): string[] {
+  const sentences = (text.match(/[^.!?\u2026]+(?:[.!?\u2026]+["')\]]*|$)/g) ?? [])
+    .map((x) => x.trim())
+    .filter(Boolean);
+  const chunks: string[] = [];
+  let current = '';
+  for (const sentence of sentences) {
+    if (current && current.length + 1 + sentence.length > maxLen) {
+      chunks.push(current);
+      current = sentence;
+    } else {
+      current = current ? `${current} ${sentence}` : sentence;
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks;
+}
+
+/** Utterances in flight. Holding references stops Chrome from garbage-collecting them mid-speech. */
+const activeUtterances = new Set<SpeechSynthesisUtterance>();
+
+/** Number of utterances still queued or speaking (for tests/diagnostics). */
+export function activeUtteranceCount(): number {
+  return activeUtterances.size;
+}
+
+function queueSpeech(text: string, voices: SpeechSynthesisVoice[], lang: string): void {
+  const synth = window.speechSynthesis;
+  // Chrome can silently drop an utterance queued straight after cancel(), so only cancel when busy.
+  if (synth.speaking || synth.pending) synth.cancel();
+  if (synth.paused) synth.resume();
+  const voice = pickFemaleVoice(voices, lang);
+  for (const chunk of splitForSpeech(text)) {
+    const utterance = new window.SpeechSynthesisUtterance(chunk);
+    if (voice) {
+      utterance.voice = voice;
+      utterance.lang = voice.lang;
+    }
+    utterance.rate = 1;
+    utterance.pitch = 1.1;
+    activeUtterances.add(utterance);
+    utterance.onend = () => activeUtterances.delete(utterance);
+    utterance.onerror = (event: SpeechSynthesisErrorEvent) => {
+      activeUtterances.delete(utterance);
+      if (event.error !== 'interrupted' && event.error !== 'canceled') {
+        logger.warn('TTS', 'speech failed:', event.error);
+      }
+    };
+    synth.speak(utterance);
+  }
+}
+
+/** Speak a character message aloud, replacing anything currently speaking. */
 export async function speak(content: string, lang = 'en'): Promise<void> {
   if (!isTtsSupported()) return;
   const text = textForSpeech(content);
   if (!text) return;
-  const synth = window.speechSynthesis;
-  synth.cancel();
-  const utterance = new window.SpeechSynthesisUtterance(text);
-  const voice = pickFemaleVoice(await getVoices(), lang);
-  if (voice) {
-    utterance.voice = voice;
-    utterance.lang = voice.lang;
-  }
-  utterance.rate = 1;
-  utterance.pitch = 1.1;
-  synth.speak(utterance);
+  queueSpeech(text, await getVoices(), lang);
 }
 
 export function stopSpeaking(): void {
-  if (isTtsSupported()) window.speechSynthesis.cancel();
+  if (!isTtsSupported()) return;
+  window.speechSynthesis.cancel();
+  activeUtterances.clear();
 }
 
 /**
- * Mobile browsers (iOS Safari) only allow speech that starts from a user
- * gesture. Call this from the toggle's click handler to unlock later speech.
+ * Say a short confirmation when the voice is switched on. It runs synchronously
+ * inside the click, which also unlocks later speech on mobile browsers (iOS
+ * Safari only allows speech that starts from a user gesture), and lets the user
+ * hear straight away whether their browser can speak.
  */
-export function unlockSpeech(): void {
+export function announceVoiceOn(lang = 'en'): void {
   if (!isTtsSupported()) return;
-  const u = new window.SpeechSynthesisUtterance(' ');
-  u.volume = 0;
-  window.speechSynthesis.speak(u);
+  queueSpeech('Voice on.', window.speechSynthesis.getVoices(), lang);
 }

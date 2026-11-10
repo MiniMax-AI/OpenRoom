@@ -7,8 +7,11 @@ import {
   saveTtsEnabled,
   speak,
   stopSpeaking,
-  unlockSpeech,
+  announceVoiceOn,
+  splitForSpeech,
+  activeUtteranceCount,
 } from '../tts';
+import { logger } from '../logger';
 
 function voice(name: string, lang = 'en-US', localService = true): SpeechSynthesisVoice {
   return { name, lang, localService, default: false, voiceURI: name } as SpeechSynthesisVoice;
@@ -21,6 +24,8 @@ class FakeUtterance {
   rate = 1;
   pitch = 1;
   volume = 1;
+  onend: (() => void) | null = null;
+  onerror: ((e: { error: string }) => void) | null = null;
   constructor(text: string) {
     this.text = text;
   }
@@ -32,6 +37,10 @@ interface FakeSynth {
   getVoices: () => SpeechSynthesisVoice[];
   speak: ReturnType<typeof vi.fn>;
   cancel: ReturnType<typeof vi.fn>;
+  resume: ReturnType<typeof vi.fn>;
+  speaking: boolean;
+  pending: boolean;
+  paused: boolean;
   addEventListener: (type: string, fn: () => void) => void;
   removeEventListener: (type: string, fn: () => void) => void;
 }
@@ -43,6 +52,10 @@ function installSynth(voices: SpeechSynthesisVoice[]): FakeSynth {
     getVoices: () => synth.voices,
     speak: vi.fn(),
     cancel: vi.fn(),
+    resume: vi.fn(),
+    speaking: false,
+    pending: false,
+    paused: false,
     addEventListener: (_t, fn) => synth.listeners.push(fn),
     removeEventListener: (_t, fn) => {
       synth.listeners = synth.listeners.filter((l) => l !== fn);
@@ -148,12 +161,13 @@ describe('speech (unsupported browser)', () => {
     expect(isTtsSupported()).toBe(false);
     await expect(speak('Hello')).resolves.toBeUndefined();
     expect(() => stopSpeaking()).not.toThrow();
-    expect(() => unlockSpeech()).not.toThrow();
+    expect(() => announceVoiceOn()).not.toThrow();
   });
 });
 
 describe('speech (supported browser)', () => {
   afterEach(() => {
+    stopSpeaking();
     uninstallSynth();
     vi.useRealTimers();
   });
@@ -162,7 +176,7 @@ describe('speech (supported browser)', () => {
     const synth = installSynth([voice('Fred'), voice('Samantha')]);
     expect(isTtsSupported()).toBe(true);
     await speak('(smiles) Hello there!');
-    expect(synth.cancel).toHaveBeenCalled();
+    expect(synth.cancel).not.toHaveBeenCalled();
     const u = synth.speak.mock.calls[0][0] as FakeUtterance;
     expect(u.text).toBe('Hello there!');
     expect(u.voice?.name).toBe('Samantha');
@@ -198,12 +212,70 @@ describe('speech (supported browser)', () => {
     expect(u.voice).toBeNull();
   });
 
-  it('stops speaking and unlocks with a silent utterance', () => {
+  it('interrupts current speech and resumes a paused engine before speaking', async () => {
     const synth = installSynth([voice('Samantha')]);
+    synth.speaking = true;
+    synth.paused = true;
+    await speak('Next line.');
+    expect(synth.cancel).toHaveBeenCalledTimes(1);
+    expect(synth.resume).toHaveBeenCalledTimes(1);
+    expect(synth.speak).toHaveBeenCalledTimes(1);
+  });
+
+  it('queues long replies as several chunks and tracks them until done', async () => {
+    const synth = installSynth([voice('Samantha')]);
+    const sentence = 'This is a fairly long sentence that keeps going for a while. ';
+    await speak(sentence.repeat(8));
+    const calls = synth.speak.mock.calls.map((c) => c[0] as FakeUtterance);
+    expect(calls.length).toBeGreaterThan(1);
+    calls.forEach((u) => expect(u.text.length).toBeLessThanOrEqual(200));
+    expect(activeUtteranceCount()).toBe(calls.length);
+    calls[0].onend?.();
+    expect(activeUtteranceCount()).toBe(calls.length - 1);
+    stopSpeaking();
+    expect(activeUtteranceCount()).toBe(0);
+  });
+
+  it('logs real speech errors but not interruptions', async () => {
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+    const synth = installSynth([voice('Samantha')]);
+    await speak('One. Two.');
+    await speak('Three.');
+    const [a, b] = synth.speak.mock.calls.map((c) => c[0] as FakeUtterance);
+    a.onerror?.({ error: 'interrupted' });
+    expect(warn).not.toHaveBeenCalled();
+    b.onerror?.({ error: 'not-allowed' });
+    expect(warn).toHaveBeenCalledWith('TTS', 'speech failed:', 'not-allowed');
+    expect(activeUtteranceCount()).toBe(0);
+    warn.mockRestore();
+  });
+
+  it('announces "Voice on." synchronously with the available voice', () => {
+    const synth = installSynth([voice('Samantha')]);
+    announceVoiceOn();
+    const u = synth.speak.mock.calls[0][0] as FakeUtterance;
+    expect(u.text).toBe('Voice on.');
+    expect(u.voice?.name).toBe('Samantha');
     stopSpeaking();
     expect(synth.cancel).toHaveBeenCalledTimes(1);
-    unlockSpeech();
-    const u = synth.speak.mock.calls[0][0] as FakeUtterance;
-    expect(u.volume).toBe(0);
+  });
+});
+
+describe('splitForSpeech', () => {
+  it('keeps short text as one chunk', () => {
+    expect(splitForSpeech('Hi there. How are you?')).toEqual(['Hi there. How are you?']);
+  });
+
+  it('groups sentences up to the limit and keeps trailing text without punctuation', () => {
+    expect(splitForSpeech('One two. Three four! Five six', 12)).toEqual([
+      'One two.',
+      'Three four!',
+      'Five six',
+    ]);
+  });
+
+  it('keeps closing quotes with their sentence and handles empty input', () => {
+    expect(splitForSpeech('"Stay." she said.', 8)).toEqual(['"Stay."', 'she said.']);
+    expect(splitForSpeech('')).toEqual([]);
   });
 });

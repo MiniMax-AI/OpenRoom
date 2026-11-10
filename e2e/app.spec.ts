@@ -11,6 +11,12 @@ async function mockLLM(page: Page) {
     baseUrl: 'http://llm.test/v1',
     model: 'test-model',
   };
+  // Start from an empty session and keep test chats out of ~/.openroom/sessions
+  await page.route('**/api/session-data**', (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill({ status: 404, contentType: 'application/json', body: '{}' })
+      : route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }),
+  );
   await page.route('**/api/llm-config', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ llm }) }),
   );
@@ -258,7 +264,17 @@ test.describe('Language toggle', () => {
  * Mock an LLM that answers with a respond_to_user tool call (the real chat format),
  * and record speech instead of playing it.
  */
-async function mockCharacterReply(page: Page, content: string, replies: string[]) {
+type ReplyMode =
+  | 'tool' // respond_to_user tool call, then an empty final turn
+  | 'plain' // plain text only, no tool call
+  | 'tool-then-echo'; // tool call, then the same text again as plain text
+
+async function mockCharacterReply(
+  page: Page,
+  content: string,
+  replies: string[],
+  mode: ReplyMode = 'tool',
+) {
   await page.addInitScript(() => {
     const w = window as unknown as Record<string, unknown>;
     const spoken: string[] = [];
@@ -283,6 +299,10 @@ async function mockCharacterReply(page: Page, content: string, replies: string[]
         if (u.volume > 0) spoken.push(`${(u.voice as { name: string } | null)?.name}: ${u.text}`);
       },
       cancel: () => {},
+      resume: () => {},
+      speaking: false,
+      pending: false,
+      paused: false,
       addEventListener: () => {},
       removeEventListener: () => {},
     };
@@ -293,12 +313,6 @@ async function mockCharacterReply(page: Page, content: string, replies: string[]
     });
   });
   await mockLLM(page);
-  // Start from an empty session and keep test chats out of ~/.openroom/sessions
-  await page.route('**/api/session-data**', (route) =>
-    route.request().method() === 'GET'
-      ? route.fulfill({ status: 404, contentType: 'application/json', body: '{}' })
-      : route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }),
-  );
   const toolReply = {
     choices: [
       {
@@ -323,10 +337,11 @@ async function mockCharacterReply(page: Page, content: string, replies: string[]
       },
     ],
   };
-  // After the tool result comes back, end the turn like a real model does.
-  const done = {
-    choices: [{ message: { role: 'assistant', content: '' }, finish_reason: 'stop' }],
-  };
+  const plain = (text: string) => ({
+    choices: [{ message: { role: 'assistant', content: text }, finish_reason: 'stop' }],
+  });
+  // After the tool result comes back, end the turn (or echo the reply, as some models do).
+  const done = plain(mode === 'tool-then-echo' ? content : '');
   const fulfill = (route: import('@playwright/test').Route) => {
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204 });
     const body = JSON.parse(route.request().postData() ?? '{}') as {
@@ -336,7 +351,7 @@ async function mockCharacterReply(page: Page, content: string, replies: string[]
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(afterTool ? done : toolReply),
+      body: JSON.stringify(mode === 'plain' ? plain(content) : afterTool ? done : toolReply),
     });
   };
   await page.unroute('**/api/llm-proxy');
@@ -378,7 +393,7 @@ test.describe('Chat panel – voice', () => {
     await expect(page.locator('[data-testid="chat-messages"]')).toContainText('Welcome aboard');
     await expect
       .poll(() => page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken))
-      .toEqual(['Samantha: Welcome aboard, traveler!']);
+      .toEqual(['Samantha: Voice on.', 'Samantha: Welcome aboard, traveler!']);
 
     // Preference survives a reload
     await page.reload();
@@ -399,5 +414,41 @@ test.describe('Chat panel – voice', () => {
     expect(
       await page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken),
     ).toEqual([]);
+  });
+});
+
+test.describe('Chat panel – replies without the respond_to_user tool', () => {
+  const spoken = (page: Page) =>
+    page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken);
+
+  test('a plain-text reply is shown, cleaned and spoken', async ({ page }) => {
+    await mockCharacterReply(page, "(leans in) The name's Aoi. And you, [name]?", [], 'plain');
+    await page.goto('/');
+    await page.locator('[data-testid="tts-toggle"]').click();
+    await page.locator('[data-testid="chat-input"]').fill('Who are you');
+    await page.locator('[data-testid="send-btn"]').click();
+
+    const last = page.locator('[data-testid="chat-message"]').last();
+    await expect(last).toContainText("The name's Aoi. And you, you?");
+    await expect
+      .poll(() => spoken(page))
+      .toEqual(['Samantha: Voice on.', "Samantha: The name's Aoi. And you, you?"]);
+  });
+
+  test('a plain-text echo after respond_to_user is not shown or spoken twice', async ({ page }) => {
+    await mockCharacterReply(page, 'René... Nice ring to it.', ['Thanks'], 'tool-then-echo');
+    await page.goto('/');
+    await page.locator('[data-testid="tts-toggle"]').click();
+    await page.locator('[data-testid="chat-input"]').fill('René');
+    await page.locator('[data-testid="send-btn"]').click();
+
+    await expect(page.locator('[data-testid="suggested-reply"]')).toHaveText(['Thanks']);
+    await expect(
+      page.locator('[data-testid="chat-message"]').filter({ hasText: 'Nice ring to it' }),
+    ).toHaveCount(1);
+    expect(await spoken(page)).toEqual([
+      'Samantha: Voice on.',
+      'Samantha: René... Nice ring to it.',
+    ]);
   });
 });
