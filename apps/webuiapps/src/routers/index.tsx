@@ -14,6 +14,7 @@ const Gomoku = lazy(() => import('@/pages/Gomoku'));
 const Chess = lazy(() => import('@/pages/Chess'));
 const EvidenceVault = lazy(() => import('@/pages/EvidenceVault'));
 const CyberNews = lazy(() => import('@/pages/CyberNews'));
+const Dreamland = lazy(() => import('@/pages/Dreamland'));
 
 // All sub-pages should use lazy loading
 const routerList: RouteObject[] = [
@@ -102,6 +103,14 @@ const routerList: RouteObject[] = [
     element: (
       <React.Suspense>
         <CyberNews />
+      </React.Suspense>
+    ),
+  },
+  {
+    path: '/dreamland',
+    element: (
+      <React.Suspense>
+        <Dreamland />
       </React.Suspense>
     ),
   },

@@ -5,7 +5,13 @@
 
 import * as idb from './diskStorage';
 import { getSessionPath } from './sessionPath';
-import { generateImage, isImageGenConfigured, type ImageGenConfig } from './imageGenClient';
+import {
+  generateImage,
+  isImageGenConfigured,
+  loadImageGenConfig,
+  type ImageGenConfig,
+  type ImageGenResult,
+} from './imageGenClient';
 
 const TOOL_NAME = 'generate_image';
 const IMAGES_DIR = 'generated-images';
@@ -99,18 +105,46 @@ export async function executeImageGenTool(
   }
 
   const imageResult = await generateImage(params.prompt || '', config);
-  const ext = mimeToExt(imageResult.mimeType);
-  const imageId = `img-${Date.now()}`;
-  const fileName = `${imageId}.${ext}`;
-  const filePath = `${IMAGES_DIR}/${fileName}`;
-  const dataUrl = `data:${imageResult.mimeType};base64,${imageResult.base64}`;
+  const stored = await storeImage(imageResult, `${IMAGES_DIR}/img-${Date.now()}`);
+  return { result: `success: image generated, url=${stored.url}`, dataUrl: stored.dataUrl };
+}
 
+export interface StoredImage {
+  /** URL to show the image: a session-data URL, or the data URL if saving failed */
+  url: string;
+  dataUrl: string;
+  mimeType: string;
+  /** Path relative to the session's apps/ directory, including the extension */
+  filePath: string;
+}
+
+/** Save generated image bytes at `{basePath}.{ext}` (relative to the session's apps/ directory). */
+async function storeImage(image: ImageGenResult, basePath: string): Promise<StoredImage> {
+  const filePath = `${basePath}.${mimeToExt(image.mimeType)}`;
+  const dataUrl = `data:${image.mimeType};base64,${image.base64}`;
   try {
-    await idb.putBinaryFile(filePath, imageResult.base64, imageResult.mimeType);
-    const url = buildFileUrl(filePath);
-    return { result: `success: image generated, url=${url}`, dataUrl };
+    await idb.putBinaryFile(filePath, image.base64, image.mimeType);
+    return { url: buildFileUrl(filePath), dataUrl, mimeType: image.mimeType, filePath };
   } catch {
-    // Fallback: return dataUrl if save failed
-    return { result: `success: image generated, url=${dataUrl}`, dataUrl };
+    return { url: dataUrl, dataUrl, mimeType: image.mimeType, filePath };
   }
+}
+
+/** True when the user has configured a usable image generation provider. */
+export async function isImageGenAvailable(): Promise<boolean> {
+  return isImageGenConfigured(await loadImageGenConfig());
+}
+
+/**
+ * Generate an image with the configured provider and save it for an app.
+ * `basePath` is relative to the session's apps/ directory without extension,
+ * e.g. "dreamland/data/images/abc-123". Throws if image generation is not
+ * configured or the provider fails.
+ */
+export async function generateImageFile(prompt: string, basePath: string): Promise<StoredImage> {
+  const config = await loadImageGenConfig();
+  if (!config || !isImageGenConfigured(config)) {
+    throw new Error('Image generation is not configured');
+  }
+  return storeImage(await generateImage(prompt, config), basePath);
 }

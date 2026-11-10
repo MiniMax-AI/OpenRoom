@@ -129,6 +129,9 @@
     min-height: unset;
     border-radius: 0;
     z-index: 100000 !important;
+    /* Height of the Shell's floating controls (bottom bar + add button) that overlay
+       fullscreen apps on phones; apps can keep content above it with this variable. */
+    --os-controls-inset: calc(104px + env(safe-area-inset-bottom, 0px));
   }
 
   .titleBar {

@@ -1,0 +1,258 @@
+.stage {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--dl-space-lg) + var(--os-controls-inset, env(safe-area-inset-bottom, 0px)));
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(90%, 420px);
+  pointer-events: none;
+}
+
+.avatarButton {
+  pointer-events: auto;
+  width: calc(var(--dl-avatar-size) * 0.74);
+  height: var(--dl-avatar-size);
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  &:focus-visible {
+    outline: 2px solid var(--dl-accent);
+    outline-offset: 4px;
+    border-radius: 24px;
+  }
+}
+
+.bounce {
+  animation: bounce 600ms var(--dl-ease);
+}
+
+.sprite {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.35));
+  transition: filter 600ms ease;
+}
+
+.float,
+.breath,
+.blink,
+.aura,
+.shadow {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.breath {
+  transform-origin: 50% 80%;
+  animation: breath 4s ease-in-out infinite;
+}
+
+.aura {
+  animation: pulse 5s ease-in-out infinite;
+}
+
+.shadow {
+  animation: shadow 6s ease-in-out infinite;
+}
+
+.blink {
+  animation: blink 5.2s infinite;
+}
+
+// Expression moods
+.depressing {
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.35)) saturate(0.55) brightness(0.92);
+
+  .float {
+    animation-duration: 9s;
+  }
+  .breath {
+    animation-duration: 6s;
+  }
+}
+
+.angry {
+  filter: drop-shadow(0 0 18px rgba(255, 63, 77, 0.55));
+
+  .float {
+    animation: float 6s ease-in-out infinite, shake 2.6s ease-in-out infinite;
+  }
+}
+
+.happy .float {
+  animation-duration: 4s;
+}
+
+.still {
+  .float,
+  .breath,
+  .aura,
+  .shadow,
+  .blink {
+    animation: none !important;
+  }
+}
+
+.nameTag {
+  margin-top: var(--dl-space-xs);
+  padding: 2px var(--dl-space-md);
+  border-radius: 999px;
+  background: var(--dl-panel);
+  border: 1px solid var(--dl-border);
+  color: var(--dl-text-2);
+  font-size: 12px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.caption {
+  max-width: 100%;
+  margin-bottom: var(--dl-space-sm);
+  padding: var(--dl-space-sm) var(--dl-space-lg);
+  border-radius: 18px;
+  background: var(--dl-panel);
+  border: 1px solid var(--dl-border);
+  color: var(--dl-text);
+  font-size: 14px;
+  font-style: italic;
+  text-align: center;
+  overflow-wrap: anywhere;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: captionIn 400ms var(--dl-ease);
+}
+
+@container dreamland (min-width: 1200px) {
+  .avatarButton {
+    --dl-avatar-size: min(55cqh, 32cqw);
+  }
+}
+
+@container dreamland (max-width: 600px) {
+  .avatarButton {
+    --dl-avatar-size: min(46cqh, 70cqw);
+  }
+  .stage {
+    width: 92%;
+  }
+  .caption {
+    font-size: 13px;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes breath {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.015, 1.03);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes shadow {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scale(0.82);
+    opacity: 0.22;
+  }
+}
+
+@keyframes blink {
+  0%,
+  94%,
+  100% {
+    transform: scaleY(1);
+  }
+  97% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes shake {
+  0%,
+  86%,
+  100% {
+    translate: 0 0;
+  }
+  89% {
+    translate: -3px 0;
+  }
+  92% {
+    translate: 3px 0;
+  }
+  95% {
+    translate: -2px 0;
+  }
+}
+
+@keyframes bounce {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  35% {
+    transform: translateY(-16px) scale(1.04, 0.96);
+  }
+  70% {
+    transform: translateY(0) scale(0.97, 1.03);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes captionIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .float,
+  .breath,
+  .aura,
+  .shadow,
+  .blink,
+  .bounce,
+  .caption {
+    animation: none !important;
+  }
+}

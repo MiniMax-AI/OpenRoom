@@ -1,0 +1,44 @@
+[
+  {
+    "id": "seed-floating-isles",
+    "name": "Floating Isles",
+    "scenePrompt": "Grassy islands floating above a sea of clouds, waterfalls spilling into the mist, a warm sunset glowing on the horizon",
+    "backgroundUrl": null,
+    "timeOfDay": "dusk",
+    "weather": "petals",
+    "mood": "warm",
+    "ambientSound": "wind",
+    "expression": "happy",
+    "caption": "",
+    "createdAt": 1794268800000,
+    "updatedAt": 1794268800001
+  },
+  {
+    "id": "seed-starlit-lake",
+    "name": "Starlit Lake",
+    "scenePrompt": "A still mountain lake at night reflecting a sky full of stars and the Milky Way, pine trees on the shore",
+    "backgroundUrl": null,
+    "timeOfDay": "night",
+    "weather": "fireflies",
+    "mood": "mystical",
+    "ambientSound": "night",
+    "expression": "peaceful",
+    "caption": "",
+    "createdAt": 1794268800000,
+    "updatedAt": 1794268800000
+  },
+  {
+    "id": "seed-lantern-village",
+    "name": "Lantern Village",
+    "scenePrompt": "A tiny mountain village of wooden houses with glowing paper lanterns strung between the rooftops, snow-covered pines around it",
+    "backgroundUrl": null,
+    "timeOfDay": "night",
+    "weather": "snow",
+    "mood": "warm",
+    "ambientSound": "drone",
+    "expression": "shy",
+    "caption": "",
+    "createdAt": 1794268800000,
+    "updatedAt": 1794268799999
+  }
+]

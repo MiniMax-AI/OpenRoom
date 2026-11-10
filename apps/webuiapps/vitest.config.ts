@@ -19,6 +19,8 @@ export default defineConfig({
         'src/lib/tts.ts',
         'src/lib/userName.ts',
         'src/lib/imageGenClient.ts',
+        'src/lib/imageGenTools.ts',
+        'src/pages/Dreamland/{utils,store,actions,repositories,services}/**/*.ts',
       ],
       thresholds: {
         lines: 75,

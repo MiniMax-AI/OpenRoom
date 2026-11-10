@@ -1,0 +1,323 @@
+// Shared overlay chrome: drawers/sheets, chips, modal, toast, buttons.
+// Everything is positioned inside the app root (a size container named "dreamland").
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: var(--dl-mask);
+  animation: fadeIn 200ms ease;
+}
+
+.drawer {
+  position: absolute;
+  z-index: 31;
+  top: var(--dl-space-sm);
+  bottom: var(--dl-space-sm);
+  width: min(var(--dl-drawer-w), calc(100% - 2 * var(--dl-space-sm)));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--dl-panel-strong);
+  border: 1px solid var(--dl-border);
+  border-radius: var(--dl-radius-drawer);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 12px 40px var(--dl-mask);
+  color: var(--dl-text);
+}
+
+.left {
+  left: var(--dl-space-sm);
+  animation: slideFromLeft 240ms var(--dl-ease);
+}
+
+.right {
+  right: var(--dl-space-sm);
+  animation: slideFromRight 240ms var(--dl-ease);
+}
+
+@container dreamland (min-width: 1200px) {
+  .drawer {
+    --dl-drawer-w: 340px;
+  }
+}
+
+@container dreamland (max-width: 600px) {
+  .drawer,
+  .left,
+  .right {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 82%;
+    border-radius: var(--dl-radius-drawer) var(--dl-radius-drawer) 0 0;
+    border-bottom: none;
+    padding-bottom: var(--os-controls-inset, env(safe-area-inset-bottom, 0px));
+    animation: slideFromBottom 260ms var(--dl-ease);
+  }
+}
+
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dl-space-sm);
+  padding: var(--dl-space-md) var(--dl-space-md) var(--dl-space-sm) var(--dl-space-lg);
+  flex-shrink: 0;
+}
+
+.drawerTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.drawerBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--dl-space-lg) var(--dl-space-lg);
+  -webkit-overflow-scrolling: touch;
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dl-text-2);
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+
+  &:hover {
+    background: var(--dl-chip-hover);
+    color: var(--dl-text);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--dl-accent);
+    outline-offset: 2px;
+  }
+}
+
+.fieldLabel {
+  display: block;
+  margin-bottom: var(--dl-space-sm);
+  padding: 0;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--dl-text-3);
+}
+
+.chipGroup {
+  margin: 0 0 var(--dl-space-lg);
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dl-space-xs);
+  min-height: 32px;
+  padding: 0 var(--dl-space-md);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--dl-chip);
+  color: var(--dl-text-2);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+
+  &:hover {
+    background: var(--dl-chip-hover);
+    color: var(--dl-text);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--dl-accent);
+    outline-offset: 2px;
+  }
+}
+
+.chipActive {
+  background: var(--dl-accent-soft);
+  border-color: var(--dl-accent);
+  color: var(--dl-accent);
+
+  &:hover {
+    background: var(--dl-accent-soft);
+    color: var(--dl-accent);
+  }
+}
+
+@container dreamland (max-width: 600px) {
+  .chip {
+    min-height: 40px;
+  }
+}
+
+.modalBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--dl-space-lg);
+  background: var(--dl-mask-heavy);
+  animation: fadeIn 150ms ease;
+}
+
+.modal {
+  width: min(360px, 100%);
+  padding: var(--dl-space-xl);
+  background: var(--bg-2, #1c1d20);
+  border: 1px solid var(--dl-border);
+  border-radius: var(--dl-radius-drawer);
+  color: var(--dl-text);
+}
+
+.modalTitle {
+  margin: 0 0 var(--dl-space-sm);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.modalMessage {
+  margin: 0 0 var(--dl-space-xl);
+  font-size: 14px;
+  color: var(--dl-text-2);
+  overflow-wrap: anywhere;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--dl-space-sm);
+}
+
+.secondaryButton,
+.dangerButton,
+.primaryButton {
+  min-height: 36px;
+  padding: 0 var(--dl-space-lg);
+  border: none;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--dl-accent);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.secondaryButton {
+  background: var(--dl-chip-hover);
+  color: var(--dl-text);
+}
+
+.dangerButton {
+  background: var(--dl-danger);
+  color: var(--dl-text);
+}
+
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dl-space-sm);
+  background: var(--dl-accent);
+  color: var(--dl-text-btn);
+}
+
+.toast {
+  position: absolute;
+  z-index: 50;
+  left: 50%;
+  bottom: calc(var(--dl-space-xl) + var(--os-controls-inset, env(safe-area-inset-bottom, 0px)));
+  transform: translateX(-50%);
+  max-width: calc(100% - 2 * var(--dl-space-lg));
+  padding: var(--dl-space-sm) var(--dl-space-lg);
+  border-radius: 999px;
+  background: var(--dl-panel-strong);
+  border: 1px solid var(--dl-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--dl-text);
+  font-size: 13px;
+  text-align: center;
+  animation: toastIn 220ms var(--dl-ease);
+}
+
+.toastError {
+  border-color: var(--dl-danger);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes slideFromLeft {
+  from {
+    transform: translateX(-24px);
+    opacity: 0;
+  }
+}
+
+@keyframes slideFromRight {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+
+@keyframes slideFromBottom {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+}
+
+@keyframes toastIn {
+  from {
+    transform: translate(-50%, 8px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .drawer,
+  .left,
+  .right,
+  .modalBackdrop,
+  .toast {
+    animation: none;
+  }
+}

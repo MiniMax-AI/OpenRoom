@@ -11,6 +11,7 @@ import {
   Crown,
   Shield,
   Newspaper,
+  CloudMoon,
   Radio,
   Video,
   VideoOff,
@@ -61,6 +62,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Crown,
   Shield,
   Newspaper,
+  CloudMoon,
   Radio,
   MessageCircle,
 };

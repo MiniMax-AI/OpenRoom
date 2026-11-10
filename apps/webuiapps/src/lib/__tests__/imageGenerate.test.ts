@@ -16,6 +16,8 @@ import {
   executeImageGenTool,
   buildImageGenPrompt,
   getImageGenToolDefinitions,
+  generateImageFile,
+  isImageGenAvailable,
 } from '../imageGenTools';
 
 const POLLINATIONS: ImageGenConfig = {
@@ -43,7 +45,10 @@ const GEMINI: ImageGenConfig = {
 const PNG_BYTES = new Uint8Array([137, 80, 78, 71]);
 
 function imageResponse(bytes: Uint8Array, type = 'image/jpeg'): Response {
-  return new Response(bytes, { status: 200, headers: { 'Content-Type': type } });
+  return new Response(bytes as unknown as BodyInit, {
+    status: 200,
+    headers: { 'Content-Type': type },
+  });
 }
 
 let fetchMock: ReturnType<typeof vi.fn>;
@@ -152,7 +157,7 @@ describe('generateImage — Pollinations', () => {
     await expect(generateImage('x', POLLINATIONS)).rejects.toThrow(
       'Pollinations returned application/json instead of an image',
     );
-    const noType = new Response(PNG_BYTES, { status: 200 });
+    const noType = new Response(PNG_BYTES as unknown as BodyInit, { status: 200 });
     noType.headers.delete('Content-Type');
     fetchMock.mockResolvedValue(noType);
     await expect(generateImage('x', POLLINATIONS)).rejects.toThrow('no content type');
@@ -242,5 +247,43 @@ describe('image prompt instructions', () => {
     const prompt = tool.function.parameters.properties.prompt as { description: string };
     expect(prompt.description).toMatch(/Self-contained/);
     expect(prompt.description).toMatch(/setting and genre/);
+  });
+});
+
+describe('generateImageFile / isImageGenAvailable', () => {
+  const CONFIG_KEY = 'webuiapps-imagegen-config';
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('reports availability from the saved config', async () => {
+    fetchMock.mockRejectedValue(new Error('no dev server'));
+    expect(await isImageGenAvailable()).toBe(false);
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(POLLINATIONS));
+    expect(await isImageGenAvailable()).toBe(true);
+  });
+
+  it('throws when image generation is not configured', async () => {
+    fetchMock.mockRejectedValue(new Error('no dev server'));
+    await expect(generateImageFile('x', 'dreamland/data/images/a')).rejects.toThrow(
+      'Image generation is not configured',
+    );
+  });
+
+  it('generates, stores the file with the right extension and returns its URL', async () => {
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(POLLINATIONS));
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/llm-config') return Response.json({});
+      if (url.startsWith('https://image.pollinations.ai/')) return imageResponse(PNG_BYTES);
+      return new Response(null, { status: 200 }); // session-data ping/upload
+    });
+    const stored = await generateImageFile('a reef', 'dreamland/data/images/d1-1');
+    expect(stored.filePath).toBe('dreamland/data/images/d1-1.jpg');
+    expect(stored.mimeType).toBe('image/jpeg');
+    expect(stored.dataUrl).toBe('data:image/jpeg;base64,iVBORw==');
+    expect(stored.url).toMatch(
+      /^\/api\/session-data\?path=.*dreamland%2Fdata%2Fimages%2Fd1-1\.jpg$/,
+    );
   });
 });

@@ -1,0 +1,78 @@
+.scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--dl-bg);
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+}
+
+.fadeIn {
+  animation: sceneFade 900ms ease both;
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.paintedSky {
+  position: absolute;
+  inset: 0;
+}
+
+.hills {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 38%;
+}
+
+.grade,
+.tint,
+.vignette,
+.weather {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.grade {
+  transition: background 900ms ease;
+}
+
+.tint {
+  mix-blend-mode: soft-light;
+  transition: background 900ms ease;
+}
+
+.vignette {
+  background: radial-gradient(
+    ellipse at 50% 45%,
+    rgba(0, 0, 0, 0) 55%,
+    rgba(0, 0, 0, 0.35) 100%
+  );
+}
+
+.weather {
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes sceneFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
