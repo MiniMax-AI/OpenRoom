@@ -460,3 +460,121 @@ test.describe('Chat panel – replies without the respond_to_user tool', () => {
     ]);
   });
 });
+
+test.describe('Image generation – Pollinations (free, no key)', () => {
+  const llm = {
+    provider: 'openai',
+    apiKey: 'test-key',
+    baseUrl: 'http://llm.test/v1',
+    model: 'test-model',
+  };
+  const pollinations = {
+    provider: 'pollinations',
+    apiKey: '',
+    baseUrl: 'https://image.pollinations.ai',
+    model: 'flux',
+  };
+  // 1x1 transparent PNG
+  const PNG = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+    'base64',
+  );
+
+  test('can be chosen in Settings without an API key', async ({ page }) => {
+    await mockLLM(page);
+    const saved: unknown[] = [];
+    await page.route('**/api/llm-config', (route) => {
+      if (route.request().method() === 'POST') saved.push(route.request().postDataJSON());
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ llm }),
+      });
+    });
+    await page.goto('/');
+    await page.locator('[data-testid="settings-btn"]').click();
+    const modal = page.locator('[data-testid="settings-modal"]');
+    await modal.locator('[data-testid="image-provider"]').selectOption('pollinations');
+    await modal.locator('button', { hasText: 'Save' }).click();
+    await expect(modal).not.toBeVisible();
+
+    await expect.poll(() => saved.length).toBeGreaterThan(0);
+    expect(saved.at(-1)).toMatchObject({ imageGen: pollinations });
+  });
+
+  test('the character generates an image and it is shown in chat', async ({ page }) => {
+    await mockLLM(page);
+    await page.route('**/api/llm-config', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ llm, imageGen: pollinations }),
+      }),
+    );
+    const imageRequests: string[] = [];
+    await page.route('https://image.pollinations.ai/**', (route) => {
+      imageRequests.push(route.request().url());
+      return route.fulfill({ status: 200, contentType: 'image/png', body: PNG });
+    });
+
+    // LLM: offers generate_image, calls it, then replies, then ends the turn.
+    let toolsOffered: string[] = [];
+    const toolCall = (name: string, args: unknown) => ({
+      choices: [
+        {
+          finish_reason: 'tool_calls',
+          message: {
+            role: 'assistant',
+            content: null,
+            tool_calls: [
+              {
+                id: `call_${name}`,
+                type: 'function',
+                function: { name, arguments: JSON.stringify(args) },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    const fulfill = (route: import('@playwright/test').Route) => {
+      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204 });
+      const body = route.request().postDataJSON() as {
+        messages: Array<{ role: string; tool_call_id?: string }>;
+        tools?: Array<{ function: { name: string } }>;
+      };
+      toolsOffered = (body.tools ?? []).map((t) => t.function.name);
+      const last = body.messages.at(-1);
+      const reply =
+        last?.role !== 'tool'
+          ? toolCall('generate_image', { prompt: 'a starship at dawn' })
+          : last.tool_call_id === 'call_generate_image'
+            ? toolCall('respond_to_user', {
+                character_expression: { content: 'Here is our ship.', emotion: 'happy' },
+                user_interaction: { suggested_replies: ['Beautiful'] },
+              })
+            : { choices: [{ message: { role: 'assistant', content: '' }, finish_reason: 'stop' }] };
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(reply),
+      });
+    };
+    await page.unroute('**/api/llm-proxy');
+    await page.unroute('http://llm.test/**');
+    await page.route('**/api/llm-proxy', fulfill);
+    await page.route('http://llm.test/**', fulfill);
+
+    await page.goto('/');
+    await page.locator('[data-testid="chat-input"]').fill('Show me the ship');
+    await page.locator('[data-testid="send-btn"]').click();
+
+    const image = page.locator('[data-testid="generated-image"]').last();
+    await expect(image).toBeVisible();
+    await expect(image).toHaveAttribute('src', /^data:image\/png;base64,/);
+    await expect(page.locator('[data-testid="chat-messages"]')).toContainText('Here is our ship.');
+    expect(toolsOffered).toContain('generate_image');
+    expect(imageRequests).toHaveLength(1);
+    expect(imageRequests[0]).toContain('/prompt/a%20starship%20at%20dawn?');
+  });
+});

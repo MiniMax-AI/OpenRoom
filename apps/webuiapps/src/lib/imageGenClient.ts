@@ -1,9 +1,9 @@
 /**
  * Image Generation API Client
- * Supports OpenAI (DALL-E) and Gemini formats
+ * Supports OpenAI (DALL-E), Gemini, and Pollinations.ai (free, no key) formats
  */
 
-export type ImageGenProvider = 'openai' | 'gemini';
+export type ImageGenProvider = 'openai' | 'gemini' | 'pollinations';
 
 export interface ImageGenConfig {
   provider: ImageGenProvider;
@@ -34,7 +34,25 @@ const DEFAULT_CONFIGS: Record<ImageGenProvider, Omit<ImageGenConfig, 'apiKey'>> 
     baseUrl: 'https://generativelanguage.googleapis.com',
     model: 'gemini-3.1-flash-image-preview',
   },
+  pollinations: {
+    provider: 'pollinations',
+    baseUrl: 'https://image.pollinations.ai',
+    model: 'flux',
+  },
 };
+
+/** Providers that work without an API key. */
+const KEYLESS_PROVIDERS: ReadonlySet<ImageGenProvider> = new Set(['pollinations']);
+
+export function requiresApiKey(provider: ImageGenProvider): boolean {
+  return !KEYLESS_PROVIDERS.has(provider);
+}
+
+/** True when image generation is usable: a key is set, or the provider needs none. */
+export function isImageGenConfigured(config: ImageGenConfig | null | undefined): boolean {
+  if (!config?.baseUrl?.trim()) return false;
+  return !requiresApiKey(config.provider) || !!config.apiKey?.trim();
+}
 
 export function getDefaultImageGenConfig(
   provider: ImageGenProvider,
@@ -109,6 +127,9 @@ export async function generateImage(
   if (config.provider === 'gemini') {
     return generateImageGemini(prompt, config);
   }
+  if (config.provider === 'pollinations') {
+    return generateImagePollinations(prompt, config);
+  }
   return generateImageOpenAI(prompt, config);
 }
 
@@ -145,6 +166,58 @@ async function generateImageOpenAI(
   if (!b64) throw new Error('No image data in response');
 
   return { base64: b64, mimeType: 'image/png' };
+}
+
+/** Encode binary data as base64 without blowing the call stack on large images. */
+export function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+/** Build the Pollinations image URL. A random seed avoids getting a cached image back. */
+export function buildPollinationsUrl(
+  prompt: string,
+  config: ImageGenConfig,
+  seed = Math.floor(Math.random() * 1_000_000_000),
+): string {
+  const base = config.baseUrl.replace(/\/+$/, '');
+  const params = new URLSearchParams({
+    width: '1024',
+    height: '1024',
+    nologo: 'true',
+    seed: String(seed),
+  });
+  if (config.model.trim()) params.set('model', config.model.trim());
+  return `${base}/prompt/${encodeURIComponent(prompt)}?${params.toString()}`;
+}
+
+/**
+ * Pollinations.ai: free, no account. A GET returns the image itself; the
+ * service allows cross-origin requests, so the browser fetches it directly.
+ */
+async function generateImagePollinations(
+  prompt: string,
+  config: ImageGenConfig,
+): Promise<ImageGenResult> {
+  const headers: Record<string, string> = config.apiKey?.trim()
+    ? { Authorization: `Bearer ${config.apiKey.trim()}` }
+    : {};
+  const res = await fetch(buildPollinationsUrl(prompt, config), { headers });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Pollinations error ${res.status}: ${text.slice(0, 200)}`);
+  }
+  const mimeType = (res.headers.get('Content-Type') || '').split(';')[0].trim();
+  if (!mimeType.startsWith('image/')) {
+    throw new Error(`Pollinations returned ${mimeType || 'no content type'} instead of an image`);
+  }
+  return { base64: arrayBufferToBase64(await res.arrayBuffer()), mimeType };
 }
 
 async function generateImageGemini(

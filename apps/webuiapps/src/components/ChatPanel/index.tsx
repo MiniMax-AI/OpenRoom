@@ -24,6 +24,8 @@ import {
   loadImageGenConfigSync,
   saveImageGenConfig,
   getDefaultImageGenConfig,
+  isImageGenConfigured,
+  requiresApiKey,
   type ImageGenConfig,
   type ImageGenProvider,
 } from '@/lib/imageGenClient';
@@ -794,7 +796,7 @@ const ChatPanel: React.FC<{
   const runConversation = async (history: ChatMessage[], cfg: LLMConfig) => {
     await seedMetaFiles();
     await loadActionsFromMeta();
-    const hasImageGen = !!imageGenConfigRef.current?.apiKey;
+    const hasImageGen = isImageGenConfigured(imageGenConfigRef.current);
     const mm = modManagerRef.current;
     const char = characterRef.current;
 
@@ -1195,7 +1197,12 @@ const ChatPanel: React.FC<{
                 >
                   {msg.role === 'assistant' ? renderMessageContent(msg.content) : msg.content}
                   {msg.imageUrl && (
-                    <img src={msg.imageUrl} alt="Generated" className={styles.messageImage} />
+                    <img
+                      src={msg.imageUrl}
+                      alt="Generated"
+                      className={styles.messageImage}
+                      data-testid="generated-image"
+                    />
                   )}
                 </div>
                 {msg.toolCalls && msg.toolCalls.length > 0 && (
@@ -1468,9 +1475,11 @@ const SettingsModal: React.FC<{
             className={styles.select}
             value={igProvider}
             onChange={(e) => handleIgProviderChange(e.target.value as ImageGenProvider)}
+            data-testid="image-provider"
           >
             <option value="openai">OpenAI</option>
             <option value="gemini">Gemini</option>
+            <option value="pollinations">Pollinations (free, no key)</option>
           </select>
         </div>
 
@@ -1481,7 +1490,7 @@ const SettingsModal: React.FC<{
             type="password"
             value={igApiKey}
             onChange={(e) => setIgApiKey(e.target.value)}
-            placeholder="API Key..."
+            placeholder={requiresApiKey(igProvider) ? 'API Key...' : 'Optional'}
           />
         </div>
 
@@ -1529,15 +1538,14 @@ const SettingsModal: React.FC<{
                 model,
                 ...(customHeaders.trim() ? { customHeaders } : {}),
               };
-              const igCfg: ImageGenConfig | null = igApiKey.trim()
-                ? {
-                    provider: igProvider,
-                    apiKey: igApiKey,
-                    baseUrl: igBaseUrl,
-                    model: igModel,
-                    ...(igCustomHeaders.trim() ? { customHeaders: igCustomHeaders } : {}),
-                  }
-                : null;
+              const igCandidate: ImageGenConfig = {
+                provider: igProvider,
+                apiKey: igApiKey,
+                baseUrl: igBaseUrl,
+                model: igModel,
+                ...(igCustomHeaders.trim() ? { customHeaders: igCustomHeaders } : {}),
+              };
+              const igCfg = isImageGenConfigured(igCandidate) ? igCandidate : null;
               onSave(llmCfg, igCfg);
             }}
           >
