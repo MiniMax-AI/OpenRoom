@@ -6,10 +6,23 @@ export default defineConfig({
     environment: 'happy-dom',
     globals: true,
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    // Node 25+ ships a built-in global localStorage that shadows happy-dom's; turn it off in workers
+    pool: 'forks',
+    poolOptions: {
+      forks: { execArgv: ['--no-experimental-webstorage'] },
+    },
     coverage: {
       provider: 'istanbul',
       reporter: ['text', 'lcov', 'html'],
-      include: ['src/lib/llmClient.ts'],
+      include: [
+        'src/lib/llmClient.ts',
+        'src/lib/tts.ts',
+        'src/lib/userName.ts',
+        'src/lib/imageGenClient.ts',
+        'src/lib/imageGenTools.ts',
+        'src/lib/binaryFiles.ts',
+        'src/pages/Dreamland/{utils,store,actions,repositories,services}/**/*.ts',
+      ],
       thresholds: {
         lines: 75,
         functions: 85,

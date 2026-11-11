@@ -1,0 +1,187 @@
+app_id: 15
+app_name: dreamland
+app_display_name: 梦境
+version: '1.1.0'
+description: >
+  梦境是用户和你（伙伴）一起搭建的共享梦境场景。全屏显示一个当前“梦境”：背景图（没有时显示绘制的天空）、时间、
+  天气粒子、氛围色调、环境音，以及站在场景中、带有表情的你的形象。 每个梦境存为 dreamspaces/
+  下的一个 JSON 文件；偏好设置和当前梦境存于 state.json。 优先使用下面的操作类
+  Action（SET_SCENE、SET_WEATHER 等）：它们直接修改当前梦境并保存， SET_SCENE
+  会用用户配置的图像生成绘制新背景。没有图片的梦境在打开时也会自动绘制。 用户可以给你一个 3D
+  身体：在应用中上传 VRM 模型（上报为 SET_AVATAR_MODEL，移除时为 CLEAR_AVATAR_MODEL）；
+  之后你的表情、视线和说话时的嘴型会驱动它。 用 SET_EXPRESSION 表达你的心情，用 SET_CAPTION
+  在形象上方轻声说一句话。 要创建全新的梦境，写入 /dreamspaces/{id}.json（结构见
+  guide.md），然后发送 CREATE_DREAMSPACE。 每个操作都可选 dreamspaceId；不传则修改当前梦境。
+  枚举值：timeOfDay dawn|day|dusk|night；weather clear|rain|snow|fog|fireflies|stars|petals； mood
+  serene|mystical|warm|melancholic|energetic；sound none|rain|wind|ocean|night|drone； expression
+  happy|shy|peaceful|depressing|angry。 本文件仅定义 Agent 发往前端的 Action。用户的编辑由前端上报。
+displayDesc: >
+  与你的伙伴一起搭建梦境世界：描绘场景，设置时间、天气、氛围和环境音，看伙伴在其中回应你。可以保存任意多个梦境。
+
+actions:
+  - type: SET_SCENE
+    name: 设置场景
+    description: >
+      修改梦境的环境描述（例如“云海之上有瀑布的浮空岛”），并据此绘制新背景图。开始绘制后立即返回
+      （无法绘制时返回原因，例如未配置图像生成），图片会在 10-30
+      秒后出现。提示词只需生动、完整地描述地点；
+      应用会自动加上时间、天气、氛围和画风，并在上面绘制你的形象，所以不要描述人物。
+    params:
+      - name: prompt
+        type: string
+        description: 地点描述（英文效果最好，最多 600 字符）
+        required: true
+      - name: regenerate
+        type: string
+        description: 传 "false" 时只修改文字、不绘制新背景。默认 "true"。
+        required: false
+      - name: dreamspaceId
+        type: string
+        description: 目标梦境 id，默认当前梦境。
+        required: false
+
+  - type: REGENERATE_BACKGROUND
+    name: 重新绘制背景
+    description: >
+      根据梦境当前的场景描述、时间、天气和氛围绘制新背景。开始绘制后立即返回，图片会在 10-30
+      秒后出现。
+    params:
+      - name: dreamspaceId
+        type: string
+        description: 目标梦境 id，默认当前梦境。
+        required: false
+
+  - type: SET_WEATHER
+    name: 设置天气
+    description: 修改梦境的天气粒子效果。
+    params:
+      - name: weather
+        type: string
+        description: clear | rain | snow | fog | fireflies | stars | petals
+        required: true
+      - name: dreamspaceId
+        type: string
+        description: 目标梦境 id，默认当前梦境。
+        required: false
+
+  - type: SET_TIME_OF_DAY
+    name: 设置时间
+    description: 修改梦境的时间（天空颜色和光照）。
+    params:
+      - name: timeOfDay
+        type: string
+        description: dawn | day | dusk | night
+        required: true
+      - name: dreamspaceId
+        type: string
+        description: 目标梦境 id，默认当前梦境。
+        required: false
+
+  - type: SET_MOOD
+    name: 设置氛围
+    description: 修改梦境的氛围色调以及你的形象光晕颜色。
+    params:
+      - name: mood
+        type: string
+        description: serene | mystical | warm | melancholic | energetic
+        required: true
+      - name: dreamspaceId
+        type: string
+        description: 目标梦境 id，默认当前梦境。
+        required: false
+
+  - type: SET_AMBIENT_SOUND
+    name: 设置环境音
+    description: >
+      修改梦境的环境音。只有用户打开声音时才会播放。
+    params:
+      - name: sound
+        type: string
+        description: none | rain | wind | ocean | night | drone
+        required: true
+      - name: dreamspaceId
+        type: string
+        description: 目标梦境 id，默认当前梦境。
+        required: false
+
+  - type: SET_EXPRESSION
+    name: 设置形象表情
+    description: 修改你在场景中的形象表情，表达你的心情。
+    params:
+      - name: expression
+        type: string
+        description: happy | shy | peaceful | depressing | angry
+        required: true
+      - name: dreamspaceId
+        type: string
+        description: 目标梦境 id，默认当前梦境。
+        required: false
+
+  - type: SET_CAPTION
+    name: 设置气泡文字
+    description: >
+      在你的形象上方的气泡中显示一句轻声的话（最多 140 字符）。传空文本可隐藏气泡。
+    params:
+      - name: text
+        type: string
+        description: 要显示的话，留空则隐藏气泡
+        required: true
+      - name: dreamspaceId
+        type: string
+        description: 目标梦境 id，默认当前梦境。
+        required: false
+
+  - type: SWITCH_DREAMSPACE
+    name: 切换梦境
+    description: 将另一个已保存的梦境设为当前显示的梦境。
+    params:
+      - name: dreamspaceId
+        type: string
+        description: 要显示的梦境 id
+        required: true
+
+  - type: CREATE_DREAMSPACE
+    name: 创建梦境
+    description: >
+      写入新的梦境文件 /dreamspaces/{id}.json（见
+      guide.md）后发送。应用读取该文件，加入梦境列表并切换过去。 之后可用 SET_SCENE 绘制它的背景。
+    params:
+      - name: filePath
+        type: string
+        description: 写入的文件路径，例如 /dreamspaces/{id}.json
+        required: true
+
+  - type: UPDATE_DREAMSPACE
+    name: 更新梦境
+    description: >
+      重写已有梦境文件后发送。应用重新读取并更新场景。可用于把 backgroundUrl 设为你用 generate_image
+      生成的图片。
+    params:
+      - name: filePath
+        type: string
+        description: 更新的文件路径，例如 /dreamspaces/{id}.json
+        required: true
+
+  - type: DELETE_DREAMSPACE
+    name: 删除梦境
+    description: 删除梦境文件后发送。应用移除该梦境并显示另一个。
+    params:
+      - name: dreamspaceId
+        type: string
+        description: 被删除梦境的 id（不含 .json 的文件名）
+        required: true
+
+  - type: REFRESH_DREAMSPACES
+    name: 刷新梦境
+    description: 从存储重新加载所有梦境，可选切换到其中一个。
+    params:
+      - name: focusId
+        type: string
+        description: 刷新后要显示的梦境 id
+        required: false
+
+  - type: SYNC_STATE
+    name: 同步状态
+    description: >
+      写入 /state.json 后发送。应用重新读取并应用 activeDreamspaceId、soundEnabled 和
+      volume（缺失的字段保持不变）。

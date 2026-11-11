@@ -13,6 +13,7 @@ import {
   loadConfigSync,
   saveConfig,
   chat,
+  setProxyAvailability,
   type ChatMessage,
   type ToolDef,
 } from '../llmClient';
@@ -92,6 +93,9 @@ function makeErrorResponse(status: number, bodyText: string) {
 beforeEach(() => {
   localStorage.clear();
   vi.restoreAllMocks();
+  // Default to "dev-server proxy available" so each test's first fetch is the LLM request;
+  // the proxy-detection tests below reset this explicitly.
+  setProxyAvailability(true);
 });
 
 afterEach(() => {
@@ -611,5 +615,437 @@ respond_to_user
       expect(headers['x-custom-valid']).toBe('value');
       expect(headers['x-custom-nocolon']).toBeUndefined();
     });
+  });
+});
+
+// ─── Proxy detection & direct mode ────────────────────────────────────────────
+
+describe('proxy detection', () => {
+  beforeEach(() => {
+    setProxyAvailability(null);
+  });
+
+  it('probes /api/llm-proxy with OPTIONS once and then uses the proxy', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 204 } as Response)
+      .mockResolvedValueOnce(makeOpenAIResponse('first'))
+      .mockResolvedValueOnce(makeOpenAIResponse('second'));
+    globalThis.fetch = mockFetch;
+
+    await chat(MOCK_MESSAGES, [], MOCK_OPENAI_CONFIG);
+    await chat(MOCK_MESSAGES, [], MOCK_OPENAI_CONFIG);
+
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+    expect(mockFetch.mock.calls[0]).toEqual(['/api/llm-proxy', { method: 'OPTIONS' }]);
+    expect(mockFetch.mock.calls[1][0]).toBe('/api/llm-proxy');
+    expect(mockFetch.mock.calls[2][0]).toBe('/api/llm-proxy');
+  });
+
+  it('treats a 405 probe response as "proxy available"', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 405 } as Response)
+      .mockResolvedValueOnce(makeOpenAIResponse('ok'));
+    globalThis.fetch = mockFetch;
+
+    await chat(MOCK_MESSAGES, [], MOCK_OPENAI_CONFIG);
+
+    expect(mockFetch.mock.calls[1][0]).toBe('/api/llm-proxy');
+  });
+
+  it('calls the provider directly when the probe fails', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('no dev server'))
+      .mockResolvedValueOnce(makeOpenAIResponse('direct'));
+    globalThis.fetch = mockFetch;
+
+    const result = await chat(MOCK_MESSAGES, [], {
+      ...MOCK_OPENAI_CONFIG,
+      customHeaders: 'X-Org-Id: org-123',
+    });
+
+    expect(result.content).toBe('direct');
+    const [url, init] = mockFetch.mock.calls[1];
+    expect(url).toBe('https://api.openai.com/v1/chat/completions');
+    const headers = init.headers as Record<string, string>;
+    expect(headers['X-LLM-Target-URL']).toBeUndefined();
+    // Direct mode passes custom headers through unprefixed
+    expect(headers['x-org-id']).toBe('org-123');
+    expect(headers['Authorization']).toBe('Bearer sk-test-key');
+  });
+
+  it('calls the provider directly when the probe returns 404', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 404 } as Response)
+      .mockResolvedValueOnce(makeAnthropicResponse('direct anthropic'));
+    globalThis.fetch = mockFetch;
+
+    const result = await chat(MOCK_MESSAGES, [], MOCK_ANTHROPIC_CONFIG);
+
+    expect(result.content).toBe('direct anthropic');
+    expect(mockFetch.mock.calls[1][0]).toBe('https://api.anthropic.com/v1/messages');
+  });
+});
+
+// ─── Optional API keys & think-tag stripping (Anthropic-compatible) ──────────
+
+describe('Anthropic-compatible local servers', () => {
+  it('omits x-api-key when no key is configured', async () => {
+    const mockFetch = vi.fn().mockResolvedValueOnce(makeAnthropicResponse('ok'));
+    globalThis.fetch = mockFetch;
+
+    await chat(MOCK_MESSAGES, [], { ...MOCK_ANTHROPIC_CONFIG, apiKey: '  ' });
+
+    const headers = mockFetch.mock.calls[0][1].headers as Record<string, string>;
+    expect(headers['x-api-key']).toBeUndefined();
+    expect(headers['anthropic-version']).toBe('2023-06-01');
+  });
+
+  it('strips think tags from Anthropic text content', async () => {
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(makeAnthropicResponse('<think>plan</think>Answer'));
+
+    const result = await chat(MOCK_MESSAGES, [], MOCK_ANTHROPIC_CONFIG);
+
+    expect(result.content).toBe('Answer');
+  });
+});
+
+// ─── Inline tool-call parsing edge cases ─────────────────────────────────────
+
+describe('inline tool-call parsing', () => {
+  it('keeps non-JSON and empty arg values as strings', async () => {
+    const content = `<tool_call>do_thing
+<arg_key>name</arg_key><arg_value>plain text</arg_value>
+<arg_key>empty</arg_key><arg_value>   </arg_value>
+</tool_call>`;
+    globalThis.fetch = vi.fn().mockResolvedValueOnce(makeOpenAIResponse(content));
+
+    const result = await chat(MOCK_MESSAGES, MOCK_TOOLS, MOCK_LLAMACPP_CONFIG);
+
+    expect(result.toolCalls).toHaveLength(1);
+    expect(JSON.parse(result.toolCalls[0].function.arguments)).toEqual({
+      name: 'plain text',
+      empty: '',
+    });
+  });
+
+  it('ignores tool_call blocks without any arguments and keeps their text', async () => {
+    const content = `Before <tool_call>no_args
+<arg_key></arg_key><arg_value>x</arg_value>
+</tool_call>`;
+    globalThis.fetch = vi.fn().mockResolvedValueOnce(makeOpenAIResponse(content));
+
+    const result = await chat(MOCK_MESSAGES, MOCK_TOOLS, MOCK_LLAMACPP_CONFIG);
+
+    expect(result.toolCalls).toEqual([]);
+    expect(result.content).toContain('Before');
+  });
+
+  it('parses multiple inline tool calls with sequential ids', async () => {
+    const content = `<tool_call>a
+<arg_key>k</arg_key><arg_value>1</arg_value>
+</tool_call><tool_call>b
+<arg_key>k</arg_key><arg_value>2</arg_value>
+</tool_call>`;
+    globalThis.fetch = vi.fn().mockResolvedValueOnce(makeOpenAIResponse(content));
+
+    const result = await chat(MOCK_MESSAGES, MOCK_TOOLS, MOCK_LLAMACPP_CONFIG);
+
+    expect(result.toolCalls.map((t) => [t.id, t.function.name])).toEqual([
+      ['inline_tool_0', 'a'],
+      ['inline_tool_1', 'b'],
+    ]);
+    expect(result.content).toBe('');
+  });
+
+  it('prefers native tool_calls and strips think tags from accompanying content', async () => {
+    const native = {
+      id: 'call_1',
+      type: 'function',
+      function: { name: 'get_weather', arguments: '{"city":"SF"}' },
+    };
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(makeOpenAIResponse('<think>x</think>Checking', [native]));
+
+    const result = await chat(MOCK_MESSAGES, MOCK_TOOLS, MOCK_LLAMACPP_CONFIG);
+
+    expect(result.toolCalls).toEqual([native]);
+    expect(result.content).toBe('Checking');
+  });
+
+  it('leaves content without think tags untouched', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValueOnce(makeOpenAIResponse('  spaced  '));
+
+    const result = await chat(MOCK_MESSAGES, [], MOCK_LLAMACPP_CONFIG);
+
+    expect(result.content).toBe('  spaced  ');
+  });
+
+  it('returns empty content when the response has no choices', async () => {
+    const body = JSON.stringify({});
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: () => Promise.resolve(body),
+    } as unknown as Response);
+
+    const result = await chat(MOCK_MESSAGES, [], MOCK_OPENAI_CONFIG);
+
+    expect(result).toEqual({ content: '', toolCalls: [] });
+  });
+});
+
+// ─── Anthropic message conversion ────────────────────────────────────────────
+
+describe('Anthropic message conversion', () => {
+  it('converts tool results and assistant tool calls into Anthropic blocks', async () => {
+    const mockFetch = vi.fn().mockResolvedValueOnce(makeAnthropicResponse('done'));
+    globalThis.fetch = mockFetch;
+
+    const history: ChatMessage[] = [
+      { role: 'system', content: 'You are helpful' },
+      { role: 'user', content: 'Weather?' },
+      {
+        role: 'assistant',
+        content: 'Let me check',
+        tool_calls: [
+          {
+            id: 'tu_1',
+            type: 'function',
+            function: { name: 'get_weather', arguments: '{"city":"SF"}' },
+          },
+        ],
+      },
+      { role: 'tool', content: 'Sunny', tool_call_id: 'tu_1' },
+      {
+        role: 'assistant',
+        content: '',
+        tool_calls: [
+          { id: 'tu_2', type: 'function', function: { name: 'get_weather', arguments: '{}' } },
+        ],
+      },
+    ];
+
+    await chat(history, MOCK_TOOLS, MOCK_ANTHROPIC_CONFIG);
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.system).toBe('You are helpful');
+    expect(body.messages[1]).toEqual({
+      role: 'assistant',
+      content: [
+        { type: 'text', text: 'Let me check' },
+        { type: 'tool_use', id: 'tu_1', name: 'get_weather', input: { city: 'SF' } },
+      ],
+    });
+    expect(body.messages[2]).toEqual({
+      role: 'user',
+      content: [{ type: 'tool_result', tool_use_id: 'tu_1', content: 'Sunny' }],
+    });
+    // No text block when content is empty
+    expect(body.messages[3].content[0].type).toBe('tool_use');
+  });
+});
+
+// ─── Tool-call arguments → Anthropic tool_use.input ──────────────────────────
+
+describe('Anthropic tool_use input parsing', () => {
+  const sendWithArguments = async (args: string) => {
+    const mockFetch = vi.fn().mockResolvedValueOnce(makeAnthropicResponse('ok'));
+    globalThis.fetch = mockFetch;
+    await chat(
+      [
+        { role: 'user', content: 'hi' },
+        {
+          role: 'assistant',
+          content: '',
+          tool_calls: [{ id: 'tu', type: 'function', function: { name: 'f', arguments: args } }],
+        },
+      ],
+      MOCK_TOOLS,
+      MOCK_ANTHROPIC_CONFIG,
+    );
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    return body.messages[1].content[0].input;
+  };
+
+  it.each([
+    ['empty string', ''],
+    ['whitespace', '   '],
+    ['malformed JSON', '{"city":'],
+    ['JSON null', 'null'],
+    ['JSON array', '[1,2]'],
+    ['JSON string', '"text"'],
+  ])('uses {} instead of throwing for %s', async (_label, args) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await expect(sendWithArguments(args)).resolves.toEqual({});
+    warn.mockRestore();
+  });
+
+  it('passes valid object arguments through unchanged', async () => {
+    await expect(sendWithArguments('{"city":"SF","days":3}')).resolves.toEqual({
+      city: 'SF',
+      days: 3,
+    });
+  });
+});
+
+// ─── URL building ────────────────────────────────────────────────────────────
+
+describe('target URL building', () => {
+  const targetUrlFor = async (config: LLMConfig) => {
+    const isAnthropic = config.provider === 'anthropic' || config.provider === 'minimax';
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(isAnthropic ? makeAnthropicResponse('ok') : makeOpenAIResponse('ok'));
+    globalThis.fetch = mockFetch;
+    await chat(MOCK_MESSAGES, [], config);
+    return (mockFetch.mock.calls[0][1].headers as Record<string, string>)['X-LLM-Target-URL'];
+  };
+
+  it.each([
+    ['https://api.openai.com/v1', 'https://api.openai.com/v1/chat/completions'],
+    ['https://api.openai.com/v1/', 'https://api.openai.com/v1/chat/completions'],
+    ['https://api.z.ai/api/coding/paas/v4', 'https://api.z.ai/api/coding/paas/v4/chat/completions'],
+    ['http://localhost:8080/', 'http://localhost:8080/v1/chat/completions'],
+    ['http://localhost:8080///', 'http://localhost:8080/v1/chat/completions'],
+  ])('OpenAI-compatible baseUrl %s → %s', async (baseUrl, expected) => {
+    await expect(targetUrlFor({ ...MOCK_OPENAI_CONFIG, baseUrl })).resolves.toBe(expected);
+  });
+
+  it.each([
+    ['https://api.anthropic.com/', 'https://api.anthropic.com/v1/messages'],
+    ['https://api.anthropic.com/v1/', 'https://api.anthropic.com/v1/messages'],
+    ['https://api.minimax.io/anthropic/v1', 'https://api.minimax.io/anthropic/v1/messages'],
+  ])('Anthropic-compatible baseUrl %s → %s', async (baseUrl, expected) => {
+    await expect(targetUrlFor({ ...MOCK_ANTHROPIC_CONFIG, baseUrl })).resolves.toBe(expected);
+  });
+});
+
+// ─── Anthropic response edge cases ───────────────────────────────────────────
+
+describe('Anthropic response parsing edge cases', () => {
+  const respondWith = (data: unknown) =>
+    vi.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(data),
+    } as unknown as Response);
+
+  it('ignores non-text/tool_use blocks such as thinking blocks', async () => {
+    globalThis.fetch = respondWith({
+      content: [
+        { type: 'thinking', thinking: 'secret reasoning' },
+        { type: 'text', text: 'Part 1. ' },
+        { type: 'tool_use', id: 't1', name: 'get_weather', input: {} },
+        { type: 'text', text: 'Part 2.' },
+      ],
+    });
+
+    const result = await chat(MOCK_MESSAGES, MOCK_TOOLS, MOCK_ANTHROPIC_CONFIG);
+
+    expect(result.content).toBe('Part 1. Part 2.');
+    expect(result.content).not.toContain('secret');
+    expect(result.toolCalls).toEqual([
+      { id: 't1', type: 'function', function: { name: 'get_weather', arguments: '{}' } },
+    ]);
+  });
+
+  it('returns empty result when response has no content array', async () => {
+    globalThis.fetch = respondWith({ stop_reason: 'end_turn' });
+
+    await expect(chat(MOCK_MESSAGES, [], MOCK_ANTHROPIC_CONFIG)).resolves.toEqual({
+      content: '',
+      toolCalls: [],
+    });
+  });
+
+  it('omits system and tools from the body when not provided', async () => {
+    const mockFetch = vi.fn().mockResolvedValueOnce(makeAnthropicResponse('ok'));
+    globalThis.fetch = mockFetch;
+
+    await chat(MOCK_MESSAGES, [], MOCK_ANTHROPIC_CONFIG);
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body).toEqual({
+      model: 'claude-opus-4-6',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: 'Hello' }],
+    });
+  });
+
+  it('maps ToolDef to Anthropic tool schema', async () => {
+    const mockFetch = vi.fn().mockResolvedValueOnce(makeAnthropicResponse('ok'));
+    globalThis.fetch = mockFetch;
+
+    await chat(MOCK_MESSAGES, MOCK_TOOLS, MOCK_ANTHROPIC_CONFIG);
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.tools).toEqual([
+      {
+        name: 'get_weather',
+        description: 'Get weather for a city',
+        input_schema: MOCK_TOOLS[0].function.parameters,
+      },
+    ]);
+  });
+});
+
+// ─── Think-tag & inline-call variants ────────────────────────────────────────
+
+describe('think-tag and inline tool-call variants', () => {
+  it('removes multiple think blocks and stray unmatched tags', async () => {
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        makeOpenAIResponse('<think>a</think>One <THINK type="x">b</THINK>Two</think>'),
+      );
+
+    const result = await chat(MOCK_MESSAGES, [], MOCK_LLAMACPP_CONFIG);
+
+    expect(result.content).toBe('One Two');
+  });
+
+  it('parses the "(name ... </tool_call>" inline form and keeps surrounding text', async () => {
+    const content = `Sure thing. (lookup
+<arg_key>q</arg_key><arg_value>{"term":"x"}</arg_value>
+</tool_call>`;
+    globalThis.fetch = vi.fn().mockResolvedValueOnce(makeOpenAIResponse(content));
+
+    const result = await chat(MOCK_MESSAGES, MOCK_TOOLS, MOCK_LLAMACPP_CONFIG);
+
+    expect(result.content).toBe('Sure thing.');
+    expect(result.toolCalls).toHaveLength(1);
+    expect(result.toolCalls[0].function.name).toBe('lookup');
+    expect(JSON.parse(result.toolCalls[0].function.arguments)).toEqual({ q: { term: 'x' } });
+  });
+
+  it('does not treat content with arg tags but no tool_call wrapper as a tool call', async () => {
+    const content = 'Literal <arg_key>k</arg_key><arg_value>v</arg_value> text';
+    globalThis.fetch = vi.fn().mockResolvedValueOnce(makeOpenAIResponse(content));
+
+    const result = await chat(MOCK_MESSAGES, MOCK_TOOLS, MOCK_LLAMACPP_CONFIG);
+
+    expect(result.toolCalls).toEqual([]);
+    expect(result.content).toBe(content);
+  });
+});
+
+describe('malformed tool definitions', () => {
+  it('forwards tools missing a function block without crashing', async () => {
+    const malformed = [{ type: 'function' }] as unknown as ToolDef[];
+    const fetchMock = vi.fn().mockResolvedValueOnce(makeOpenAIResponse('ok'));
+    globalThis.fetch = fetchMock;
+
+    const result = await chat(MOCK_MESSAGES, malformed, MOCK_OPENAI_CONFIG);
+
+    expect(result.content).toBe('ok');
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(sent.tools).toEqual(malformed);
   });
 });

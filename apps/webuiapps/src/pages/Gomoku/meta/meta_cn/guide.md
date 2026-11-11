@@ -18,39 +18,39 @@ apps/gomoku/data/
 
 #### 对局记录文件 `{id}.json`
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| id | string | 是 | 对局唯一标识 |
-| players | array | 是 | 两位玩家信息数组，每项包含 name、color、role |
-| moves | array | 是 | 落子记录数组，按时间顺序排列 |
-| result | object \| null | 否 | 对局结果，对局未结束时为 null |
-| startedAt | number | 是 | 对局开始时间戳（毫秒） |
-| endedAt | number \| null | 是 | 对局结束时间戳（毫秒），未结束时为 null |
+| 字段      | 类型           | 必填 | 说明                                         |
+| --------- | -------------- | ---- | -------------------------------------------- |
+| id        | string         | 是   | 对局唯一标识                                 |
+| players   | array          | 是   | 两位玩家信息数组，每项包含 name、color、role |
+| moves     | array          | 是   | 落子记录数组，按时间顺序排列                 |
+| result    | object \| null | 否   | 对局结果，对局未结束时为 null                |
+| startedAt | number         | 是   | 对局开始时间戳（毫秒）                       |
+| endedAt   | number \| null | 是   | 对局结束时间戳（毫秒），未结束时为 null      |
 
 #### Player 对象
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| name | string | 是 | 玩家名称，如 "You"、"Agent" |
-| color | string | 是 | 棋子颜色，`"black"` 或 `"white"` |
-| role | string | 是 | 角色类型，`"human"` 或 `"agent"` |
+| 字段  | 类型   | 必填 | 说明                             |
+| ----- | ------ | ---- | -------------------------------- |
+| name  | string | 是   | 玩家名称，如 "You"、"Agent"      |
+| color | string | 是   | 棋子颜色，`"black"` 或 `"white"` |
+| role  | string | 是   | 角色类型，`"human"` 或 `"agent"` |
 
 #### Move 对象
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| position | object | 是 | 落子位置，包含 `row`（0-14）和 `col`（0-14） |
-| color | string | 是 | 落子颜色，`"black"` 或 `"white"` |
-| moveNumber | number | 是 | 第几手（从 1 开始） |
-| timestamp | number | 是 | 落子时间戳（毫秒） |
+| 字段       | 类型   | 必填 | 说明                                         |
+| ---------- | ------ | ---- | -------------------------------------------- |
+| position   | object | 是   | 落子位置，包含 `row`（0-14）和 `col`（0-14） |
+| color      | string | 是   | 落子颜色，`"black"` 或 `"white"`             |
+| moveNumber | number | 是   | 第几手（从 1 开始）                          |
+| timestamp  | number | 是   | 落子时间戳（毫秒）                           |
 
 #### Result 对象
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| winner | string \| null | 是 | 获胜方颜色，平局时为 null |
-| winLine | object \| null | 是 | 五连珠位置信息，认输或平局时为 null |
-| reason | string | 是 | 结束原因：`"five-in-a-row"` \| `"surrender"` \| `"draw"` |
+| 字段    | 类型           | 必填 | 说明                                                     |
+| ------- | -------------- | ---- | -------------------------------------------------------- |
+| winner  | string \| null | 是   | 获胜方颜色，平局时为 null                                |
+| winLine | object \| null | 是   | 五连珠位置信息，认输或平局时为 null                      |
+| reason  | string         | 是   | 结束原因：`"five-in-a-row"` \| `"surrender"` \| `"draw"` |
 
 ```json
 {
@@ -60,15 +60,28 @@ apps/gomoku/data/
     { "name": "Agent", "color": "white", "role": "agent" }
   ],
   "moves": [
-    { "position": { "row": 7, "col": 7 }, "color": "black", "moveNumber": 1, "timestamp": 1707350400000 },
-    { "position": { "row": 7, "col": 8 }, "color": "white", "moveNumber": 2, "timestamp": 1707350401000 }
+    {
+      "position": { "row": 7, "col": 7 },
+      "color": "black",
+      "moveNumber": 1,
+      "timestamp": 1707350400000
+    },
+    {
+      "position": { "row": 7, "col": 8 },
+      "color": "white",
+      "moveNumber": 2,
+      "timestamp": 1707350401000
+    }
   ],
   "result": {
     "winner": "black",
     "winLine": {
       "positions": [
-        { "row": 7, "col": 3 }, { "row": 7, "col": 4 }, { "row": 7, "col": 5 },
-        { "row": 7, "col": 6 }, { "row": 7, "col": 7 }
+        { "row": 7, "col": 3 },
+        { "row": 7, "col": 4 },
+        { "row": 7, "col": 5 },
+        { "row": 7, "col": 6 },
+        { "row": 7, "col": 7 }
       ],
       "color": "black"
     },
@@ -83,19 +96,19 @@ apps/gomoku/data/
 
 应用统计数据文件，记录历史对局统计信息。
 
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| currentGameId | string \| null | null | 最近一局的 ID |
-| totalGames | number | 0 | 总对局数 |
-| stats | object | - | 统计数据（见下表） |
+| 字段          | 类型           | 默认值 | 说明               |
+| ------------- | -------------- | ------ | ------------------ |
+| currentGameId | string \| null | null   | 最近一局的 ID      |
+| totalGames    | number         | 0      | 总对局数           |
+| stats         | object         | -      | 统计数据（见下表） |
 
 #### Stats 对象
 
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| blackWins | number | 0 | 黑棋获胜次数 |
-| whiteWins | number | 0 | 白棋获胜次数 |
-| draws | number | 0 | 平局次数 |
+| 字段      | 类型   | 默认值 | 说明         |
+| --------- | ------ | ------ | ------------ |
+| blackWins | number | 0      | 黑棋获胜次数 |
+| whiteWins | number | 0      | 白棋获胜次数 |
+| draws     | number | 0      | 平局次数     |
 
 ```json
 {

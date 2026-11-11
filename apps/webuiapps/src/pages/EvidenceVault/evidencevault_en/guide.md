@@ -13,28 +13,29 @@
 
 ### Evidence File Collection `/files/`
 
-Stores all evidence files, each representing a single evidence/archive record. Data is static and read-only, pre-stored on the cloud.
+Stores all evidence files, each representing a single evidence/archive record. Data is static and
+read-only, pre-stored on the cloud.
 
 File naming convention: `{id}.json`, where `id` is a globally unique identifier.
 
 #### Evidence File `{id}.json`
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| id | string | Yes | Unique evidence identifier |
-| title | string | Yes | Evidence title |
-| description | string | Yes | Evidence summary |
-| content | string | Yes | Evidence body content |
-| type | string | Yes | Evidence type: `video` / `log` / `transaction` / `document` / `image` / `audio` / `chat` / `email` / `contract` / `report` / `trace` / `relation` |
-| category | string | Yes | Category: `identity` / `family` / `money` / `reputation` / `incident` / `secret` / `other` |
-| impact | string | Yes | Impact type: `vindicate` (positive) / `expose` (negative) / `neutral` / `mixed` |
-| source | string | Yes | Evidence source |
-| timestamp | number | Yes | Timestamp (Unix milliseconds) |
-| credibility | number | Yes | Credibility score (0-100) |
-| importance | number | Yes | Importance score (0-100) |
-| tags | string[] | Yes | Tag array |
-| vindicateText | string | No | Positive impact description |
-| exposeText | string | No | Negative impact description |
+| Field         | Type     | Required | Description                                                                                                                                       |
+| ------------- | -------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id            | string   | Yes      | Unique evidence identifier                                                                                                                        |
+| title         | string   | Yes      | Evidence title                                                                                                                                    |
+| description   | string   | Yes      | Evidence summary                                                                                                                                  |
+| content       | string   | Yes      | Evidence body content                                                                                                                             |
+| type          | string   | Yes      | Evidence type: `video` / `log` / `transaction` / `document` / `image` / `audio` / `chat` / `email` / `contract` / `report` / `trace` / `relation` |
+| category      | string   | Yes      | Category: `identity` / `family` / `money` / `reputation` / `incident` / `secret` / `other`                                                        |
+| impact        | string   | Yes      | Impact type: `vindicate` (positive) / `expose` (negative) / `neutral` / `mixed`                                                                   |
+| source        | string   | Yes      | Evidence source                                                                                                                                   |
+| timestamp     | number   | Yes      | Timestamp (Unix milliseconds)                                                                                                                     |
+| credibility   | number   | Yes      | Credibility score (0-100)                                                                                                                         |
+| importance    | number   | Yes      | Importance score (0-100)                                                                                                                          |
+| tags          | string[] | Yes      | Tag array                                                                                                                                         |
+| vindicateText | string   | No       | Positive impact description                                                                                                                       |
+| exposeText    | string   | No       | Negative impact description                                                                                                                       |
 
 Example:
 
@@ -78,4 +79,5 @@ Users can only perform the following read-only operations (pure frontend, no clo
 
 ### Startup Recovery
 
-On startup, the frontend calls `initFromCloud()` to pull all evidence files from the `/files/` directory on the cloud. If the directory is empty, an empty state is displayed.
+On startup, the frontend calls `initFromCloud()` to pull all evidence files from the `/files/`
+directory on the cloud. If the directory is empty, an empty state is displayed.

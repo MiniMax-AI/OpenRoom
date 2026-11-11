@@ -16,14 +16,17 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@pixiv/three-vrm": "3.5.5",
     "framer-motion": "^12.34.0",
     "jszip": "^3.10.1",
     "react-markdown": "^10.1.0",
     "rehype-raw": "^7.0.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "three": "^0.170.0"
   },
   "devDependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.72",
+    "@types/three": "^0.170.0",
     "@vitest/coverage-istanbul": "^1.6.1",
     "@vitest/coverage-v8": "^1.6.1",
     "happy-dom": "^14.0.0",

@@ -8,45 +8,45 @@
 
 ### Article（新闻文章）
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | string | 唯一标识 |
-| title | string | 标题（大写） |
-| category | 'breaking' \| 'corporate' \| 'street' \| 'tech' | 分类 |
-| summary | string | 摘要 |
-| content | string | 正文 |
-| imageUrl | string | 配图URL（可为空） |
-| publishedAt | string | 发布时间 ISO 格式 |
+| 字段        | 类型                                            | 说明              |
+| ----------- | ----------------------------------------------- | ----------------- |
+| id          | string                                          | 唯一标识          |
+| title       | string                                          | 标题（大写）      |
+| category    | 'breaking' \| 'corporate' \| 'street' \| 'tech' | 分类              |
+| summary     | string                                          | 摘要              |
+| content     | string                                          | 正文              |
+| imageUrl    | string                                          | 配图URL（可为空） |
+| publishedAt | string                                          | 发布时间 ISO 格式 |
 
 ### Case（调查案件）
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | string | 唯一标识 |
-| caseNumber | string | 案件编号 |
-| title | string | 案件标题 |
-| status | 'open' \| 'closed' \| 'classified' | 状态 |
-| clues | Clue[] | 线索列表 |
+| 字段       | 类型                               | 说明     |
+| ---------- | ---------------------------------- | -------- |
+| id         | string                             | 唯一标识 |
+| caseNumber | string                             | 案件编号 |
+| title      | string                             | 案件标题 |
+| status     | 'open' \| 'closed' \| 'classified' | 状态     |
+| clues      | Clue[]                             | 线索列表 |
 
 ### Clue（线索卡片）
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | string | 唯一标识 |
-| type | 'press' \| 'report' \| 'document' \| 'message' \| 'note' | 类型 |
-| title | string | 标题 |
-| content | string | 内容 |
-| posX | number | 在调查板上的X坐标 |
-| posY | number | 在调查板上的Y坐标 |
+| 字段    | 类型                                                     | 说明              |
+| ------- | -------------------------------------------------------- | ----------------- |
+| id      | string                                                   | 唯一标识          |
+| type    | 'press' \| 'report' \| 'document' \| 'message' \| 'note' | 类型              |
+| title   | string                                                   | 标题              |
+| content | string                                                   | 内容              |
+| posX    | number                                                   | 在调查板上的X坐标 |
+| posY    | number                                                   | 在调查板上的Y坐标 |
 
 ### AppState（应用状态）
 
-| 字段 | 类型 | 默认值 |
-|------|------|--------|
-| currentView | 'news' \| 'case-board' | 'news' |
-| selectedArticleId | string \| null | null |
-| selectedCaseId | string \| null | null |
-| newsFilter | ArticleCategory \| null | null |
+| 字段              | 类型                    | 默认值 |
+| ----------------- | ----------------------- | ------ |
+| currentView       | 'news' \| 'case-board'  | 'news' |
+| selectedArticleId | string \| null          | null   |
+| selectedCaseId    | string \| null          | null   |
+| newsFilter        | ArticleCategory \| null | null   |
 
 ## 存储结构
 
@@ -96,4 +96,5 @@
 
 ### 刷新类 Action
 
-发送 REFRESH_ARTICLES 或 REFRESH_CASES 强制 App 重新读取存储中的所有数据。可用 `navigateTo` 参数切换视图，`focusId` 参数自动选中某项。
+发送 REFRESH_ARTICLES 或 REFRESH_CASES 强制 App 重新读取存储中的所有数据。可用 `navigateTo`
+参数切换视图，`focusId` 参数自动选中某项。

@@ -110,6 +110,25 @@ function parseInlineArgValue(rawValue: string): unknown {
   }
 }
 
+/**
+ * Parse an OpenAI-style tool-call `arguments` string into an Anthropic `tool_use.input`
+ * object. Some models (often local ones) send '' for no arguments or malformed JSON;
+ * fall back to {} instead of throwing, matching how ChatPanel executes tool calls.
+ */
+function parseToolInput(rawArguments: string | undefined): Record<string, unknown> {
+  if (!rawArguments?.trim()) return {};
+  try {
+    const parsed: unknown = JSON.parse(rawArguments);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    logger.warn('LLM', 'Tool arguments are not a JSON object, using {}:', rawArguments);
+  } catch {
+    logger.warn('LLM', 'Invalid tool arguments JSON, using {}:', rawArguments);
+  }
+  return {};
+}
+
 function extractInlineToolCalls(rawContent: string): InlineToolParseResult {
   const content = stripThinkTags(rawContent);
   if (!content.includes('<arg_key>') || !content.includes('<arg_value>')) {
@@ -171,7 +190,7 @@ function getAnthropicMessagesPath(baseUrl: string): string {
   return hasVersionSuffix(baseUrl) ? 'messages' : 'v1/messages';
 }
 
-function parseCustomHeaders(raw?: string): Record<string, string> {
+function parseCustomHeaders(raw?: string, prefixed = true): Record<string, string> {
   if (!raw) return {};
   const headers: Record<string, string> = {};
   for (const line of raw.split('\n')) {
@@ -181,10 +200,69 @@ function parseCustomHeaders(raw?: string): Record<string, string> {
     if (idx > 0) {
       const key = trimmed.slice(0, idx).trim().toLowerCase();
       const val = trimmed.slice(idx + 1).trim();
-      headers[`x-custom-${key}`] = val;
+      headers[prefixed ? `x-custom-${key}` : key] = val;
     }
   }
   return headers;
+}
+
+/**
+ * Check if the dev-server LLM proxy is available.
+ * Cached after first check to avoid repeated round-trips.
+ */
+let proxyAvailable: boolean | null = null;
+async function isProxyAvailable(): Promise<boolean> {
+  if (proxyAvailable !== null) return proxyAvailable;
+  try {
+    const res = await fetch('/api/llm-proxy', { method: 'OPTIONS' });
+    proxyAvailable = res.ok || res.status === 405; // server exists even if OPTIONS not handled
+  } catch {
+    proxyAvailable = false;
+  }
+  return proxyAvailable;
+}
+
+/**
+ * Override (or with `null`, clear) the cached proxy-availability result.
+ * `null` makes the next request re-probe `/api/llm-proxy`. Mainly for tests.
+ */
+export function setProxyAvailability(value: boolean | null): void {
+  proxyAvailable = value;
+}
+
+/**
+ * Fetch from LLM API — uses dev-server proxy if available, otherwise calls provider directly.
+ * Direct mode works for providers with permissive CORS (e.g. OpenRouter: access-control-allow-origin: *).
+ */
+async function llmFetch(
+  targetUrl: string,
+  headers: Record<string, string>,
+  body: string,
+  customHeaders?: string,
+): Promise<Response> {
+  const useProxy = await isProxyAvailable();
+
+  if (useProxy) {
+    return fetch('/api/llm-proxy', {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'X-LLM-Target-URL': targetUrl,
+        ...parseCustomHeaders(customHeaders, true),
+      },
+      body,
+    });
+  }
+
+  // Direct mode — call provider URL, pass custom headers unprefixed
+  return fetch(targetUrl, {
+    method: 'POST',
+    headers: {
+      ...headers,
+      ...parseCustomHeaders(customHeaders, false),
+    },
+    body,
+  });
 }
 
 export async function chat(
@@ -229,19 +307,12 @@ async function chatOpenAI(
     messageCount: messages.length,
     toolCount: tools.length,
   });
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'X-LLM-Target-URL': targetUrl,
-    ...parseCustomHeaders(config.customHeaders),
-  };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  // Local servers (e.g. llama.cpp) need no key — don't send an empty "Bearer " header
   if (config.apiKey.trim()) {
     headers.Authorization = `Bearer ${config.apiKey}`;
   }
-  const res = await fetch('/api/llm-proxy', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  });
+  const res = await llmFetch(targetUrl, headers, JSON.stringify(body), config.customHeaders);
 
   logger.info('LLM', 'Response status:', res.status);
   const text = await res.text();
@@ -253,6 +324,7 @@ async function chatOpenAI(
 
   const data = JSON.parse(text);
   const choice = data.choices?.[0]?.message;
+  // Some local models (e.g. Qwen via llama.cpp) emit tool calls as inline XML in content
   const parsedInline = extractInlineToolCalls(choice?.content || '');
   const toolCalls = choice?.tool_calls?.length ? choice.tool_calls : parsedInline.toolCalls;
   const calledNames = toolCalls
@@ -303,7 +375,7 @@ async function chatAnthropic(
             type: 'tool_use' as const,
             id: tc.id,
             name: tc.function.name,
-            input: JSON.parse(tc.function.arguments),
+            input: parseToolInput(tc.function.arguments),
           })),
         ],
       };
@@ -343,17 +415,11 @@ async function chatAnthropic(
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'anthropic-version': '2023-06-01',
-    'X-LLM-Target-URL': targetUrl,
-    ...parseCustomHeaders(config.customHeaders),
   };
   if (config.apiKey.trim()) {
     headers['x-api-key'] = config.apiKey;
   }
-  const res = await fetch('/api/llm-proxy', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  });
+  const res = await llmFetch(targetUrl, headers, JSON.stringify(body), config.customHeaders);
 
   logger.info('LLM', 'Anthropic Response status:', res.status);
   if (!res.ok) {

@@ -1,0 +1,33 @@
+// Dreamland design tokens (built on the global design tokens).
+// Scene colors (sky gradients, mood tints) are artwork data and live in utils/sceneStyle.ts.
+
+.tokens {
+  --dl-bg: var(--bg-1, #121214);
+  --dl-panel: rgba(18, 18, 20, 0.72);
+  --dl-panel-strong: rgba(18, 18, 20, 0.86);
+  --dl-border: var(--fill-white-10, rgba(255, 255, 255, 0.1));
+  --dl-chip: var(--fill-white-6, rgba(255, 255, 255, 0.06));
+  --dl-chip-hover: var(--fill-white-10, rgba(255, 255, 255, 0.1));
+  --dl-accent: var(--color-yellow, #faea5f);
+  --dl-accent-soft: var(--color-yellow-10, rgba(250, 234, 95, 0.1));
+  --dl-danger: var(--color-red, #ff3f4d);
+  --dl-text: var(--text-primary, rgba(255, 255, 255, 0.9));
+  --dl-text-2: var(--text-secondary, rgba(255, 255, 255, 0.75));
+  --dl-text-3: var(--text-tertiary, rgba(255, 255, 255, 0.6));
+  --dl-text-btn: var(--text-btn-primary, #121214);
+  --dl-mask: var(--mask-medium, rgba(0, 0, 0, 0.4));
+  --dl-mask-heavy: var(--mask-heavy, rgba(0, 0, 0, 0.7));
+
+  --dl-space-xs: var(--spacing-xs, 4px);
+  --dl-space-sm: var(--spacing-sm, 8px);
+  --dl-space-md: var(--spacing-md, 12px);
+  --dl-space-lg: var(--spacing-lg, 16px);
+  --dl-space-xl: var(--spacing-2xl, 24px);
+
+  --dl-radius-card: 14px;
+  --dl-radius-drawer: 18px;
+  --dl-topbar-h: 48px;
+  --dl-drawer-w: 320px;
+  --dl-avatar-size: min(52cqh, 40cqw);
+  --dl-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}

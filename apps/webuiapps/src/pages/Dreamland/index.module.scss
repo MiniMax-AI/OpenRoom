@@ -1,0 +1,424 @@
+@use './styles/variables';
+
+.root {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--dl-bg);
+  color: var(--dl-text);
+  font-family:
+    system-ui,
+    -apple-system,
+    'SF Pro Text',
+    sans-serif;
+}
+
+// The app is a size container so layouts follow the window, not the screen
+.app {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  container-type: size;
+  container-name: dreamland;
+}
+
+// ---------------------------------------------------------------- top bar
+
+.topBar {
+  position: absolute;
+  z-index: 20;
+  top: var(--dl-space-sm);
+  left: var(--dl-space-sm);
+  right: var(--dl-space-sm);
+  height: var(--dl-topbar-h);
+  display: flex;
+  align-items: center;
+  gap: var(--dl-space-sm);
+  padding: 0 var(--dl-space-xs);
+  border-radius: 999px;
+  background: var(--dl-panel);
+  border: 1px solid var(--dl-border);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+}
+
+.barActions {
+  display: flex;
+  align-items: center;
+  gap: var(--dl-space-xs);
+}
+
+.barButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  min-width: 40px;
+  justify-content: center;
+  padding: 0 var(--dl-space-md);
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dl-text-2);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
+
+  &:hover {
+    background: var(--dl-chip-hover);
+    color: var(--dl-text);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--dl-accent);
+    outline-offset: 2px;
+  }
+}
+
+.barButtonOn {
+  color: var(--dl-accent);
+}
+
+@container dreamland (max-width: 600px) {
+  .barLabel {
+    display: none;
+  }
+  .barButton {
+    padding: 0;
+    width: 44px;
+    height: 44px;
+  }
+  .title {
+    font-size: 15px;
+  }
+}
+
+.generatingBar {
+  position: absolute;
+  z-index: 21;
+  top: calc(var(--dl-space-sm) + var(--dl-topbar-h) + 6px);
+  left: 25%;
+  right: 25%;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(250, 234, 95, 0) 0%,
+    var(--dl-accent) 50%,
+    rgba(250, 234, 95, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+// ---------------------------------------------------------------- states
+
+.center {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dl-space-lg);
+  padding: var(--dl-space-xl);
+  text-align: center;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 16px;
+  color: var(--dl-text);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+// ---------------------------------------------------------------- inspector
+
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: var(--dl-space-lg);
+  padding: var(--dl-space-sm) var(--dl-space-md);
+  border: 1px solid var(--dl-border);
+  border-radius: 10px;
+  background: var(--dl-chip);
+  color: var(--dl-text);
+  font: inherit;
+  font-size: 14px;
+
+  &::placeholder {
+    color: var(--text-placeholder, rgba(255, 255, 255, 0.35));
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--dl-accent);
+  }
+}
+
+// iOS zooms into inputs below 16px
+@container dreamland (max-width: 600px) {
+  .input {
+    font-size: 16px;
+  }
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 72px;
+  margin-bottom: var(--dl-space-sm);
+  line-height: 1.4;
+}
+
+.generateRow {
+  display: flex;
+  align-items: center;
+  gap: var(--dl-space-sm);
+  margin-bottom: var(--dl-space-sm);
+}
+
+.hint {
+  margin: 0 0 var(--dl-space-lg);
+  font-size: 12px;
+  color: var(--dl-text-3);
+  line-height: 1.4;
+}
+
+.switchRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--dl-space-md);
+
+  .hint {
+    margin-bottom: var(--dl-space-md);
+  }
+}
+
+.switch {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 26px;
+  margin-top: var(--dl-space-xs);
+  padding: 0;
+  border: 1px solid var(--dl-border);
+  border-radius: 999px;
+  background: var(--dl-chip);
+  cursor: pointer;
+  transition: background 150ms ease;
+
+  &:focus-visible {
+    outline: 2px solid var(--dl-accent);
+    outline-offset: 2px;
+  }
+}
+
+.switchOn {
+  background: var(--dl-accent);
+}
+
+.switchKnob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--dl-text);
+  transition: transform 150ms ease;
+
+  .switchOn & {
+    transform: translateX(18px);
+  }
+}
+
+.companion {
+  margin-top: var(--dl-space-sm);
+  padding-top: var(--dl-space-lg);
+  border-top: 1px solid var(--dl-border);
+}
+
+.companionStatus {
+  margin: 0 0 var(--dl-space-sm);
+  font-size: 13px;
+  color: var(--dl-text-2);
+  overflow-wrap: anywhere;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.volumeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--dl-space-sm);
+  margin-bottom: var(--dl-space-lg);
+  color: var(--dl-text-3);
+}
+
+.range {
+  flex: 1;
+  accent-color: var(--dl-accent);
+}
+
+// ---------------------------------------------------------------- library
+
+.createButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dl-space-sm);
+  width: 100%;
+  min-height: 44px;
+  margin-bottom: var(--dl-space-md);
+  border: 1px dashed var(--dl-border);
+  border-radius: var(--dl-radius-card);
+  background: transparent;
+  color: var(--dl-text-2);
+  font-size: 14px;
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--dl-accent);
+    color: var(--dl-accent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--dl-accent);
+    outline-offset: 2px;
+  }
+}
+
+.cardList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dl-space-sm);
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--dl-space-xs);
+  padding: 6px;
+  border: 1px solid transparent;
+  border-radius: var(--dl-radius-card);
+  background: var(--dl-chip);
+}
+
+.cardActive {
+  border-color: var(--dl-accent);
+  background: var(--dl-accent-soft);
+}
+
+.cardMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--dl-space-md);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--dl-accent);
+    outline-offset: 2px;
+    border-radius: 10px;
+  }
+}
+
+.thumb {
+  flex-shrink: 0;
+  width: 72px;
+  height: 48px;
+  border-radius: 10px;
+  background-size: cover;
+  background-position: center;
+}
+
+.cardText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cardName {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--dl-text-3);
+}
+
+.activeBadge {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--dl-accent);
+  color: var(--dl-text-btn);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .generatingBar {
+    animation: none;
+  }
+}

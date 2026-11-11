@@ -1,3 +1,18 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+
+# pnpm settings (pnpm 10+ reads these from here, not from package.json / .npmrc)
+nodeLinker: hoisted
+shamefullyHoist: true
+strictPeerDependencies: false
+
+overrides:
+  test-exclude: ^8.0.0
+allowBuilds:
+  '@parcel/watcher': true
+  '@sentry/cli': true
+  '@swc/core': true
+  esbuild: true
+  less: false # its postinstall downloads all Playwright browsers; not needed
+  unrs-resolver: true

@@ -148,6 +148,16 @@ const APP_STATIC_REGISTRY: AppStaticDef[] = [
     color: '#FAEA5F',
     defaultSize: { width: 1100, height: 750 },
   },
+  {
+    appId: 15,
+    appName: 'dreamland',
+    route: '/dreamland',
+    displayName: 'Dreamland',
+    sourceDir: 'Dreamland',
+    icon: 'CloudMoon',
+    color: '#7660FF',
+    defaultSize: { width: 900, height: 620 },
+  },
 ];
 
 // OS actions are built-in system actions, not from meta.yaml

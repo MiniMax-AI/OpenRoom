@@ -9,6 +9,8 @@ import {
   ChevronRight,
   Pencil,
   List,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { chat, loadConfig, loadConfigSync, saveConfig, type ChatMessage } from '@/lib/llmClient';
 import {
@@ -22,6 +24,8 @@ import {
   loadImageGenConfigSync,
   saveImageGenConfig,
   getDefaultImageGenConfig,
+  isImageGenConfigured,
+  requiresApiKey,
   type ImageGenConfig,
   type ImageGenProvider,
 } from '@/lib/imageGenClient';
@@ -38,6 +42,7 @@ import { dispatchAgentAction, onUserAction } from '@/lib/vibeContainerMock';
 import { closeAllWindows } from '@/lib/windowManager';
 import { getFileToolDefinitions, isFileTool, executeFileTool } from '@/lib/fileTools';
 import { setSessionPath } from '@/lib/sessionPath';
+import { isTouchDevice } from '@/lib/device';
 import {
   getMemoryToolDefinitions,
   isMemoryTool,
@@ -48,7 +53,23 @@ import {
 } from '@/lib/memoryManager';
 import { logger } from '@/lib/logger';
 import {
+  buildUserNamePrompt,
+  replaceNamePlaceholders,
+  sanitizeSuggestedReplies,
+} from '@/lib/userName';
+import {
+  isTtsSupported,
+  loadTtsEnabled,
+  saveTtsEnabled,
+  speak,
+  stopSpeaking,
+  announceVoiceOn,
+  isSpeechPrimed,
+  primeSpeech,
+} from '@/lib/tts';
+import {
   getImageGenToolDefinitions,
+  buildImageGenPrompt,
   isImageGenTool,
   executeImageGenTool,
 } from '@/lib/imageGenTools';
@@ -205,8 +226,11 @@ Rules:
 
 When you receive "[User performed action in ... (appName: xxx)]", the appName is already provided. Read its meta.yaml to understand available actions, then respond accordingly. For games, respond with your own move — think strategically.
 
-IMPORTANT: You MUST use the respond_to_user tool to send all messages to the user. Do NOT output plain text responses. Include your emotion and 3 suggested replies.${hasImageGen ? '\n\nYou can use generate_image to create images from text prompts. The generated image will be displayed in chat.' : ''}`;
+IMPORTANT: You MUST use the respond_to_user tool to send all messages to the user. Do NOT output plain text responses. Include your emotion and 3 suggested replies.`;
 
+  if (hasImageGen) prompt += buildImageGenPrompt();
+
+  prompt += buildUserNamePrompt();
   prompt += buildMemoryPrompt(memories);
 
   return prompt;
@@ -431,6 +455,33 @@ const ChatPanel: React.FC<{
   const [showModPanel, setShowModPanel] = useState(false);
   const [initialEditModId, setInitialEditModId] = useState<string | undefined>();
   const [currentEmotion, setCurrentEmotion] = useState<string | undefined>();
+  const [ttsEnabled, setTtsEnabled] = useState(() => isTtsSupported() && loadTtsEnabled());
+  const ttsEnabledRef = useRef(ttsEnabled);
+  ttsEnabledRef.current = ttsEnabled;
+
+  // Speech calls run directly in the click handler (not in a state updater):
+  // Safari only allows speech that starts inside the user gesture itself.
+  const toggleTts = useCallback(() => {
+    const next = !ttsEnabledRef.current;
+    if (next) announceVoiceOn();
+    else stopSpeaking();
+    saveTtsEnabled(next);
+    ttsEnabledRef.current = next;
+    setTtsEnabled(next);
+  }, []);
+
+  // With the voice already on from a previous visit, unlock speech on the first
+  // tap/click/key press of this page load (Safari blocks it otherwise).
+  useEffect(() => {
+    if (!ttsEnabled || isSpeechPrimed()) return;
+    const events = ['click', 'touchend', 'keydown'] as const;
+    const unlock = () => {
+      primeSpeech();
+      events.forEach((e) => document.removeEventListener(e, unlock, true));
+    };
+    events.forEach((e) => document.addEventListener(e, unlock, true));
+    return () => events.forEach((e) => document.removeEventListener(e, unlock, true));
+  }, [ttsEnabled]);
 
   // Open mod editor when triggered from Shell (e.g. after card import mod generation)
   useEffect(() => {
@@ -452,6 +503,7 @@ const ChatPanel: React.FC<{
   const pendingToolCallsRef = useRef<string[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
   const chatHistoryRef = useRef(chatHistory);
@@ -515,7 +567,7 @@ const ChatPanel: React.FC<{
         setChatHistory(loadedHistory);
         // Restore suggested replies from saved data, or from mod config if only prologue
         if (data?.suggestedReplies?.length) {
-          setSuggestedReplies(data.suggestedReplies);
+          setSuggestedReplies(sanitizeSuggestedReplies(data.suggestedReplies));
         } else {
           const onlyPrologue = loadedMessages.length === 1 && loadedMessages[0].id === 'prologue';
           if (onlyPrologue) {
@@ -747,7 +799,7 @@ const ChatPanel: React.FC<{
   const runConversation = async (history: ChatMessage[], cfg: LLMConfig) => {
     await seedMetaFiles();
     await loadActionsFromMeta();
-    const hasImageGen = !!imageGenConfigRef.current?.apiKey;
+    const hasImageGen = isImageGenConfigured(imageGenConfigRef.current);
     const mm = modManagerRef.current;
     const char = characterRef.current;
 
@@ -771,6 +823,8 @@ const ChatPanel: React.FC<{
     let iterations = 0;
     const maxIterations = 10;
     pendingToolCallsRef.current = [];
+    // Set once respond_to_user has shown a reply this turn; some models then echo it as plain text.
+    let deliveredReply = false;
 
     while (iterations < maxIterations) {
       iterations++;
@@ -778,15 +832,17 @@ const ChatPanel: React.FC<{
 
       if (response.toolCalls.length === 0) {
         // No tool calls — fallback plain text (shouldn't happen with respond_to_user requirement)
-        if (response.content) {
+        const text = replaceNamePlaceholders(response.content?.trim() ?? '');
+        if (text && !deliveredReply) {
           addMessage({
             id: String(Date.now()),
             role: 'assistant',
-            content: response.content,
+            content: text,
             toolCalls:
               pendingToolCallsRef.current.length > 0 ? [...pendingToolCallsRef.current] : undefined,
           });
-          setChatHistory((prev) => [...prev, { role: 'assistant', content: response.content }]);
+          setChatHistory((prev) => [...prev, { role: 'assistant', content: text }]);
+          if (ttsEnabledRef.current) void speak(text);
           pendingToolCallsRef.current = [];
         }
         break;
@@ -815,9 +871,11 @@ const ChatPanel: React.FC<{
             (params.character_expression as { content?: string; emotion?: string }) ?? {};
           const interaction = (params.user_interaction as { suggested_replies?: string[] }) ?? {};
 
-          const content = expr.content ?? '';
+          const content = replaceNamePlaceholders(expr.content ?? '');
           const emotion = expr.emotion;
-          const replies = interaction.suggested_replies ?? [];
+          const replies = sanitizeSuggestedReplies(interaction.suggested_replies ?? []);
+          if (ttsEnabledRef.current) void speak(content);
+          deliveredReply = true;
 
           addMessage({
             id: String(Date.now()),
@@ -1033,6 +1091,8 @@ const ChatPanel: React.FC<{
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+      // On touch devices, dismiss the on-screen keyboard so the reply area gets the space back
+      if (isTouchDevice()) inputRef.current?.blur();
     }
   };
 
@@ -1086,6 +1146,21 @@ const ChatPanel: React.FC<{
               >
                 <Trash2 size={16} />
               </button>
+              {isTtsSupported() && (
+                <button
+                  className={styles.iconBtn}
+                  onClick={toggleTts}
+                  title={
+                    ttsEnabled
+                      ? 'Voice on (click to mute)'
+                      : 'Voice off (click to read replies aloud)'
+                  }
+                  aria-pressed={ttsEnabled}
+                  data-testid="tts-toggle"
+                >
+                  {ttsEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                </button>
+              )}
               <button
                 className={styles.iconBtn}
                 onClick={() => setShowSettings(true)}
@@ -1125,7 +1200,12 @@ const ChatPanel: React.FC<{
                 >
                   {msg.role === 'assistant' ? renderMessageContent(msg.content) : msg.content}
                   {msg.imageUrl && (
-                    <img src={msg.imageUrl} alt="Generated" className={styles.messageImage} />
+                    <img
+                      src={msg.imageUrl}
+                      alt="Generated"
+                      className={styles.messageImage}
+                      data-testid="generated-image"
+                    />
                   )}
                 </div>
                 {msg.toolCalls && msg.toolCalls.length > 0 && (
@@ -1141,7 +1221,12 @@ const ChatPanel: React.FC<{
           {suggestedReplies.length > 0 && !loading && (
             <div className={styles.suggestedReplies}>
               {suggestedReplies.map((reply, i) => (
-                <button key={i} className={styles.suggestedReply} onClick={() => handleSend(reply)}>
+                <button
+                  key={i}
+                  className={styles.suggestedReply}
+                  onClick={() => handleSend(reply)}
+                  data-testid="suggested-reply"
+                >
                   {reply}
                 </button>
               ))}
@@ -1150,13 +1235,18 @@ const ChatPanel: React.FC<{
 
           <div className={styles.inputArea}>
             <textarea
+              ref={inputRef}
               className={styles.input}
+              enterKeyHint="send"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type a message..."
               rows={1}
-              disabled={loading}
+              // readOnly (not disabled) so focus isn't stolen while waiting for a reply:
+              // desktop keeps typing focus; on touch devices handleKeyDown blurs explicitly
+              readOnly={loading}
+              aria-busy={loading}
               data-testid="chat-input"
             />
             <button
@@ -1388,9 +1478,11 @@ const SettingsModal: React.FC<{
             className={styles.select}
             value={igProvider}
             onChange={(e) => handleIgProviderChange(e.target.value as ImageGenProvider)}
+            data-testid="image-provider"
           >
             <option value="openai">OpenAI</option>
             <option value="gemini">Gemini</option>
+            <option value="pollinations">Pollinations (free, no key)</option>
           </select>
         </div>
 
@@ -1401,7 +1493,7 @@ const SettingsModal: React.FC<{
             type="password"
             value={igApiKey}
             onChange={(e) => setIgApiKey(e.target.value)}
-            placeholder="API Key..."
+            placeholder={requiresApiKey(igProvider) ? 'API Key...' : 'Optional'}
           />
         </div>
 
@@ -1449,15 +1541,14 @@ const SettingsModal: React.FC<{
                 model,
                 ...(customHeaders.trim() ? { customHeaders } : {}),
               };
-              const igCfg: ImageGenConfig | null = igApiKey.trim()
-                ? {
-                    provider: igProvider,
-                    apiKey: igApiKey,
-                    baseUrl: igBaseUrl,
-                    model: igModel,
-                    ...(igCustomHeaders.trim() ? { customHeaders: igCustomHeaders } : {}),
-                  }
-                : null;
+              const igCandidate: ImageGenConfig = {
+                provider: igProvider,
+                apiKey: igApiKey,
+                baseUrl: igBaseUrl,
+                model: igModel,
+                ...(igCustomHeaders.trim() ? { customHeaders: igCustomHeaders } : {}),
+              };
+              const igCfg = isImageGenConfigured(igCandidate) ? igCandidate : null;
               onSave(llmCfg, igCfg);
             }}
           >

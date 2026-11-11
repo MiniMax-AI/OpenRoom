@@ -1,4 +1,39 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+/**
+ * Give the app a usable LLM config and a canned LLM reply, so sending a message
+ * works the same on every machine (no ~/.openroom/config.json or network needed).
+ */
+async function mockLLM(page: Page) {
+  const llm = {
+    provider: 'openai',
+    apiKey: 'test-key',
+    baseUrl: 'http://llm.test/v1',
+    model: 'test-model',
+  };
+  // Start from an empty session and keep test chats out of ~/.openroom/sessions
+  await page.route('**/api/session-data**', (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill({ status: 404, contentType: 'application/json', body: '{}' })
+      : route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }),
+  );
+  await page.route('**/api/llm-config', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ llm }) }),
+  );
+  const reply = {
+    choices: [{ message: { role: 'assistant', content: 'Mock reply' }, finish_reason: 'stop' }],
+  };
+  const fulfillLLM = (route: import('@playwright/test').Route) =>
+    route.request().method() === 'OPTIONS'
+      ? route.fulfill({ status: 204 })
+      : route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(reply),
+        });
+  await page.route('**/api/llm-proxy', fulfillLLM);
+  await page.route('http://llm.test/**', fulfillLLM);
+}
 
 test.describe('Shell – main UI', () => {
   test.beforeEach(async ({ page }) => {
@@ -102,6 +137,7 @@ test.describe('Chat panel – input interaction', () => {
   });
 
   test('typing a message and clicking send adds it to the messages area', async ({ page }) => {
+    await mockLLM(page);
     await page.goto('/');
     const input = page.locator('[data-testid="chat-input"]');
     const sendBtn = page.locator('[data-testid="send-btn"]');
@@ -114,6 +150,73 @@ test.describe('Chat panel – input interaction', () => {
     await expect(messages).toContainText('Test message from E2E');
     // Input should be cleared after sending
     await expect(input).toHaveValue('');
+  });
+
+  test('pressing Enter on desktop sends and keeps the input focused', async ({ page }) => {
+    await mockLLM(page);
+    await page.goto('/');
+    const input = page.locator('[data-testid="chat-input"]');
+
+    await input.fill('Desktop enter message');
+    await input.press('Enter');
+
+    await expect(page.locator('[data-testid="chat-messages"]')).toContainText(
+      'Desktop enter message',
+    );
+    await expect(input).toBeFocused();
+  });
+});
+
+test.describe('Chat panel – mobile keyboard', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test('pressing Enter sends the message and dismisses the keyboard', async ({ page }) => {
+    await mockLLM(page);
+    await page.goto('/');
+    const input = page.locator('[data-testid="chat-input"]');
+    await expect(input).toHaveAttribute('enterkeyhint', 'send');
+
+    await input.tap();
+    await input.fill('Mobile enter message');
+    await expect(input).toBeFocused();
+    await input.press('Enter');
+
+    await expect(page.locator('[data-testid="chat-messages"]')).toContainText(
+      'Mobile enter message',
+    );
+    await expect(input).toHaveValue('');
+    // Blurring the textarea is what closes the on-screen keyboard
+    await expect(input).not.toBeFocused();
+  });
+
+  test('chat panel fits the visible viewport height', async ({ page }) => {
+    await page.goto('/');
+    const box = await page.locator('[data-testid="chat-panel"]').boundingBox();
+    const viewportHeight = await page.evaluate(() => window.innerHeight);
+    expect(box).not.toBeNull();
+    expect(Math.round(box!.height)).toBeLessThanOrEqual(viewportHeight);
+    await expect(page.locator('[data-testid="chat-input"]')).toBeInViewport();
+  });
+
+  test('chat input and send button are not covered by the floating controls', async ({ page }) => {
+    await page.goto('/');
+    for (const testId of ['chat-input', 'send-btn']) {
+      const target = page.locator(`[data-testid="${testId}"]`);
+      await expect(target).toBeVisible();
+      const hitsSelf = await target.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const points = [
+          [r.left + 4, r.top + r.height / 2],
+          [r.left + r.width / 2, r.top + r.height / 2],
+          [r.right - 4, r.top + r.height / 2],
+        ];
+        return points.every(([x, y]) => {
+          const hit = document.elementFromPoint(x, y);
+          return !!hit && (hit === el || el.contains(hit));
+        });
+      });
+      expect(hitsSelf, `${testId} is covered by another element`).toBe(true);
+    }
   });
 });
 
@@ -154,5 +257,324 @@ test.describe('Language toggle', () => {
     // Toggle back
     await langBtn.click();
     await expect(langBtn).toContainText('EN');
+  });
+});
+
+/**
+ * Mock an LLM that answers with a respond_to_user tool call (the real chat format),
+ * and record speech instead of playing it.
+ */
+type ReplyMode =
+  | 'tool' // respond_to_user tool call, then an empty final turn
+  | 'plain' // plain text only, no tool call
+  | 'tool-then-echo'; // tool call, then the same text again as plain text
+
+async function mockCharacterReply(
+  page: Page,
+  content: string,
+  replies: string[],
+  mode: ReplyMode = 'tool',
+) {
+  await page.addInitScript(() => {
+    const w = window as unknown as Record<string, unknown>;
+    const spoken: string[] = [];
+    w.__spoken = spoken;
+    w.__silent = 0;
+    class FakeUtterance {
+      text: string;
+      voice: unknown = null;
+      lang = '';
+      rate = 1;
+      pitch = 1;
+      volume = 1;
+      constructor(text: string) {
+        this.text = text;
+      }
+    }
+    const synth = {
+      getVoices: () => [
+        { name: 'Fred', lang: 'en-US', localService: true },
+        { name: 'Samantha', lang: 'en-US', localService: true },
+      ],
+      speak: (u: FakeUtterance) => {
+        if (u.volume > 0) spoken.push(`${(u.voice as { name: string } | null)?.name}: ${u.text}`);
+        else w.__silent = (w.__silent as number) + 1;
+      },
+      cancel: () => {},
+      resume: () => {},
+      speaking: false,
+      pending: false,
+      paused: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    };
+    Object.defineProperty(window, 'speechSynthesis', { value: synth, configurable: true });
+    Object.defineProperty(window, 'SpeechSynthesisUtterance', {
+      value: FakeUtterance,
+      configurable: true,
+    });
+  });
+  await mockLLM(page);
+  const toolReply = {
+    choices: [
+      {
+        finish_reason: 'tool_calls',
+        message: {
+          role: 'assistant',
+          content: null,
+          tool_calls: [
+            {
+              id: 'call_1',
+              type: 'function',
+              function: {
+                name: 'respond_to_user',
+                arguments: JSON.stringify({
+                  character_expression: { content, emotion: 'happy' },
+                  user_interaction: { suggested_replies: replies },
+                }),
+              },
+            },
+          ],
+        },
+      },
+    ],
+  };
+  const plain = (text: string) => ({
+    choices: [{ message: { role: 'assistant', content: text }, finish_reason: 'stop' }],
+  });
+  // After the tool result comes back, end the turn (or echo the reply, as some models do).
+  const done = plain(mode === 'tool-then-echo' ? content : '');
+  const fulfill = (route: import('@playwright/test').Route) => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204 });
+    const body = JSON.parse(route.request().postData() ?? '{}') as {
+      messages?: Array<{ role: string }>;
+    };
+    const afterTool = body.messages?.at(-1)?.role === 'tool';
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(mode === 'plain' ? plain(content) : afterTool ? done : toolReply),
+    });
+  };
+  await page.unroute('**/api/llm-proxy');
+  await page.unroute('http://llm.test/**');
+  await page.route('**/api/llm-proxy', fulfill);
+  await page.route('http://llm.test/**', fulfill);
+}
+
+test.describe('Chat panel – user name placeholders', () => {
+  test('replaces [name] in replies and hides placeholder suggestions', async ({ page }) => {
+    await mockCharacterReply(page, "(grins) I don't take 'just [name]' for an answer.", [
+      "It's [name]. And yours?",
+      'Why does it matter?',
+    ]);
+    await page.goto('/');
+    await page.locator('[data-testid="chat-input"]').fill('Hello');
+    await page.locator('[data-testid="send-btn"]').click();
+
+    const messages = page.locator('[data-testid="chat-messages"]');
+    await expect(messages).toContainText("I don't take 'just you' for an answer.");
+    await expect(messages).not.toContainText('[name]');
+    const suggestions = page.locator('[data-testid="suggested-reply"]');
+    await expect(suggestions).toHaveCount(1);
+    await expect(suggestions.first()).toHaveText('Why does it matter?');
+  });
+});
+
+test.describe('Chat panel – voice', () => {
+  test('voice toggle reads replies aloud with a female voice, and mutes', async ({ page }) => {
+    await mockCharacterReply(page, '(smiles) Welcome aboard, traveler!', ['Thanks!']);
+    await page.goto('/');
+    const toggle = page.locator('[data-testid="tts-toggle"]');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+
+    await page.locator('[data-testid="chat-input"]').fill('Hi');
+    await page.locator('[data-testid="send-btn"]').click();
+    await expect(page.locator('[data-testid="chat-messages"]')).toContainText('Welcome aboard');
+    await expect
+      .poll(() => page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken))
+      .toEqual(['Samantha: Voice on.', 'Samantha: Welcome aboard, traveler!']);
+
+    // Preference survives a reload; the first tap of the new page load unlocks speech (Safari)
+    await page.reload();
+    await expect(page.locator('[data-testid="tts-toggle"]')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    const silent = () => page.evaluate(() => (window as unknown as { __silent: number }).__silent);
+    expect(await silent()).toBe(0);
+    await page.locator('[data-testid="chat-input"]').click();
+    expect(await silent()).toBe(1);
+    await page.locator('[data-testid="chat-input"]').click();
+    expect(await silent()).toBe(1);
+
+    // Muting stops further speech
+    await page.locator('[data-testid="tts-toggle"]').click();
+    await expect(page.locator('[data-testid="tts-toggle"]')).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    await page.locator('[data-testid="chat-input"]').fill('Again');
+    await page.locator('[data-testid="send-btn"]').click();
+    await expect(page.locator('[data-testid="chat-message"]').last()).toContainText('Welcome');
+    expect(
+      await page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken),
+    ).toEqual([]);
+  });
+});
+
+test.describe('Chat panel – replies without the respond_to_user tool', () => {
+  const spoken = (page: Page) =>
+    page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken);
+
+  test('a plain-text reply is shown, cleaned and spoken', async ({ page }) => {
+    await mockCharacterReply(page, "(leans in) The name's Aoi. And you, [name]?", [], 'plain');
+    await page.goto('/');
+    await page.locator('[data-testid="tts-toggle"]').click();
+    await page.locator('[data-testid="chat-input"]').fill('Who are you');
+    await page.locator('[data-testid="send-btn"]').click();
+
+    const last = page.locator('[data-testid="chat-message"]').last();
+    await expect(last).toContainText("The name's Aoi. And you, you?");
+    await expect
+      .poll(() => spoken(page))
+      .toEqual(['Samantha: Voice on.', "Samantha: The name's Aoi. And you, you?"]);
+  });
+
+  test('a plain-text echo after respond_to_user is not shown or spoken twice', async ({ page }) => {
+    await mockCharacterReply(page, 'René... Nice ring to it.', ['Thanks'], 'tool-then-echo');
+    await page.goto('/');
+    await page.locator('[data-testid="tts-toggle"]').click();
+    await page.locator('[data-testid="chat-input"]').fill('René');
+    await page.locator('[data-testid="send-btn"]').click();
+
+    await expect(page.locator('[data-testid="suggested-reply"]')).toHaveText(['Thanks']);
+    await expect(
+      page.locator('[data-testid="chat-message"]').filter({ hasText: 'Nice ring to it' }),
+    ).toHaveCount(1);
+    expect(await spoken(page)).toEqual([
+      'Samantha: Voice on.',
+      'Samantha: René... Nice ring to it.',
+    ]);
+  });
+});
+
+test.describe('Image generation – Pollinations (free, no key)', () => {
+  const llm = {
+    provider: 'openai',
+    apiKey: 'test-key',
+    baseUrl: 'http://llm.test/v1',
+    model: 'test-model',
+  };
+  const pollinations = {
+    provider: 'pollinations',
+    apiKey: '',
+    baseUrl: 'https://image.pollinations.ai',
+    model: 'flux',
+  };
+  // 1x1 transparent PNG
+  const PNG = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+    'base64',
+  );
+
+  test('can be chosen in Settings without an API key', async ({ page }) => {
+    await mockLLM(page);
+    const saved: unknown[] = [];
+    await page.route('**/api/llm-config', (route) => {
+      if (route.request().method() === 'POST') saved.push(route.request().postDataJSON());
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ llm }),
+      });
+    });
+    await page.goto('/');
+    await page.locator('[data-testid="settings-btn"]').click();
+    const modal = page.locator('[data-testid="settings-modal"]');
+    await modal.locator('[data-testid="image-provider"]').selectOption('pollinations');
+    await modal.locator('button', { hasText: 'Save' }).click();
+    await expect(modal).not.toBeVisible();
+
+    await expect.poll(() => saved.length).toBeGreaterThan(0);
+    expect(saved.at(-1)).toMatchObject({ imageGen: pollinations });
+  });
+
+  test('the character generates an image and it is shown in chat', async ({ page }) => {
+    await mockLLM(page);
+    await page.route('**/api/llm-config', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ llm, imageGen: pollinations }),
+      }),
+    );
+    const imageRequests: string[] = [];
+    await page.route('https://image.pollinations.ai/**', (route) => {
+      imageRequests.push(route.request().url());
+      return route.fulfill({ status: 200, contentType: 'image/png', body: PNG });
+    });
+
+    // LLM: offers generate_image, calls it, then replies, then ends the turn.
+    let toolsOffered: string[] = [];
+    const toolCall = (name: string, args: unknown) => ({
+      choices: [
+        {
+          finish_reason: 'tool_calls',
+          message: {
+            role: 'assistant',
+            content: null,
+            tool_calls: [
+              {
+                id: `call_${name}`,
+                type: 'function',
+                function: { name, arguments: JSON.stringify(args) },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    const fulfill = (route: import('@playwright/test').Route) => {
+      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204 });
+      const body = route.request().postDataJSON() as {
+        messages: Array<{ role: string; tool_call_id?: string }>;
+        tools?: Array<{ function: { name: string } }>;
+      };
+      toolsOffered = (body.tools ?? []).map((t) => t.function.name);
+      const last = body.messages.at(-1);
+      const reply =
+        last?.role !== 'tool'
+          ? toolCall('generate_image', { prompt: 'a starship at dawn' })
+          : last.tool_call_id === 'call_generate_image'
+            ? toolCall('respond_to_user', {
+                character_expression: { content: 'Here is our ship.', emotion: 'happy' },
+                user_interaction: { suggested_replies: ['Beautiful'] },
+              })
+            : { choices: [{ message: { role: 'assistant', content: '' }, finish_reason: 'stop' }] };
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(reply),
+      });
+    };
+    await page.unroute('**/api/llm-proxy');
+    await page.unroute('http://llm.test/**');
+    await page.route('**/api/llm-proxy', fulfill);
+    await page.route('http://llm.test/**', fulfill);
+
+    await page.goto('/');
+    await page.locator('[data-testid="chat-input"]').fill('Show me the ship');
+    await page.locator('[data-testid="send-btn"]').click();
+
+    const image = page.locator('[data-testid="generated-image"]').last();
+    await expect(image).toBeVisible();
+    await expect(image).toHaveAttribute('src', /^data:image\/png;base64,/);
+    await expect(page.locator('[data-testid="chat-messages"]')).toContainText('Here is our ship.');
+    expect(toolsOffered).toContain('generate_image');
+    expect(imageRequests).toHaveLength(1);
+    expect(imageRequests[0]).toContain('/prompt/a%20starship%20at%20dawn?');
   });
 });

@@ -340,8 +340,21 @@ const mockManager = {
   getUserInfo: (): Promise<UserInfoResponse> =>
     Promise.resolve({ user_id: 'local', nickname: 'Local User' }),
 
-  getCharacterInfo: (): Promise<CharacterInfoResponse> =>
-    Promise.resolve({ character_id: 'assistant', name: 'Assistant' }),
+  /** The character currently active in the chat (Aoi by default). */
+  getCharacterInfo: async (): Promise<CharacterInfoResponse> => {
+    try {
+      // Dynamic import avoids a circular dependency with characterManager
+      const cm = await import('./characterManager');
+      const collection =
+        cm.loadCharacterCollectionSync() ??
+        (await cm.loadCharacterCollection()) ??
+        cm.DEFAULT_COLLECTION;
+      const character = cm.getActiveCharacter(collection);
+      return { character_id: character.id, name: character.character_name };
+    } catch {
+      return { character_id: 'assistant', name: 'Assistant' };
+    }
+  },
 
   getSystemSettings: (): Promise<SystemSettingsResponse> =>
     Promise.resolve({

@@ -212,3 +212,22 @@ describe('dispatchAgentAction – event-driven listener wait', () => {
     expect(result).toBe('success');
   });
 });
+
+describe('getCharacterInfo', () => {
+  it('returns the active chat character', async () => {
+    localStorage.setItem(
+      'openroom_characters',
+      JSON.stringify({
+        activeId: 'c2',
+        items: {
+          c1: { id: 'c1', character_name: 'One' },
+          c2: { id: 'c2', character_name: 'Luna' },
+        },
+      }),
+    );
+    const { initVibeApp } = await import('../vibeContainerMock');
+    const manager = initVibeApp();
+    expect(await manager.getCharacterInfo()).toEqual({ character_id: 'c2', name: 'Luna' });
+    localStorage.clear();
+  });
+});

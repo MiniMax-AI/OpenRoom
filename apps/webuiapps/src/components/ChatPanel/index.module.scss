@@ -267,6 +267,10 @@
     border-color: rgba(250, 234, 95, 0.4);
   }
 
+  &[readonly] {
+    opacity: 0.6;
+  }
+
   &::placeholder {
     color: rgba(255, 255, 255, 0.35);
   }
@@ -451,4 +455,186 @@
   font-size: 11px;
   color: rgba(250, 234, 95, 0.7);
   margin-top: 4px;
+}
+
+/* ====================================================================
+   Mobile: Visual-novel layout — avatar as backdrop, chat overlays it
+   ==================================================================== */
+@media (max-width: 768px) {
+  .panel {
+    width: 100vw;
+    height: 100vh;
+    /* Track the visible viewport so the on-screen keyboard can't cover the input/bubbles */
+    height: 100dvh;
+    right: 0;
+    top: 0;
+    border-left: none;
+    flex-direction: column;
+    position: fixed;
+  }
+
+  /* Avatar fills the entire panel as a background layer */
+  .avatarSide {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    border-right: none;
+    min-width: unset;
+  }
+
+  /* Chat column overlays the avatar */
+  .chatSide {
+    position: relative;
+    z-index: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: transparent;
+  }
+
+  /* Header: semi-transparent bar at top */
+  .header {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(12px);
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .characterName {
+    font-size: 13px;
+  }
+
+  .headerActions {
+    gap: 4px;
+  }
+
+  /* Messages: pushed to bottom half, gradient fade at top */
+  .messages {
+    flex: 1;
+    padding: 8px 12px;
+    /* Top portion is transparent (shows avatar), bottom has dark gradient for readability */
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      transparent 30%,
+      rgba(0, 0, 0, 0.3) 50%,
+      rgba(0, 0, 0, 0.7) 70%,
+      rgba(0, 0, 0, 0.85) 100%
+    );
+    /* Scroll to bottom by default */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+
+  .message {
+    font-size: 14px;
+    padding: 8px 12px;
+    max-width: 85%;
+    /* Slightly transparent bubbles so avatar peeks through */
+    backdrop-filter: blur(4px);
+  }
+
+  .user {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .assistant {
+    background: rgba(40, 42, 42, 0.85);
+  }
+
+  .emptyState {
+    font-size: 14px;
+    padding: 16px;
+  }
+
+  /* Suggested replies */
+  .suggestedReplies {
+    padding: 4px 12px 6px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+  }
+
+  .suggestedReply {
+    font-size: 13px;
+    padding: 8px 14px;
+  }
+
+  /* Input area: dark, solid background at bottom */
+  .inputArea {
+    padding: 8px 12px;
+    /* Leave room for the Shell's fixed bottom control bar (~48px tall, 8px from bottom) */
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .input {
+    font-size: 16px; /* prevents iOS zoom on focus */
+    padding: 10px 14px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .sendBtn {
+    padding: 10px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+  }
+
+  /* Settings modal — already mostly responsive, just tweak */
+  .settingsModal {
+    max-width: 95vw;
+    max-height: 90vh;
+    padding: 16px;
+    margin: 8px;
+  }
+
+  .loading {
+    font-size: 14px;
+    background: rgba(40, 42, 42, 0.85);
+    border-radius: 12px;
+    padding: 8px 12px;
+    align-self: flex-start;
+    max-width: 85%;
+  }
+}
+
+/* ====================================================================
+   Mobile Landscape: Chaturbate/Twitch-style — video left, chat right
+   ==================================================================== */
+@media (max-width: 768px) and (orientation: landscape) {
+  .panel {
+    flex-direction: row;
+  }
+
+  .avatarSide {
+    position: relative;
+    inset: unset;
+    width: 55%;
+    height: 100%;
+  }
+
+  .chatSide {
+    width: 45%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+  }
+
+  .messages {
+    background: transparent;
+  }
+
+  .header {
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  .inputArea {
+    /* Shell bottom bar is ~40px tall, 4px from bottom in landscape */
+    padding-bottom: calc(50px + env(safe-area-inset-bottom, 0px));
+  }
 }
