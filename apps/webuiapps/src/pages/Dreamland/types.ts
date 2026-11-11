@@ -33,6 +33,11 @@ export interface Dreamspace {
   expression: Expression;
   /** Short whisper text shown above the avatar; empty string hides it */
   caption: string;
+  /**
+   * Paint a background automatically when this dream opens without one.
+   * Set to false when the user chooses the painted sky.
+   */
+  autoBackground: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -50,8 +55,24 @@ export type DreamspacePatch = Partial<
     | 'ambientSound'
     | 'expression'
     | 'caption'
+    | 'autoBackground'
   >
 >;
+
+/** Where the companion's 3D model file lives. */
+export type AvatarModelStorage = 'server' | 'browser';
+
+/** The user's uploaded 3D (VRM) companion model. One per app, not per dream. */
+export interface AvatarModelInfo {
+  /** Original file name, for display */
+  fileName: string;
+  /** Bytes */
+  size: number;
+  /** Upload time; also busts the browser cache of the model URL */
+  updatedAt: number;
+  /** 'server': /avatar/companion.vrm in app storage; 'browser': this browser only (IndexedDB) */
+  storage: AvatarModelStorage;
+}
 
 /** Contents of /state.json */
 export interface DreamlandPersistedState {
@@ -59,10 +80,16 @@ export interface DreamlandPersistedState {
   soundEnabled: boolean;
   /** 0..1 */
   volume: number;
+  /** The 3D companion model, or null to use the built-in dream sprite */
+  avatarModel: AvatarModelInfo | null;
+  /** Scene follows device tilt (phones/tablets) */
+  motionEnabled: boolean;
 }
 
 export const DEFAULT_PERSISTED_STATE: DreamlandPersistedState = {
   activeDreamspaceId: null,
   soundEnabled: false,
   volume: 0.6,
+  avatarModel: null,
+  motionEnabled: false,
 };

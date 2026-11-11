@@ -1,7 +1,8 @@
 import { vi } from 'vitest';
 import type { FileNode, FileOperations } from '@/lib';
-import type { Dreamspace } from '../types';
-import type { AudioPort, ControllerDeps } from '../store/controller';
+import type { AvatarModelInfo, Dreamspace } from '../types';
+import type { AudioPort, ControllerDeps, MotionPort } from '../store/controller';
+import type { AvatarModelStore } from '../services/avatarModelStore';
 import { DreamlandController } from '../store/controller';
 import { createDreamspaceRepository } from '../repositories/dreamspaceRepository';
 import { createStateRepository } from '../repositories/stateRepository';
@@ -55,6 +56,8 @@ export function makeDream(overrides: Partial<Dreamspace> = {}): Dreamspace {
     ambientSound: 'wind',
     expression: 'happy',
     caption: '',
+    // Off by default so tests opt in to automatic painting
+    autoBackground: false,
     createdAt: 1000,
     updatedAt: 1000,
     ...overrides,
@@ -85,6 +88,31 @@ export function fakeGenerator(url = '/api/session-data?path=x.jpg') {
   };
 }
 
+export function fakeModelStore(storage: AvatarModelInfo['storage'] = 'server') {
+  const store = {
+    save: vi.fn(async (file: { name: string; size: number }) => ({
+      fileName: file.name,
+      size: file.size,
+      updatedAt: 777,
+      storage,
+    })),
+    resolveUrl: vi.fn(
+      async (info: AvatarModelInfo): Promise<string | null> => `model://${info.fileName}`,
+    ),
+    remove: vi.fn(async () => undefined),
+    release: vi.fn(),
+  };
+  return store as typeof store & AvatarModelStore;
+}
+
+export function fakeMotion(needsPermission = false, granted = true) {
+  const motion = {
+    needsPermission: vi.fn(() => needsPermission),
+    request: vi.fn(async () => granted),
+  };
+  return motion as typeof motion & MotionPort;
+}
+
 export function setupController(
   files: Record<string, unknown> = {},
   overrides: Partial<ControllerDeps> = {},
@@ -93,6 +121,8 @@ export function setupController(
   const audio = fakeAudio();
   const generator = fakeGenerator();
   const report = vi.fn();
+  const avatarModels = fakeModelStore();
+  const motion = fakeMotion();
   let clock = 5000;
   let ids = 0;
   const deps: ControllerDeps = {
@@ -100,6 +130,8 @@ export function setupController(
     state: createStateRepository(api),
     generator,
     audio,
+    avatarModels,
+    motion,
     report,
     t: (key, options) => (options ? `${key} ${JSON.stringify(options)}` : key),
     seeds: [],
@@ -110,7 +142,16 @@ export function setupController(
     ...overrides,
   };
   const controller = new DreamlandController(deps);
-  return { controller, api, audio, generator, report, deps };
+  return {
+    controller,
+    api,
+    audio,
+    generator,
+    report,
+    deps,
+    avatarModels: deps.avatarModels as ReturnType<typeof fakeModelStore>,
+    motion: deps.motion as ReturnType<typeof fakeMotion>,
+  };
 }
 
 export const dreamFile = (d: Dreamspace) => ({ [`/dreamspaces/${d.id}.json`]: d });

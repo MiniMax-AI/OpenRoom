@@ -4,6 +4,7 @@ import {
   idFromPath,
   isWeather,
   isTimeOfDay,
+  normalizeAvatarModel,
   normalizeBackgroundUrl,
   normalizeDreamspace,
   normalizePersistedState,
@@ -14,8 +15,10 @@ import {
 } from '../utils/normalize';
 import { buildImagePrompt, DEFAULT_SCENE, STYLE_SUFFIX } from '../utils/prompt';
 import {
+  bloomGradient,
   hexToRgba,
   isDark,
+  moodLightGradients,
   moodAccent,
   moodTint,
   skyBackground,
@@ -104,7 +107,33 @@ describe('normalize', () => {
       activeDreamspaceId: null,
       soundEnabled: true,
       volume: 0.6,
+      avatarModel: null,
+      motionEnabled: false,
     });
+  });
+
+  it('normalizes the 3D model and tilt preference', () => {
+    const model = { fileName: 'Aoi.vrm', size: 1234, updatedAt: 99, storage: 'server' };
+    expect(normalizePersistedState({ avatarModel: model, motionEnabled: true })).toEqual({
+      avatarModel: model,
+      motionEnabled: true,
+    });
+    expect(normalizePersistedState({ avatarModel: null })).toEqual({ avatarModel: null });
+    // malformed model info is ignored (field left untouched)
+    expect(normalizePersistedState({ avatarModel: { storage: 'cloud' } })).toEqual({});
+    expect(normalizePersistedState({ avatarModel: 'x', motionEnabled: 'yes' })).toEqual({});
+    expect(normalizeAvatarModel({ storage: 'browser', size: -1, updatedAt: 'x' })).toEqual({
+      fileName: 'companion.vrm',
+      size: 0,
+      updatedAt: 0,
+      storage: 'browser',
+    });
+  });
+
+  it('defaults autoBackground to true and keeps an explicit false', () => {
+    expect(normalizeDreamspace({ id: 'x' })?.autoBackground).toBe(true);
+    expect(normalizeDreamspace({ id: 'x', autoBackground: false })?.autoBackground).toBe(false);
+    expect(normalizeDreamspace({ id: 'x', autoBackground: 'no' })?.autoBackground).toBe(true);
   });
 
   it('sorts newest first with a stable tiebreak, and reads ids from paths', () => {
@@ -142,6 +171,14 @@ describe('buildImagePrompt', () => {
 });
 
 describe('sceneStyle', () => {
+  it('builds bloom and mood light gradients', () => {
+    expect(bloomGradient('night')).toMatch(/^radial-gradient\(circle at 78% 20%/);
+    expect(bloomGradient('day')).toContain('48%');
+    const [a, b] = moodLightGradients('warm');
+    expect(a).toContain('rgba(255, 179, 71, 0.55)');
+    expect(b).toContain('rgba(255, 179, 71, 0.35)');
+  });
+
   it('builds sky backgrounds for every time of day', () => {
     for (const time of ['dawn', 'day', 'dusk', 'night'] as const) {
       const bg = skyBackground(time);

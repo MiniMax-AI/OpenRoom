@@ -1,6 +1,11 @@
 /** Dreamland state and reducer (pure). */
 
-import type { Dreamspace, DreamspacePatch, DreamlandPersistedState } from '../types';
+import type {
+  AvatarModelInfo,
+  Dreamspace,
+  DreamspacePatch,
+  DreamlandPersistedState,
+} from '../types';
 import { sortDreams } from '../utils/normalize';
 
 export interface DreamlandState {
@@ -11,6 +16,10 @@ export interface DreamlandState {
   generatingIds: string[];
   soundEnabled: boolean;
   volume: number;
+  /** The uploaded 3D companion model, or null for the dream sprite */
+  avatarModel: AvatarModelInfo | null;
+  /** The user wants the scene to follow device tilt */
+  motionEnabled: boolean;
 }
 
 export const initialState: DreamlandState = {
@@ -20,6 +29,8 @@ export const initialState: DreamlandState = {
   generatingIds: [],
   soundEnabled: false,
   volume: 0.6,
+  avatarModel: null,
+  motionEnabled: false,
 };
 
 export type DreamlandAction =
@@ -31,6 +42,8 @@ export type DreamlandAction =
   | { type: 'SET_GENERATING'; id: string; generating: boolean }
   | { type: 'SET_SOUND'; enabled: boolean }
   | { type: 'SET_VOLUME'; volume: number }
+  | { type: 'SET_AVATAR_MODEL'; model: AvatarModelInfo | null }
+  | { type: 'SET_MOTION'; enabled: boolean }
   | { type: 'APPLY_STATE'; fields: Partial<DreamlandPersistedState> };
 
 /** The active dream, falling back to the first one if the active id is gone. */
@@ -97,6 +110,10 @@ export function dreamlandReducer(state: DreamlandState, action: DreamlandAction)
       return { ...state, soundEnabled: action.enabled };
     case 'SET_VOLUME':
       return { ...state, volume: Math.min(1, Math.max(0, action.volume)) };
+    case 'SET_AVATAR_MODEL':
+      return { ...state, avatarModel: action.model };
+    case 'SET_MOTION':
+      return { ...state, motionEnabled: action.enabled };
     case 'APPLY_STATE': {
       const f = action.fields;
       const activeId =
@@ -109,6 +126,8 @@ export function dreamlandReducer(state: DreamlandState, action: DreamlandAction)
         activeId,
         soundEnabled: f.soundEnabled ?? state.soundEnabled,
         volume: f.volume ?? state.volume,
+        avatarModel: f.avatarModel !== undefined ? f.avatarModel : state.avatarModel,
+        motionEnabled: f.motionEnabled ?? state.motionEnabled,
       };
     }
     default:

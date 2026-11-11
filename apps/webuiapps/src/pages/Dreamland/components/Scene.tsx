@@ -1,7 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import type { Dreamspace } from '../types';
-import { isDark, moodTint, skyBackground, timeGrade } from '../utils/sceneStyle';
+import {
+  bloomGradient,
+  isDark,
+  moodAccent,
+  moodTint,
+  skyBackground,
+  timeGrade,
+} from '../utils/sceneStyle';
 import WeatherLayer from './WeatherLayer';
+import LightLayer from './LightLayer';
 import styles from './Scene.module.scss';
 
 interface Layer {
@@ -34,8 +42,13 @@ const PaintedSky: React.FC<{ time: Dreamspace['timeOfDay'] }> = ({ time }) => (
 );
 
 /**
- * Background (image or painted sky) with cross-fade between changes,
- * time-of-day grading, mood tint and weather particles.
+ * The dream scene, back to front, each depth moving with the viewer
+ * (--dl-px / --dl-py, set by useParallax):
+ * - back: picture (slow Ken Burns drift) or painted sky, time grade, bloom
+ * - middle: drifting mood light, ground shimmer
+ * - static: mood tint, vignette
+ * - front: weather particles
+ * The avatar sits in front of all of these (AvatarStage).
  */
 const Scene: React.FC<{ dream: Dreamspace | null; reducedMotion: boolean }> = ({
   dream,
@@ -43,6 +56,7 @@ const Scene: React.FC<{ dream: Dreamspace | null; reducedMotion: boolean }> = ({
 }) => {
   const time = dream?.timeOfDay ?? 'dusk';
   const url = dream?.backgroundUrl ?? null;
+  const mood = dream?.mood ?? 'serene';
   const [layers, setLayers] = useState<Layer[]>([{ key: 0, url, time }]);
 
   // Cross-fade: add the new layer on top, drop older ones after the fade
@@ -60,42 +74,63 @@ const Scene: React.FC<{ dream: Dreamspace | null; reducedMotion: boolean }> = ({
     return () => clearTimeout(timer);
   }, [layers]);
 
+  const still = reducedMotion ? styles.still : '';
+
   return (
     <div
-      className={styles.scene}
+      className={`${styles.scene} ${still}`}
+      style={{ '--dl-mood-accent': moodAccent(mood) } as React.CSSProperties}
       data-testid="dl-scene"
       data-time={time}
       data-weather={dream?.weather ?? 'clear'}
-      data-mood={dream?.mood ?? 'serene'}
+      data-mood={mood}
       data-has-image={url ? 'true' : 'false'}
     >
-      {layers.map((layer, i) => (
+      <div className={`${styles.depth} ${styles.depthBack}`} data-testid="dl-depth-back">
+        {layers.map((layer, i) => (
+          <div
+            key={layer.key}
+            className={`${styles.layer} ${i > 0 && !reducedMotion ? styles.fadeIn : ''}`}
+          >
+            {layer.url ? (
+              <img
+                className={`${styles.image} ${styles.kenBurns}`}
+                src={layer.url}
+                alt=""
+                draggable={false}
+                data-testid={i === layers.length - 1 ? 'dl-bg-image' : undefined}
+              />
+            ) : (
+              <PaintedSky time={layer.time} />
+            )}
+          </div>
+        ))}
+        {url && <div className={styles.grade} style={{ background: timeGrade(time) }} />}
         <div
-          key={layer.key}
-          className={`${styles.layer} ${i > 0 && !reducedMotion ? styles.fadeIn : ''}`}
-        >
-          {layer.url ? (
-            <img
-              className={styles.image}
-              src={layer.url}
-              alt=""
-              draggable={false}
-              data-testid={i === layers.length - 1 ? 'dl-bg-image' : undefined}
-            />
-          ) : (
-            <PaintedSky time={layer.time} />
-          )}
-        </div>
-      ))}
-      {url && <div className={styles.grade} style={{ background: timeGrade(time) }} />}
-      {dream && <div className={styles.tint} style={{ background: moodTint(dream.mood) }} />}
-      <div className={styles.vignette} />
-      {dream && (
-        <WeatherLayer
-          weather={dream.weather}
-          darkScene={isDark(time)}
-          reducedMotion={reducedMotion}
+          className={styles.bloom}
+          style={{ background: bloomGradient(time) }}
+          data-testid="dl-bloom"
         />
+      </div>
+
+      {dream && (
+        <div className={`${styles.depth} ${styles.depthMid}`}>
+          <LightLayer mood={mood} reducedMotion={reducedMotion} />
+          <div className={styles.shimmer} data-testid="dl-shimmer" />
+        </div>
+      )}
+
+      {dream && <div className={styles.tint} style={{ background: moodTint(mood) }} />}
+      <div className={styles.vignette} />
+
+      {dream && (
+        <div className={`${styles.depth} ${styles.depthFront}`}>
+          <WeatherLayer
+            weather={dream.weather}
+            darkScene={isDark(time)}
+            reducedMotion={reducedMotion}
+          />
+        </div>
       )}
     </div>
   );

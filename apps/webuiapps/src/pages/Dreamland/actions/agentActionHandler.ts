@@ -83,12 +83,12 @@ export function createAgentActionHandler(controller: DreamlandController): Agent
           );
           await controller.saveNow(id);
           if (p.regenerate?.trim().toLowerCase() === 'false') return 'success';
-          return controller.regenerate(id, true);
+          return controller.regenerate(id, 'agent');
         }
         case ActionTypes.REGENERATE_BACKGROUND: {
           const id = await resolveTarget(p.dreamspaceId);
           if (!id) return notFound(p.dreamspaceId);
-          return controller.regenerate(id, true);
+          return controller.regenerate(id, 'agent');
         }
         case ActionTypes.SET_WEATHER:
           return enumOperation(

@@ -98,6 +98,25 @@ describe('dreamlandReducer', () => {
     ).toBeNull();
   });
 
+  it('sets the 3D model and tilt preference, also from APPLY_STATE', () => {
+    const model = { fileName: 'a.vrm', size: 1, updatedAt: 2, storage: 'server' as const };
+    let state = dreamlandReducer(initialState, { type: 'SET_AVATAR_MODEL', model });
+    expect(state.avatarModel).toBe(model);
+    state = dreamlandReducer(state, { type: 'SET_MOTION', enabled: true });
+    expect(state.motionEnabled).toBe(true);
+    // missing fields are kept
+    expect(dreamlandReducer(state, { type: 'APPLY_STATE', fields: {} })).toMatchObject({
+      avatarModel: model,
+      motionEnabled: true,
+    });
+    expect(
+      dreamlandReducer(state, {
+        type: 'APPLY_STATE',
+        fields: { avatarModel: null, motionEnabled: false },
+      }),
+    ).toMatchObject({ avatarModel: null, motionEnabled: false });
+  });
+
   it('ignores unknown actions', () => {
     expect(dreamlandReducer(initialState, { type: 'NOPE' } as never)).toBe(initialState);
   });

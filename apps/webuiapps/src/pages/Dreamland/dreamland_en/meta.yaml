@@ -1,34 +1,39 @@
 app_id: 15
 app_name: dreamland
 app_display_name: Dreamland
-version: "1.0.0"
+version: '1.1.0'
 description: >
-  Dreamland is a shared dream scene the user and you (the companion) build together. It shows one active
-  "dreamspace" full-screen: a background image (or a painted sky when there is none), time of day, weather
-  particles, a mood color wash, an ambient soundscape, and YOUR avatar standing in the scene with an expression.
-  Dreams are stored one JSON file per dream in dreamspaces/; preferences and the active dream in state.json.
-  Prefer the Operation actions below (SET_SCENE, SET_WEATHER, ...): they change the active dream directly and
-  persist it, and SET_SCENE paints a new background with the user's configured image generation.
-  Use SET_EXPRESSION to show how you feel and SET_CAPTION to whisper a short line above your avatar.
-  To create a whole new dream, write /dreamspaces/{id}.json (schema in guide.md) and then send CREATE_DREAMSPACE.
-  Every operation accepts an optional dreamspaceId; without it the active dream is changed.
-  Enum values: timeOfDay dawn|day|dusk|night; weather clear|rain|snow|fog|fireflies|stars|petals;
-  mood serene|mystical|warm|melancholic|energetic; sound none|rain|wind|ocean|night|drone;
-  expression happy|shy|peaceful|depressing|angry.
-  This file only defines actions dispatched from the Agent to the frontend. User edits are reported by the frontend.
+  Dreamland is a shared dream scene the user and you (the companion) build together. It shows one
+  active "dreamspace" full-screen: a background image (or a painted sky when there is none), time of
+  day, weather particles, a mood color wash, an ambient soundscape, and YOUR avatar standing in the
+  scene with an expression. Dreams are stored one JSON file per dream in dreamspaces/; preferences
+  and the active dream in state.json. Prefer the Operation actions below (SET_SCENE, SET_WEATHER,
+  ...): they change the active dream directly and persist it, and SET_SCENE paints a new background
+  with the user's configured image generation. A dream without a picture is also painted
+  automatically when it opens. The user can give you a 3D body: they upload a VRM model in the app
+  (reported as SET_AVATAR_MODEL, removed as CLEAR_AVATAR_MODEL); your expression, gaze and mouth
+  (while your voice speaks) then move it. Use SET_EXPRESSION to show how you feel and SET_CAPTION to
+  whisper a short line above your avatar. To create a whole new dream, write /dreamspaces/{id}.json
+  (schema in guide.md) and then send CREATE_DREAMSPACE. Every operation accepts an optional
+  dreamspaceId; without it the active dream is changed. Enum values: timeOfDay dawn|day|dusk|night;
+  weather clear|rain|snow|fog|fireflies|stars|petals; mood
+  serene|mystical|warm|melancholic|energetic; sound none|rain|wind|ocean|night|drone; expression
+  happy|shy|peaceful|depressing|angry. This file only defines actions dispatched from the Agent to
+  the frontend. User edits are reported by the frontend.
 displayDesc: >
-  Build a dream world together with your companion: paint a scene, set the time of day, weather, mood and
-  ambient sound, and watch your companion react inside it. Save as many dreams as you like.
+  Build a dream world together with your companion: paint a scene, set the time of day, weather,
+  mood and ambient sound, and watch your companion react inside it. Save as many dreams as you like.
 
 actions:
   - type: SET_SCENE
     name: Set Scene
     description: >
-      Change the environment description of a dream (e.g. "floating islands with waterfalls above the clouds")
-      and paint a new background image from it. Painting takes 5-20 seconds; the result string reports success
-      or why it failed (e.g. image generation not configured). Write the prompt as a vivid, self-contained
-      description of the place only; the app adds time of day, weather, mood and the art style itself, and
-      draws your avatar on top, so do not describe people.
+      Change the environment description of a dream (e.g. "floating islands with waterfalls above
+      the clouds") and paint a new background image from it. The action returns as soon as painting
+      starts (or with the reason it can't, e.g. image generation not configured); the picture
+      appears 10-30 seconds later. Write the prompt as a vivid, self-contained description of the
+      place only; the app adds time of day, weather, mood and the art style itself, and draws your
+      avatar on top, so do not describe people.
     params:
       - name: prompt
         type: string
@@ -36,7 +41,8 @@ actions:
         required: true
       - name: regenerate
         type: string
-        description: '"false" to only change the text without painting a new background. Default "true".'
+        description:
+          '"false" to only change the text without painting a new background. Default "true".'
         required: false
       - name: dreamspaceId
         type: string
@@ -46,7 +52,8 @@ actions:
   - type: REGENERATE_BACKGROUND
     name: Regenerate Background
     description: >
-      Paint a new background for a dream from its current scene description, time of day, weather and mood.
+      Paint a new background for a dream from its current scene description, time of day, weather
+      and mood. Returns as soon as painting starts; the picture appears 10-30 seconds later.
     params:
       - name: dreamspaceId
         type: string
@@ -95,7 +102,8 @@ actions:
   - type: SET_AMBIENT_SOUND
     name: Set Ambient Sound
     description: >
-      Change the ambient soundscape of a dream. Sound only plays when the user has switched sound on.
+      Change the ambient soundscape of a dream. Sound only plays when the user has switched sound
+      on.
     params:
       - name: sound
         type: string
@@ -122,7 +130,8 @@ actions:
   - type: SET_CAPTION
     name: Set Caption
     description: >
-      Show a short whispered line in a bubble above your avatar (max 140 characters). Send an empty text to hide it.
+      Show a short whispered line in a bubble above your avatar (max 140 characters). Send an empty
+      text to hide it.
     params:
       - name: text
         type: string
@@ -145,8 +154,8 @@ actions:
   - type: CREATE_DREAMSPACE
     name: Create Dream
     description: >
-      Send after writing a new dream file /dreamspaces/{id}.json (see guide.md). The app reads it, adds it to the
-      library and switches to it. Use SET_SCENE afterwards to paint its background.
+      Send after writing a new dream file /dreamspaces/{id}.json (see guide.md). The app reads it,
+      adds it to the library and switches to it. Use SET_SCENE afterwards to paint its background.
     params:
       - name: filePath
         type: string
@@ -156,8 +165,8 @@ actions:
   - type: UPDATE_DREAMSPACE
     name: Update Dream
     description: >
-      Send after rewriting an existing dream file. The app re-reads it and updates the scene. Use this to set
-      backgroundUrl to an image you generated with generate_image.
+      Send after rewriting an existing dream file. The app re-reads it and updates the scene. Use
+      this to set backgroundUrl to an image you generated with generate_image.
     params:
       - name: filePath
         type: string
@@ -185,5 +194,5 @@ actions:
   - type: SYNC_STATE
     name: Sync State
     description: >
-      Send after writing /state.json. The app re-reads it and applies activeDreamspaceId, soundEnabled and volume
-      (fields that are missing are left unchanged).
+      Send after writing /state.json. The app re-reads it and applies activeDreamspaceId,
+      soundEnabled and volume (fields that are missing are left unchanged).

@@ -85,4 +85,29 @@ export default {
   avatar: {
     label: 'Your companion',
   },
+  companion: {
+    title: '3D companion',
+    none: 'None yet: your companion is the dream sprite.',
+    upload: 'Upload VRM model',
+    replace: 'Replace model',
+    uploading: 'Saving model…',
+    remove: 'Remove 3D model',
+    hint: 'Make your own character for free in VRoid Studio and export it as a .vrm file (up to 60 MB).',
+    browserOnly: 'Saved in this browser only.',
+    failed: 'This model could not be shown, so the dream sprite is used.',
+    uploaded: 'Your 3D companion is here',
+    removed: '3D model removed',
+    loadFailed: 'Could not show your 3D companion: {{reason}}',
+    error: {
+      type: 'Choose a .vrm file',
+      size: 'The model is larger than 60 MB',
+      format: 'This file is not a VRM model',
+      storage: 'The model could not be saved',
+    },
+  },
+  motion: {
+    label: 'Tilt to look around',
+    hint: 'The dream moves with your phone.',
+    denied: 'Tilt access was not allowed. You can allow it in Safari settings.',
+  },
 };

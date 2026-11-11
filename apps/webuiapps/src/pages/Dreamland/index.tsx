@@ -14,6 +14,8 @@ import { createDreamspaceRepository } from './repositories/dreamspaceRepository'
 import { createStateRepository } from './repositories/stateRepository';
 import { backgroundGenerator } from './services/backgroundGenerator';
 import { AmbientAudio } from './services/ambientAudio';
+import { createAvatarModelStore } from './services/avatarModelStore';
+import { needsMotionPermission, requestMotionPermission } from './services/motionInput';
 import { DreamlandController } from './store/controller';
 import { DreamlandProvider } from './store/DreamlandContext';
 import DreamlandApp from './components/DreamlandApp';
@@ -36,6 +38,8 @@ const Dreamland: React.FC = () => {
       state: createStateRepository(api),
       generator: backgroundGenerator,
       audio,
+      avatarModels: createAvatarModelStore(),
+      motion: { needsPermission: needsMotionPermission, request: requestMotionPermission },
       report: (type, params) => reportAction(APP_ID, type, params),
       t: (key, options) => i18n.t(key, { ns: NAMESPACE, ...options }),
       seeds: seedDreams as unknown[],

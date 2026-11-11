@@ -131,6 +131,8 @@ function sessionDataPlugin(): Plugin {
                 svg: 'image/svg+xml',
                 mp4: 'video/mp4',
                 webm: 'video/webm',
+                vrm: 'model/gltf-binary',
+                glb: 'model/gltf-binary',
               };
               const mime = binaryMimes[ext];
               if (mime) {

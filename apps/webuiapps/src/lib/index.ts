@@ -93,3 +93,11 @@ export type {
 // ============ Image Generation (uses the user's configured provider) ============
 export { generateImageFile, isImageGenAvailable } from './imageGenTools';
 export type { StoredImage } from './imageGenTools';
+export {
+  appFileUrl,
+  deleteAppBinaryFile,
+  isServerFileStorageAvailable,
+  putAppBinaryFile,
+} from './binaryFiles';
+export { subscribeSpeech } from './tts';
+export type { SpeechEvent } from './tts';

@@ -87,6 +87,16 @@ function apiUrl(filePath: string, action?: string): string {
   return url;
 }
 
+/** Whether the dev-server file API is reachable (cached). */
+export function isApiAvailable(): Promise<boolean> {
+  return checkApi();
+}
+
+/** URL that serves a stored file (path relative to the session's apps/ directory). */
+export function fileUrl(filePath: string): string {
+  return apiUrl(filePath);
+}
+
 /** Build the full storage path (same logic as apiUrl but returns path only) */
 function storagePath(filePath: string): string {
   const session = getSessionPath();

@@ -6,6 +6,8 @@ export const APP_NAME = 'dreamland';
 export const DREAMSPACES_DIR = '/dreamspaces';
 export const IMAGES_DIR = '/images';
 export const STATE_FILE = '/state.json';
+/** The user's 3D companion model (binary) */
+export const AVATAR_FILE = '/avatar/companion.vrm';
 
 /** Operations: the app executes them directly on the active (or given) dream. */
 export const OperationActions = {
@@ -40,6 +42,8 @@ export const UserOnlyActions = {
   RENAME_DREAMSPACE: 'RENAME_DREAMSPACE',
   TOGGLE_SOUND: 'TOGGLE_SOUND',
   POKE_AVATAR: 'POKE_AVATAR',
+  SET_AVATAR_MODEL: 'SET_AVATAR_MODEL',
+  CLEAR_AVATAR_MODEL: 'CLEAR_AVATAR_MODEL',
 } as const;
 
 export const ActionTypes = {

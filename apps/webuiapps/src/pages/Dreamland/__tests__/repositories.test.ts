@@ -65,7 +65,13 @@ describe('stateRepository', () => {
     const result = await createStateRepository(api).refresh();
     expect(result).toEqual({
       existed: false,
-      state: { activeDreamspaceId: null, soundEnabled: false, volume: 0.6 },
+      state: {
+        activeDreamspaceId: null,
+        soundEnabled: false,
+        volume: 0.6,
+        avatarModel: null,
+        motionEnabled: false,
+      },
       fields: {},
     });
     expect(api.files.get('/state.json')).toEqual(result.state);
@@ -89,7 +95,13 @@ describe('stateRepository', () => {
 
   it('saves state', async () => {
     const api = memoryApi();
-    const state = { activeDreamspaceId: 'a', soundEnabled: true, volume: 0.3 };
+    const state = {
+      activeDreamspaceId: 'a',
+      soundEnabled: true,
+      volume: 0.3,
+      avatarModel: null,
+      motionEnabled: false,
+    };
     await createStateRepository(api).save(state);
     expect(api.files.get('/state.json')).toEqual(state);
   });

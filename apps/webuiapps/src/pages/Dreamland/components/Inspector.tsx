@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CloudFog,
@@ -14,6 +14,8 @@ import {
   Sun,
   Sunrise,
   Sunset,
+  Trash2,
+  Upload,
   Volume2,
   VolumeX,
   Wand2,
@@ -27,6 +29,7 @@ import {
   MOODS,
   TIMES_OF_DAY,
   WEATHERS,
+  type AvatarModelInfo,
   type Dreamspace,
   type DreamspacePatch,
 } from '../types';
@@ -73,8 +76,22 @@ interface InspectorProps {
   onEditText: (field: 'name' | 'scenePrompt', value: string) => void;
   onCommitText: (field: 'name' | 'scenePrompt') => void;
   onRegenerate: () => void;
+  onUsePaintedSky: () => void;
   onVolume: (volume: number) => void;
+  /** 3D companion model */
+  avatarModel: AvatarModelInfo | null;
+  avatarBusy: boolean;
+  avatarFailed: boolean;
+  onUploadModel: (file: File) => void;
+  onRemoveModel: () => void;
+  /** Tilt switch, shown on phones/tablets only */
+  tilt: { available: boolean; enabled: boolean; onToggle: (enabled: boolean) => void };
 }
+
+const formatSize = (bytes: number) =>
+  bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 
 const Inspector: React.FC<InspectorProps> = ({
   open,
@@ -87,9 +104,17 @@ const Inspector: React.FC<InspectorProps> = ({
   onEditText,
   onCommitText,
   onRegenerate,
+  onUsePaintedSky,
   onVolume,
+  avatarModel,
+  avatarBusy,
+  avatarFailed,
+  onUploadModel,
+  onRemoveModel,
+  tilt,
 }) => {
   const { t } = useTranslation('dreamland');
+  const fileInput = useRef<HTMLInputElement>(null);
 
   function options<T extends string>(
     values: readonly T[],
@@ -149,7 +174,7 @@ const Inspector: React.FC<InspectorProps> = ({
         {dream.backgroundUrl && !generating && (
           <button
             className={common.iconButton}
-            onClick={() => onChange({ backgroundUrl: null })}
+            onClick={onUsePaintedSky}
             aria-label={t('inspector.clearImage')}
             title={t('inspector.clearImage')}
             data-testid="dl-clear-image-btn"
@@ -213,6 +238,84 @@ const Inspector: React.FC<InspectorProps> = ({
         value={dream.expression}
         onChange={(expression) => onChange({ expression })}
       />
+
+      {tilt.available && (
+        <div className={styles.switchRow}>
+          <div>
+            <span className={common.fieldLabel}>{t('motion.label')}</span>
+            <p className={styles.hint}>{t('motion.hint')}</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={tilt.enabled}
+            aria-label={t('motion.label')}
+            className={`${styles.switch} ${tilt.enabled ? styles.switchOn : ''}`}
+            onClick={() => tilt.onToggle(!tilt.enabled)}
+            data-testid="dl-tilt-toggle"
+          >
+            <span className={styles.switchKnob} />
+          </button>
+        </div>
+      )}
+
+      <section className={styles.companion} data-testid="dl-companion">
+        <span className={common.fieldLabel}>{t('companion.title')}</span>
+        <p className={styles.companionStatus} data-testid="dl-companion-status">
+          {avatarModel
+            ? `${avatarModel.fileName} · ${formatSize(avatarModel.size)}`
+            : t('companion.none')}
+        </p>
+        {avatarModel?.storage === 'browser' && (
+          <p className={styles.hint}>{t('companion.browserOnly')}</p>
+        )}
+        {avatarModel && avatarFailed && (
+          <p className={styles.hint} data-testid="dl-companion-failed">
+            {t('companion.failed')}
+          </p>
+        )}
+        <div className={styles.generateRow}>
+          <button
+            type="button"
+            className={common.primaryButton}
+            onClick={() => fileInput.current?.click()}
+            disabled={avatarBusy}
+            data-testid="dl-model-upload-btn"
+          >
+            {avatarBusy ? <Loader2 size={16} className={styles.spin} /> : <Upload size={16} />}
+            {avatarBusy
+              ? t('companion.uploading')
+              : avatarModel
+                ? t('companion.replace')
+                : t('companion.upload')}
+          </button>
+          {avatarModel && !avatarBusy && (
+            <button
+              type="button"
+              className={common.iconButton}
+              onClick={onRemoveModel}
+              aria-label={t('companion.remove')}
+              title={t('companion.remove')}
+              data-testid="dl-model-remove-btn"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+        </div>
+        <input
+          ref={fileInput}
+          type="file"
+          // No accept filter: iOS greys out .vrm files it doesn't know; the app checks the file itself
+          className={styles.hiddenInput}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (file) onUploadModel(file);
+          }}
+          data-testid="dl-model-input"
+        />
+        <p className={styles.hint}>{t('companion.hint')}</p>
+      </section>
     </Drawer>
   );
 };

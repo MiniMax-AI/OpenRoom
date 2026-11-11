@@ -13,6 +13,8 @@ import {
   primeSpeech,
   isSpeechPrimed,
   resetSpeechPrimed,
+  subscribeSpeech,
+  type SpeechEvent,
 } from '../tts';
 import { logger } from '../logger';
 
@@ -28,6 +30,8 @@ class FakeUtterance {
   pitch = 1;
   volume = 1;
   onend: (() => void) | null = null;
+  onstart: (() => void) | null = null;
+  onboundary: ((e: { name?: string }) => void) | null = null;
   onerror: ((e: { error: string }) => void) | null = null;
   constructor(text: string) {
     this.text = text;
@@ -264,6 +268,54 @@ describe('speech (supported browser)', () => {
     expect(u.voice?.name).toBe('Samantha');
     stopSpeaking();
     expect(synth.cancel).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('subscribeSpeech', () => {
+  afterEach(() => {
+    stopSpeaking();
+    uninstallSynth();
+  });
+
+  it('reports start, word boundaries and the end of all queued speech', async () => {
+    const synth = installSynth([voice('Samantha')]);
+    const events: SpeechEvent['type'][] = [];
+    const unsubscribe = subscribeSpeech((e) => events.push(e.type));
+    await speak('One. Two.');
+    await speak('Three. Four.');
+    const [a, b] = synth.speak.mock.calls.map((c) => c[0] as FakeUtterance);
+    a.onstart?.();
+    a.onboundary?.({ name: 'word' });
+    a.onboundary?.({ name: 'sentence' });
+    a.onboundary?.({});
+    a.onend?.();
+    // still one utterance queued: no end yet
+    expect(events).toEqual(['start', 'boundary', 'boundary']);
+    b.onerror?.({ error: 'interrupted' });
+    expect(events).toEqual(['start', 'boundary', 'boundary', 'end']);
+
+    unsubscribe();
+    await speak('Five.');
+    (synth.speak.mock.calls.at(-1)?.[0] as FakeUtterance).onstart?.();
+    expect(events).toHaveLength(4);
+  });
+
+  it('reports the end when speech is stopped, and survives a failing listener', async () => {
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+    installSynth([voice('Samantha')]);
+    const events: string[] = [];
+    const offBad = subscribeSpeech(() => {
+      throw new Error('boom');
+    });
+    const off = subscribeSpeech((e) => events.push(e.type));
+    await speak('Hello.');
+    stopSpeaking();
+    stopSpeaking(); // nothing speaking: no second end
+    expect(events).toEqual(['end']);
+    expect(warn).toHaveBeenCalledWith('TTS', 'speech listener failed:', expect.any(Error));
+    off();
+    offBad();
+    warn.mockRestore();
   });
 });
 

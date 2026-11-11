@@ -136,6 +136,33 @@ export function splitForSpeech(text: string, maxLen = 200): string[] {
   return chunks;
 }
 
+/** What the voice is doing, for lip movement in avatars. */
+export type SpeechEvent =
+  | { type: 'start' }
+  /** A word starts (browsers that support boundary events) */
+  | { type: 'boundary' }
+  | { type: 'end' };
+
+const speechListeners = new Set<(event: SpeechEvent) => void>();
+
+/** Listen to the character's voice: start, word boundaries, end. Returns an unsubscribe function. */
+export function subscribeSpeech(listener: (event: SpeechEvent) => void): () => void {
+  speechListeners.add(listener);
+  return () => {
+    speechListeners.delete(listener);
+  };
+}
+
+function emitSpeech(event: SpeechEvent): void {
+  speechListeners.forEach((listener) => {
+    try {
+      listener(event);
+    } catch (err) {
+      logger.warn('TTS', 'speech listener failed:', err);
+    }
+  });
+}
+
 /** Utterances in flight. Holding references stops Chrome from garbage-collecting them mid-speech. */
 const activeUtterances = new Set<SpeechSynthesisUtterance>();
 
@@ -159,9 +186,17 @@ function queueSpeech(text: string, voices: SpeechSynthesisVoice[], lang: string)
     utterance.rate = 1;
     utterance.pitch = 1.1;
     activeUtterances.add(utterance);
-    utterance.onend = () => activeUtterances.delete(utterance);
-    utterance.onerror = (event: SpeechSynthesisErrorEvent) => {
+    utterance.onstart = () => emitSpeech({ type: 'start' });
+    utterance.onboundary = (event: SpeechSynthesisEvent) => {
+      if (event.name === 'word' || event.name === undefined) emitSpeech({ type: 'boundary' });
+    };
+    const finish = () => {
       activeUtterances.delete(utterance);
+      if (activeUtterances.size === 0) emitSpeech({ type: 'end' });
+    };
+    utterance.onend = finish;
+    utterance.onerror = (event: SpeechSynthesisErrorEvent) => {
+      finish();
       if (event.error !== 'interrupted' && event.error !== 'canceled') {
         logger.warn('TTS', 'speech failed:', event.error);
       }
@@ -181,7 +216,9 @@ export async function speak(content: string, lang = 'en'): Promise<void> {
 export function stopSpeaking(): void {
   if (!isTtsSupported()) return;
   window.speechSynthesis.cancel();
+  const wasSpeaking = activeUtterances.size > 0;
   activeUtterances.clear();
+  if (wasSpeaking) emitSpeech({ type: 'end' });
 }
 
 /**

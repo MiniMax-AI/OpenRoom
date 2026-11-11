@@ -10,8 +10,15 @@
 import type { DreamspaceRepository } from '../repositories/dreamspaceRepository';
 import type { StateRepository } from '../repositories/stateRepository';
 import type { BackgroundGenerator } from '../services/backgroundGenerator';
+import type { AvatarModelStore } from '../services/avatarModelStore';
 import { ActionTypes, type ActionType } from '../actions/constants';
-import type { AmbientSound, Dreamspace, DreamspacePatch, DreamlandPersistedState } from '../types';
+import type {
+  AmbientSound,
+  AvatarModelInfo,
+  Dreamspace,
+  DreamspacePatch,
+  DreamlandPersistedState,
+} from '../types';
 import { normalizeDreamspace, PROMPT_MAX, NAME_MAX } from '../utils/normalize';
 import {
   dreamlandReducer,
@@ -30,11 +37,23 @@ export interface AudioPort {
   setVolume(volume: number): void;
 }
 
+/** Device tilt permission (iOS asks from a user gesture). */
+export interface MotionPort {
+  needsPermission(): boolean;
+  /** Call synchronously inside a click/tap handler. */
+  request(): Promise<boolean>;
+}
+
+/** Who asked for a background: the user, the Agent, or the app itself. */
+export type PaintSource = 'user' | 'agent' | 'auto';
+
 export interface ControllerDeps {
   dreams: DreamspaceRepository;
   state: StateRepository;
   generator: BackgroundGenerator;
   audio: AudioPort;
+  avatarModels: AvatarModelStore;
+  motion: MotionPort;
   report: (type: ActionType, params: Record<string, string>) => void;
   t: (key: string, options?: Record<string, unknown>) => string;
   seeds: unknown[];
@@ -56,6 +75,14 @@ export interface DreamlandSnapshot extends DreamlandState {
   toast: Toast | null;
   imageGenAvailable: boolean;
   loadError: boolean;
+  /** URL the 3D renderer loads, or null (no model / not resolved yet) */
+  avatarModelUrl: string | null;
+  /** The 3D model could not be shown this visit; the dream sprite is used */
+  avatarModelFailed: boolean;
+  /** A model is being uploaded */
+  avatarBusy: boolean;
+  /** Tilt events are flowing (enabled and, on iOS, permitted this page load) */
+  tiltActive: boolean;
 }
 
 /** Map an edited field to the action reported to the Agent. */
@@ -80,6 +107,13 @@ export class DreamlandController {
   private stateTimer: ReturnType<typeof setTimeout> | null = null;
   private persisted: DreamlandPersistedState | null = null;
   private toastSeq = 0;
+  private avatarModelUrl: string | null = null;
+  private avatarModelFailed = false;
+  private avatarBusy = false;
+  private motionGranted = false;
+  /** Dreams auto-painted (or tried) this visit: never retried automatically */
+  private autoPaintTried = new Set<string>();
+  private inflight = new Map<string, Promise<string>>();
   private readonly now: () => number;
   private readonly newId: () => string;
   private readonly saveDelayMs: number;
@@ -111,6 +145,11 @@ export class DreamlandController {
       toast: this.toast,
       imageGenAvailable: this.imageGenAvailable,
       loadError: this.loadError,
+      avatarModelUrl: this.avatarModelUrl,
+      avatarModelFailed: this.avatarModelFailed,
+      avatarBusy: this.avatarBusy,
+      tiltActive:
+        this.state.motionEnabled && (this.motionGranted || !this.deps.motion.needsPermission()),
     };
   }
 
@@ -118,6 +157,7 @@ export class DreamlandController {
     this.snapshot = this.buildSnapshot();
     this.syncAudio();
     this.schedulePersistState();
+    this.considerAutoPaint();
     this.listeners.forEach((l) => l());
   }
 
@@ -145,6 +185,8 @@ export class DreamlandController {
         activeId: loaded.state.activeDreamspaceId,
         soundEnabled: loaded.state.soundEnabled,
         volume: loaded.state.volume,
+        avatarModel: loaded.state.avatarModel,
+        motionEnabled: loaded.state.motionEnabled,
       };
       this.deps.audio.setVolume(loaded.state.volume);
 
@@ -164,6 +206,7 @@ export class DreamlandController {
       this.dispatch({ type: 'LOADED', dreams: [], done: true });
       this.showToast(this.deps.t('toast.loadFailed'), true);
     }
+    await this.loadAvatarUrl();
     await this.checkImageGen();
   }
 
@@ -191,6 +234,7 @@ export class DreamlandController {
   dispose(): void {
     void this.flush();
     if (this.toastTimer) clearTimeout(this.toastTimer);
+    this.deps.avatarModels.release();
     this.listeners.clear();
   }
 
@@ -220,6 +264,8 @@ export class DreamlandController {
       activeDreamspaceId: this.snapshot.active?.id ?? null,
       soundEnabled: this.state.soundEnabled,
       volume: this.state.volume,
+      avatarModel: this.state.avatarModel,
+      motionEnabled: this.state.motionEnabled,
     };
   }
 
@@ -227,13 +273,7 @@ export class DreamlandController {
     if (!this.persisted || this.state.loading) return;
     const next = this.currentPersisted();
     const prev = this.persisted;
-    if (
-      next.activeDreamspaceId === prev.activeDreamspaceId &&
-      next.soundEnabled === prev.soundEnabled &&
-      next.volume === prev.volume
-    ) {
-      return;
-    }
+    if (JSON.stringify(next) === JSON.stringify(prev)) return;
     if (this.stateTimer) clearTimeout(this.stateTimer);
     this.stateTimer = setTimeout(() => {
       this.stateTimer = null;
@@ -362,6 +402,7 @@ export class DreamlandController {
       ambientSound: 'wind',
       expression: 'happy',
       caption: '',
+      autoBackground: true,
       createdAt: now,
       updatedAt: now,
     }) as Dreamspace;
@@ -385,24 +426,55 @@ export class DreamlandController {
     this.showToast(this.deps.t('toast.deleted'));
   }
 
-  /** Paint a new background. Resolves with an action result string. */
-  async regenerate(id: string, fromAgent = false): Promise<string> {
-    if (this.state.generatingIds.includes(id))
-      return 'error: background is already being generated';
+  /**
+   * Paint a new background. Resolves with an action result string.
+   * - user: reported to the Agent, waits for the picture.
+   * - agent: starts painting and answers right away (painting takes 10-30 s,
+   *   longer than the Agent waits for an action).
+   * - auto: a dream opened without a picture; quiet on success.
+   * A paint requested while one is running waits for it, then paints again.
+   */
+  async regenerate(id: string, source: PaintSource = 'user'): Promise<string> {
     if (!this.find(id)) return 'error: dreamspace not found';
+    const previous = this.inflight.get(id);
+    if (previous && source === 'auto') return previous;
     if (!(await this.checkImageGen())) {
-      this.showToast(this.deps.t('inspector.imageGenUnavailable'), true);
+      if (source !== 'auto') this.showToast(this.deps.t('inspector.imageGenUnavailable'), true);
       return 'error: image generation is not configured in Settings';
     }
+    if (source === 'user')
+      this.deps.report(ActionTypes.REGENERATE_BACKGROUND, { dreamspaceId: id });
+    const run = (async () => {
+      if (previous) await previous.catch(() => undefined);
+      return this.paint(id, source);
+    })();
+    this.inflight.set(id, run);
+    void run.finally(() => {
+      if (this.inflight.get(id) === run) this.inflight.delete(id);
+    });
+    if (source === 'agent') {
+      return 'success: painting the new background now; it appears in about 10-30 seconds';
+    }
+    return run;
+  }
+
+  /** Resolves when no background is being painted (for tests and shutdown). */
+  async idle(): Promise<void> {
+    while (this.inflight.size > 0) {
+      await Promise.allSettled([...this.inflight.values()]);
+    }
+  }
+
+  private async paint(id: string, source: PaintSource): Promise<string> {
+    if (!this.find(id)) return 'error: dreamspace was deleted';
     this.dispatch({ type: 'SET_GENERATING', id, generating: true });
-    if (!fromAgent) this.deps.report(ActionTypes.REGENERATE_BACKGROUND, { dreamspaceId: id });
     try {
       const latest = this.find(id) as Dreamspace;
       const url = await this.deps.generator.generate(latest);
       if (!this.find(id)) return 'error: dreamspace was deleted while generating';
       this.dispatch({ type: 'PATCH', id, patch: { backgroundUrl: url }, now: this.now() });
       await this.saveNow(id);
-      this.showToast(this.deps.t('toast.generated'));
+      if (source !== 'auto') this.showToast(this.deps.t('toast.generated'));
       return 'success';
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
@@ -411,6 +483,116 @@ export class DreamlandController {
     } finally {
       this.dispatch({ type: 'SET_GENERATING', id, generating: false });
     }
+  }
+
+  /** Paint the active dream once when it has no picture and image generation works. */
+  private considerAutoPaint(): void {
+    const active = this.snapshot.active;
+    if (this.state.loading || !this.imageGenAvailable || !active) return;
+    if (active.backgroundUrl || !active.autoBackground) return;
+    if (this.autoPaintTried.has(active.id) || this.inflight.has(active.id)) return;
+    this.autoPaintTried.add(active.id);
+    const id = active.id;
+    // Outside the current emit, so listeners see a consistent snapshot first
+    setTimeout(() => void this.regenerate(id, 'auto'), 0);
+  }
+
+  /** The user picks the painted sky: drop the picture and stop auto-painting this dream. */
+  usePaintedSky(id: string): void {
+    this.updateDream(id, { backgroundUrl: null, autoBackground: false });
+  }
+
+  // ---------------------------------------------------------------- 3D companion
+
+  private async loadAvatarUrl(): Promise<void> {
+    this.deps.avatarModels.release();
+    const model = this.state.avatarModel;
+    this.avatarModelFailed = false;
+    this.avatarModelUrl = null;
+    if (model) {
+      try {
+        this.avatarModelUrl = await this.deps.avatarModels.resolveUrl(model);
+      } catch {
+        this.avatarModelUrl = null;
+      }
+      this.avatarModelFailed = this.avatarModelUrl === null;
+    }
+    this.emit();
+  }
+
+  /** Store an uploaded .vrm and show it. Resolves false (with a toast) when it fails. */
+  async uploadAvatarModel(file: Parameters<AvatarModelStore['save']>[0]): Promise<boolean> {
+    if (this.avatarBusy) return false;
+    this.avatarBusy = true;
+    this.emit();
+    const old = this.state.avatarModel;
+    try {
+      const info = await this.deps.avatarModels.save(file);
+      if (old && old.storage !== info.storage) {
+        await this.deps.avatarModels.remove(old).catch(() => undefined);
+      }
+      this.dispatch({ type: 'SET_AVATAR_MODEL', model: info });
+      await this.persistState();
+      await this.loadAvatarUrl();
+      this.deps.report(ActionTypes.SET_AVATAR_MODEL, { fileName: info.fileName });
+      this.showToast(this.deps.t('companion.uploaded'));
+      return true;
+    } catch (err) {
+      const code = (err as { code?: string }).code ?? 'storage';
+      this.showToast(this.deps.t(`companion.error.${code}`), true);
+      return false;
+    } finally {
+      this.avatarBusy = false;
+      this.emit();
+    }
+  }
+
+  async removeAvatarModel(): Promise<void> {
+    const model = this.state.avatarModel;
+    if (!model) return;
+    await this.deps.avatarModels.remove(model).catch(() => undefined);
+    this.dispatch({ type: 'SET_AVATAR_MODEL', model: null });
+    await this.persistState();
+    await this.loadAvatarUrl();
+    this.deps.report(ActionTypes.CLEAR_AVATAR_MODEL, {});
+    this.showToast(this.deps.t('companion.removed'));
+  }
+
+  /** The 3D renderer could not show the model: fall back to the dream sprite. */
+  avatarFailed(reason: string): void {
+    if (this.avatarModelFailed) return;
+    this.avatarModelFailed = true;
+    this.showToast(this.deps.t('companion.loadFailed', { reason }), true);
+  }
+
+  // ---------------------------------------------------------------- tilt
+
+  /** Switch tilt on/off. Must be called from a click handler (iOS permission). */
+  async setMotionEnabled(enabled: boolean): Promise<boolean> {
+    if (!enabled) {
+      this.dispatch({ type: 'SET_MOTION', enabled: false });
+      return false;
+    }
+    const granted = await this.deps.motion.request();
+    this.motionGranted = granted;
+    if (!granted) {
+      this.showToast(this.deps.t('motion.denied'), true);
+      this.emit();
+      return false;
+    }
+    this.dispatch({ type: 'SET_MOTION', enabled: true });
+    return true;
+  }
+
+  /** From any tap: on iOS, tilt switched on in an earlier visit needs permission again. */
+  unlockMotionIfNeeded(): void {
+    if (!this.state.motionEnabled || this.motionGranted || !this.deps.motion.needsPermission()) {
+      return;
+    }
+    void this.deps.motion.request().then((granted) => {
+      this.motionGranted = granted;
+      this.emit();
+    });
   }
 
   pokeAvatar(): void {
@@ -450,8 +632,15 @@ export class DreamlandController {
 
   async syncState(): Promise<void> {
     const loaded = await this.deps.state.refresh();
+    const modelBefore = this.state.avatarModel;
     this.persisted = { ...this.currentPersisted(), ...loaded.fields };
     if (loaded.fields.volume !== undefined) this.deps.audio.setVolume(loaded.fields.volume);
     this.dispatch({ type: 'APPLY_STATE', fields: loaded.fields });
+    if (!sameModel(modelBefore, this.state.avatarModel)) await this.loadAvatarUrl();
   }
+}
+
+function sameModel(a: AvatarModelInfo | null, b: AvatarModelInfo | null): boolean {
+  if (!a || !b) return a === b;
+  return a.storage === b.storage && a.updatedAt === b.updatedAt;
 }

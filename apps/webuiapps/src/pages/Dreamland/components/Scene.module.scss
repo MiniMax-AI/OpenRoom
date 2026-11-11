@@ -8,6 +8,114 @@
 .layer {
   position: absolute;
   inset: 0;
+  overflow: hidden;
+}
+
+// ---------------------------------------------------------------- depth (parallax)
+
+// --dl-px / --dl-py (-1..1) come from useParallax on the app root.
+// Back layers move against the viewer, front layers with it.
+// Each depth is scaled up a little so its edges never show.
+.depth {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.depthBack {
+  transform: translate3d(calc(var(--dl-px, 0) * -16px), calc(var(--dl-py, 0) * -10px), 0)
+    scale(1.06);
+}
+
+.depthMid {
+  transform: translate3d(calc(var(--dl-px, 0) * -6px), calc(var(--dl-py, 0) * -4px), 0) scale(1.03);
+}
+
+.depthFront {
+  transform: translate3d(calc(var(--dl-px, 0) * 18px), calc(var(--dl-py, 0) * 12px), 0) scale(1.06);
+}
+
+// Slow drift over the picture, so a still image feels alive
+.kenBurns {
+  transform-origin: 60% 45%;
+  animation: kenBurns 46s ease-in-out infinite alternate;
+}
+
+.bloom {
+  position: absolute;
+  inset: 0;
+  mix-blend-mode: screen;
+  opacity: 0.55;
+  transition: background 900ms ease;
+  animation: bloomPulse 9s ease-in-out infinite;
+}
+
+.moodLight {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  mix-blend-mode: screen;
+  opacity: 0.5;
+}
+
+.poolA,
+.poolB {
+  position: absolute;
+  border-radius: 50%;
+  transition: background 900ms ease;
+}
+
+.poolA {
+  width: 75%;
+  aspect-ratio: 1;
+  left: -15%;
+  top: 5%;
+  animation: driftA 34s ease-in-out infinite alternate;
+}
+
+.poolB {
+  width: 60%;
+  aspect-ratio: 1;
+  right: -12%;
+  top: 30%;
+  animation: driftB 41s ease-in-out infinite alternate;
+}
+
+// Glinting light on the ground, fading upward
+.shimmer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 24%;
+  background:
+    repeating-linear-gradient(
+      100deg,
+      rgba(255, 255, 255, 0) 0px,
+      rgba(255, 255, 255, 0) 46px,
+      rgba(255, 255, 255, 0.1) 60px,
+      rgba(255, 255, 255, 0) 74px
+    ),
+    linear-gradient(to top, var(--dl-mood-accent, transparent), transparent);
+  background-size:
+    480px 100%,
+    100% 100%;
+  opacity: 0.22;
+  mix-blend-mode: screen;
+  -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 100%);
+  mask-image: linear-gradient(to top, #000 0%, transparent 100%);
+  animation: shimmer 18s linear infinite;
+}
+
+.still {
+  .kenBurns,
+  .bloom,
+  .poolA,
+  .poolB,
+  .shimmer {
+    animation: none !important;
+  }
 }
 
 .fadeIn {
@@ -62,6 +170,69 @@
 .weather {
   width: 100%;
   height: 100%;
+}
+
+@keyframes kenBurns {
+  from {
+    transform: scale(1.02) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.14) translate3d(-2.5%, -1.5%, 0);
+  }
+}
+
+@keyframes bloomPulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.65;
+  }
+}
+
+@keyframes driftA {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(25%, 12%, 0) scale(1.15);
+  }
+}
+
+@keyframes driftB {
+  from {
+    transform: translate3d(0, 0, 0) scale(1.1);
+  }
+  to {
+    transform: translate3d(-30%, -15%, 0) scale(0.95);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position:
+      0 0,
+      0 0;
+  }
+  to {
+    background-position:
+      480px 0,
+      0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kenBurns,
+  .bloom,
+  .poolA,
+  .poolB,
+  .shimmer {
+    animation: none !important;
+  }
+  .depth {
+    transform: none;
+  }
 }
 
 @keyframes sceneFade {

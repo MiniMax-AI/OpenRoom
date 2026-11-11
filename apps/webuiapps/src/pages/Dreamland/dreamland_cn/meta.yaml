@@ -1,20 +1,20 @@
 app_id: 15
 app_name: dreamland
 app_display_name: 梦境
-version: "1.0.0"
+version: '1.1.0'
 description: >
   梦境是用户和你（伙伴）一起搭建的共享梦境场景。全屏显示一个当前“梦境”：背景图（没有时显示绘制的天空）、时间、
-  天气粒子、氛围色调、环境音，以及站在场景中、带有表情的你的形象。
-  每个梦境存为 dreamspaces/ 下的一个 JSON 文件；偏好设置和当前梦境存于 state.json。
-  优先使用下面的操作类 Action（SET_SCENE、SET_WEATHER 等）：它们直接修改当前梦境并保存，
-  SET_SCENE 会用用户配置的图像生成绘制新背景。
-  用 SET_EXPRESSION 表达你的心情，用 SET_CAPTION 在形象上方轻声说一句话。
-  要创建全新的梦境，写入 /dreamspaces/{id}.json（结构见 guide.md），然后发送 CREATE_DREAMSPACE。
-  每个操作都可选 dreamspaceId；不传则修改当前梦境。
-  枚举值：timeOfDay dawn|day|dusk|night；weather clear|rain|snow|fog|fireflies|stars|petals；
-  mood serene|mystical|warm|melancholic|energetic；sound none|rain|wind|ocean|night|drone；
-  expression happy|shy|peaceful|depressing|angry。
-  本文件仅定义 Agent 发往前端的 Action。用户的编辑由前端上报。
+  天气粒子、氛围色调、环境音，以及站在场景中、带有表情的你的形象。 每个梦境存为 dreamspaces/
+  下的一个 JSON 文件；偏好设置和当前梦境存于 state.json。 优先使用下面的操作类
+  Action（SET_SCENE、SET_WEATHER 等）：它们直接修改当前梦境并保存， SET_SCENE
+  会用用户配置的图像生成绘制新背景。没有图片的梦境在打开时也会自动绘制。 用户可以给你一个 3D
+  身体：在应用中上传 VRM 模型（上报为 SET_AVATAR_MODEL，移除时为 CLEAR_AVATAR_MODEL）；
+  之后你的表情、视线和说话时的嘴型会驱动它。 用 SET_EXPRESSION 表达你的心情，用 SET_CAPTION
+  在形象上方轻声说一句话。 要创建全新的梦境，写入 /dreamspaces/{id}.json（结构见
+  guide.md），然后发送 CREATE_DREAMSPACE。 每个操作都可选 dreamspaceId；不传则修改当前梦境。
+  枚举值：timeOfDay dawn|day|dusk|night；weather clear|rain|snow|fog|fireflies|stars|petals； mood
+  serene|mystical|warm|melancholic|energetic；sound none|rain|wind|ocean|night|drone； expression
+  happy|shy|peaceful|depressing|angry。 本文件仅定义 Agent 发往前端的 Action。用户的编辑由前端上报。
 displayDesc: >
   与你的伙伴一起搭建梦境世界：描绘场景，设置时间、天气、氛围和环境音，看伙伴在其中回应你。可以保存任意多个梦境。
 
@@ -22,8 +22,9 @@ actions:
   - type: SET_SCENE
     name: 设置场景
     description: >
-      修改梦境的环境描述（例如“云海之上有瀑布的浮空岛”），并据此绘制新背景图。绘制需要 5-20 秒；
-      返回结果会说明成功或失败原因（例如未配置图像生成）。提示词只需生动、完整地描述地点；
+      修改梦境的环境描述（例如“云海之上有瀑布的浮空岛”），并据此绘制新背景图。开始绘制后立即返回
+      （无法绘制时返回原因，例如未配置图像生成），图片会在 10-30
+      秒后出现。提示词只需生动、完整地描述地点；
       应用会自动加上时间、天气、氛围和画风，并在上面绘制你的形象，所以不要描述人物。
     params:
       - name: prompt
@@ -42,7 +43,8 @@ actions:
   - type: REGENERATE_BACKGROUND
     name: 重新绘制背景
     description: >
-      根据梦境当前的场景描述、时间、天气和氛围绘制新背景。
+      根据梦境当前的场景描述、时间、天气和氛围绘制新背景。开始绘制后立即返回，图片会在 10-30
+      秒后出现。
     params:
       - name: dreamspaceId
         type: string
@@ -141,8 +143,8 @@ actions:
   - type: CREATE_DREAMSPACE
     name: 创建梦境
     description: >
-      写入新的梦境文件 /dreamspaces/{id}.json（见 guide.md）后发送。应用读取该文件，加入梦境列表并切换过去。
-      之后可用 SET_SCENE 绘制它的背景。
+      写入新的梦境文件 /dreamspaces/{id}.json（见
+      guide.md）后发送。应用读取该文件，加入梦境列表并切换过去。 之后可用 SET_SCENE 绘制它的背景。
     params:
       - name: filePath
         type: string
@@ -152,7 +154,8 @@ actions:
   - type: UPDATE_DREAMSPACE
     name: 更新梦境
     description: >
-      重写已有梦境文件后发送。应用重新读取并更新场景。可用于把 backgroundUrl 设为你用 generate_image 生成的图片。
+      重写已有梦境文件后发送。应用重新读取并更新场景。可用于把 backgroundUrl 设为你用 generate_image
+      生成的图片。
     params:
       - name: filePath
         type: string
@@ -180,4 +183,5 @@ actions:
   - type: SYNC_STATE
     name: 同步状态
     description: >
-      写入 /state.json 后发送。应用重新读取并应用 activeDreamspaceId、soundEnabled 和 volume（缺失的字段保持不变）。
+      写入 /state.json 后发送。应用重新读取并应用 activeDreamspaceId、soundEnabled 和
+      volume（缺失的字段保持不变）。

@@ -10,6 +10,7 @@
     "ambientSound": "wind",
     "expression": "happy",
     "caption": "",
+    "autoBackground": true,
     "createdAt": 1794268800000,
     "updatedAt": 1794268800001
   },
@@ -24,6 +25,7 @@
     "ambientSound": "night",
     "expression": "peaceful",
     "caption": "",
+    "autoBackground": true,
     "createdAt": 1794268800000,
     "updatedAt": 1794268800000
   },
@@ -38,6 +40,7 @@
     "ambientSound": "drone",
     "expression": "shy",
     "caption": "",
+    "autoBackground": true,
     "createdAt": 1794268800000,
     "updatedAt": 1794268799999
   }

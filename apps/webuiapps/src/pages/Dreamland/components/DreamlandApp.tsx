@@ -1,9 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Loader2 } from 'lucide-react';
 import { useVibeInfo } from '@/lib';
 import { useController, useDreamland } from '../store/DreamlandContext';
 import { AmbientAudio } from '../services/ambientAudio';
+import { isTiltSupported, isTouchDevice } from '../services/motionInput';
+import { useParallax } from '../hooks/useParallax';
 import type { Dreamspace } from '../types';
 import Scene from './Scene';
 import TopBar from './TopBar';
@@ -39,6 +41,9 @@ const DreamlandApp: React.FC = () => {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Dreamspace | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const viewer = useParallax(rootRef, { enabled: !reducedMotion, tilt: snap.tiltActive });
+  const [tiltAvailable] = useState(() => isTiltSupported() && isTouchDevice());
 
   const active = snap.active;
   const generating = !!active && snap.generatingIds.includes(active.id);
@@ -76,9 +81,13 @@ const DreamlandApp: React.FC = () => {
 
   return (
     <div
+      ref={rootRef}
       className={styles.app}
-      // Any tap may start audio that was switched on in an earlier visit (Safari rule)
-      onClickCapture={() => controller.unlockAudioIfNeeded()}
+      // Any tap may start audio or tilt that was switched on in an earlier visit (Safari rule)
+      onClickCapture={() => {
+        controller.unlockAudioIfNeeded();
+        controller.unlockMotionIfNeeded();
+      }}
       data-testid="dreamland"
     >
       <Scene dream={active} reducedMotion={reducedMotion} />
@@ -94,6 +103,10 @@ const DreamlandApp: React.FC = () => {
           label={t('avatar.label')}
           reducedMotion={reducedMotion}
           onPoke={() => controller.pokeAvatar()}
+          modelUrl={snap.avatarModelUrl}
+          modelFailed={snap.avatarModelFailed}
+          onModelError={(reason) => controller.avatarFailed(reason)}
+          viewer={viewer}
         />
       ) : (
         <div className={styles.center} data-testid="dl-empty">
@@ -137,7 +150,18 @@ const DreamlandApp: React.FC = () => {
           onEditText={(field, value) => controller.editText(active.id, field, value)}
           onCommitText={(field) => controller.commitText(active.id, field)}
           onRegenerate={() => void controller.regenerate(active.id)}
+          onUsePaintedSky={() => controller.usePaintedSky(active.id)}
           onVolume={(v) => controller.setVolume(v)}
+          avatarModel={snap.avatarModel}
+          avatarBusy={snap.avatarBusy}
+          avatarFailed={snap.avatarModelFailed}
+          onUploadModel={(file) => void controller.uploadAvatarModel(file)}
+          onRemoveModel={() => void controller.removeAvatarModel()}
+          tilt={{
+            available: tiltAvailable,
+            enabled: snap.motionEnabled,
+            onToggle: (enabled) => void controller.setMotionEnabled(enabled),
+          }}
         />
       )}
       <ConfirmDialog

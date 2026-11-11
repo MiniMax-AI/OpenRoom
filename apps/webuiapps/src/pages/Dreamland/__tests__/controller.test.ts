@@ -184,16 +184,20 @@ describe('DreamlandController user operations', () => {
     expect(controller.getSnapshot().toast?.message).toBe('toast.generated');
   });
 
-  it('refuses to regenerate twice at once, for unknown dreams, or without image generation', async () => {
+  it('waits for a running paint, then paints again; refuses unknown dreams or no image generation', async () => {
     const { controller, generator } = await ready();
     let release: (v: string) => void = () => {};
     generator.generate.mockImplementationOnce(() => new Promise<string>((r) => (release = r)));
     const first = controller.regenerate('a');
     await wait(0);
     expect(controller.getSnapshot().generatingIds).toEqual(['a']);
-    expect(await controller.regenerate('a')).toMatch(/already/);
+    const second = controller.regenerate('a');
+    await wait(0);
+    expect(generator.generate).toHaveBeenCalledTimes(1);
     release('https://x.test/new.jpg');
     expect(await first).toBe('success');
+    expect(await second).toBe('success');
+    expect(generator.generate).toHaveBeenCalledTimes(2);
 
     expect(await controller.regenerate('missing')).toBe('error: dreamspace not found');
 
@@ -202,20 +206,48 @@ describe('DreamlandController user operations', () => {
     expect(controller.getSnapshot().toast).toMatchObject({ error: true });
   });
 
+  it('answers the Agent right away and paints in the background', async () => {
+    const { controller, generator, report } = await ready();
+    let release: (v: string) => void = () => {};
+    generator.generate.mockImplementationOnce(() => new Promise<string>((r) => (release = r)));
+    expect(await controller.regenerate('a', 'agent')).toMatch(/^success: painting/);
+    expect(report).not.toHaveBeenCalledWith('REGENERATE_BACKGROUND', expect.anything());
+    await wait(0);
+    expect(controller.getSnapshot().generatingIds).toEqual(['a']);
+    release('https://x.test/agent.jpg');
+    await controller.idle();
+    expect(controller.getSnapshot().active?.backgroundUrl).toBe('https://x.test/agent.jpg');
+    expect(controller.getSnapshot().toast?.message).toBe('toast.generated');
+
+    generator.isAvailable.mockResolvedValueOnce(false);
+    expect(await controller.regenerate('a', 'agent')).toMatch(/not configured/);
+  });
+
   it('reports generation failures and dreams deleted while generating', async () => {
     const { controller, generator } = await ready();
     generator.generate.mockRejectedValueOnce(new Error('Pollinations error 500'));
-    expect(await controller.regenerate('a', true)).toBe('error: Pollinations error 500');
+    expect(await controller.regenerate('a')).toBe('error: Pollinations error 500');
     expect(controller.getSnapshot().toast?.message).toContain('Pollinations error 500');
 
     generator.generate.mockRejectedValueOnce('plain failure');
-    expect(await controller.regenerate('a', true)).toBe('error: plain failure');
+    expect(await controller.regenerate('a')).toBe('error: plain failure');
 
     generator.generate.mockImplementationOnce(async () => {
       await controller.deleteDream('b');
       return 'https://x.test/late.jpg';
     });
-    expect(await controller.regenerate('b', true)).toMatch(/deleted while generating/);
+    expect(await controller.regenerate('b')).toMatch(/deleted while generating/);
+
+    // Deleted before a queued paint starts
+    let release: (v: string) => void = () => {};
+    generator.generate.mockImplementationOnce(() => new Promise<string>((r) => (release = r)));
+    const first = controller.regenerate('a');
+    await wait(0);
+    const queued = controller.regenerate('a');
+    await controller.deleteDream('a');
+    release('https://x.test/x.jpg');
+    await first;
+    expect(await queued).toBe('error: dreamspace was deleted');
   });
 
   it('toggles sound (unlocking audio in the gesture) and sets volume', async () => {

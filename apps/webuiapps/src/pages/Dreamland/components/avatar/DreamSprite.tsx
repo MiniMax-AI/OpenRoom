@@ -98,7 +98,12 @@ const ARMS: Record<Face['arms'], [string, string]> = {
   down: ['rotate(8 62 168)', 'rotate(-8 138 168)'],
 };
 
-const DreamSprite: React.FC<AvatarRendererProps> = ({ expression, accent, reducedMotion }) => {
+const DreamSprite: React.FC<AvatarRendererProps> = ({
+  expression,
+  accent,
+  reducedMotion,
+  speaking = false,
+}) => {
   const uid = useId().replace(/:/g, '');
   const face = FACES[expression];
   const [leftArm, rightArm] = ARMS[face.arms];
@@ -172,7 +177,19 @@ const DreamSprite: React.FC<AvatarRendererProps> = ({ expression, accent, reduce
               <path d="M136 112 L132 118" />
             </g>
           )}
-          {face.mouth}
+          {speaking ? (
+            <ellipse
+              className={styles.talkMouth}
+              cx="100"
+              cy="121"
+              rx="7"
+              ry="6"
+              fill={INK}
+              data-testid="dl-talk-mouth"
+            />
+          ) : (
+            face.mouth
+          )}
         </g>
       </g>
     </svg>

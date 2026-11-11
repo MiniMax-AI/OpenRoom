@@ -2,7 +2,8 @@
   position: absolute;
   left: 50%;
   bottom: calc(var(--dl-space-lg) + var(--os-controls-inset, env(safe-area-inset-bottom, 0px)));
-  transform: translateX(-50%);
+  // Slightly in front of the scene's depth layers (parallax)
+  transform: translate3d(calc(-50% + var(--dl-px, 0) * 8px), calc(var(--dl-py, 0) * 5px), 0);
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -30,6 +31,66 @@
 
 .bounce {
   animation: bounce 600ms var(--dl-ease);
+}
+
+// The sprite floats above a soft reflection of itself
+.spriteButton {
+  -webkit-box-reflect: below -6px
+    linear-gradient(to bottom, rgba(0, 0, 0, 0) 68%, rgba(0, 0, 0, 0.22) 100%);
+}
+
+// ---------------------------------------------------------------- 3D companion
+
+// With a 3D model the companion stands at the bottom of the scene, framed
+// from the thighs up, slightly in front of the parallax layers.
+.stageModel {
+  bottom: 0;
+  width: min(96%, 640px);
+
+  .nameTag {
+    position: absolute;
+    bottom: calc(var(--dl-space-lg) + var(--os-controls-inset, env(safe-area-inset-bottom, 0px)));
+  }
+
+  .caption {
+    position: absolute;
+    top: 0;
+    transform: translateY(-110%);
+  }
+}
+
+.avatarButton {
+  position: relative;
+}
+
+.modelButton {
+  width: min(62cqh, 92cqw);
+  height: min(84cqh, 120cqw);
+}
+
+.vrmHost {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 600ms ease;
+  pointer-events: none;
+
+  &[data-vrm-state='ready'] {
+    opacity: 1;
+  }
+}
+
+.vrmCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+// Sprite mouth while the voice speaks
+.talkMouth {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: talk 0.26s ease-in-out infinite alternate;
 }
 
 .sprite {
@@ -194,6 +255,15 @@
   50% {
     transform: scale(0.82);
     opacity: 0.22;
+  }
+}
+
+@keyframes talk {
+  from {
+    transform: scaleY(0.25);
+  }
+  to {
+    transform: scaleY(1);
   }
 }
 

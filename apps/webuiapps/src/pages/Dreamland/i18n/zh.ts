@@ -78,4 +78,29 @@ export default {
   avatar: {
     label: '你的伙伴',
   },
+  companion: {
+    title: '3D 伙伴',
+    none: '暂无：你的伙伴是梦之精灵。',
+    upload: '上传 VRM 模型',
+    replace: '替换模型',
+    uploading: '正在保存模型…',
+    remove: '移除 3D 模型',
+    hint: '可以在 VRoid Studio 中免费制作自己的角色，并导出为 .vrm 文件（最大 60 MB）。',
+    browserOnly: '仅保存在此浏览器中。',
+    failed: '无法显示此模型，暂时使用梦之精灵。',
+    uploaded: '你的 3D 伙伴来了',
+    removed: '已移除 3D 模型',
+    loadFailed: '无法显示你的 3D 伙伴：{{reason}}',
+    error: {
+      type: '请选择 .vrm 文件',
+      size: '模型超过 60 MB',
+      format: '这不是 VRM 模型',
+      storage: '无法保存模型',
+    },
+  },
+  motion: {
+    label: '倾斜手机环顾四周',
+    hint: '梦境会随手机移动。',
+    denied: '未允许使用倾斜感应，可以在 Safari 设置中开启。',
+  },
 };

@@ -54,6 +54,24 @@ export function skyBackground(time: TimeOfDay): string {
   );
 }
 
+/**
+ * Soft bloom around the sun/moon, laid over pictures too (screen blend), so
+ * the light source glows. Wider and fainter than the painted sky's glow.
+ */
+export function bloomGradient(time: TimeOfDay): string {
+  const [x, y, glow, r] = LIGHT[time];
+  return `radial-gradient(circle at ${x}% ${y}%, ${glow} 0%, rgba(255, 255, 255, 0) ${Math.round(r * 2.2)}%)`;
+}
+
+/** Two drifting pools of mood-colored light. */
+export function moodLightGradients(mood: Mood): [string, string] {
+  const accent = MOOD[mood].accent;
+  return [
+    `radial-gradient(circle, ${hexToRgba(accent, 0.55)} 0%, ${hexToRgba(accent, 0)} 65%)`,
+    `radial-gradient(circle, ${hexToRgba(accent, 0.35)} 0%, ${hexToRgba(accent, 0)} 70%)`,
+  ];
+}
+
 export function timeGrade(time: TimeOfDay): string {
   return TIME_GRADE[time];
 }

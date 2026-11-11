@@ -1,4 +1,10 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
+import { buildTestVrm } from './fixtures/testVrm';
+
+// Headless Chromium has no GPU: use the software WebGL renderer for the 3D companion
+test.use({
+  launchOptions: { args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader'] },
+});
 
 /**
  * Dreamland e2e. Storage: the session-data API is stubbed as unavailable, so
@@ -165,7 +171,7 @@ test.describe('Dreamland', () => {
     await expect(title).toHaveText('Starlit Lake');
   });
 
-  test('paints a background with the configured image generation', async ({ page }) => {
+  test('paints pictures automatically and on request', async ({ page }) => {
     await setup(page, { imageGen: true });
     const prompts: string[] = [];
     await page.route('https://image.pollinations.ai/**', (route) => {
@@ -173,6 +179,14 @@ test.describe('Dreamland', () => {
       return route.fulfill({ status: 200, contentType: 'image/png', body: PNG });
     });
     const win = await openDreamland(page);
+    const scene = win.locator('[data-testid="dl-scene"]');
+
+    // The starter dream has no picture: it is painted once, by itself, quietly
+    await expect(scene).toHaveAttribute('data-has-image', 'true', { timeout: 10000 });
+    expect(prompts).toHaveLength(1);
+    expect(prompts[0]).toContain('no people');
+    await expect(win.locator('[data-testid="dl-bg-image"]')).toHaveClass(/kenBurns/);
+    await expect(win.locator('[data-testid="dl-toast"]')).toHaveCount(0);
 
     await win.locator('[data-testid="dl-edit-btn"]').click();
     await win
@@ -182,20 +196,147 @@ test.describe('Dreamland', () => {
     await expect(button).toBeEnabled();
     await button.click();
 
-    const scene = win.locator('[data-testid="dl-scene"]');
-    await expect(scene).toHaveAttribute('data-has-image', 'true', { timeout: 10000 });
+    await expect(win.locator('[data-testid="dl-toast"]')).toHaveText('New background painted', {
+      timeout: 10000,
+    });
     await expect(win.locator('[data-testid="dl-bg-image"]')).toHaveAttribute(
       'src',
       /^(data:image|\/api)/,
     );
-    await expect(win.locator('[data-testid="dl-toast"]')).toHaveText('New background painted');
-    expect(prompts).toHaveLength(1);
-    expect(prompts[0]).toContain('A crystal cave lit by glowing mushrooms, at dusk');
-    expect(prompts[0]).toContain('no people');
+    expect(prompts).toHaveLength(2);
+    expect(prompts[1]).toContain('A crystal cave lit by glowing mushrooms, at dusk');
 
-    // back to the painted sky
+    // Back to the painted sky: it stays that way, also after a reload
     await win.locator('[data-testid="dl-clear-image-btn"]').click();
     await expect(scene).toHaveAttribute('data-has-image', 'false');
+    await page.waitForTimeout(800);
+    await page.reload();
+    const win2 = await openDreamland(page);
+    await expect(win2.locator('[data-testid="dl-title"]')).toHaveText('Floating Isles');
+    await page.waitForTimeout(500);
+    await expect(win2.locator('[data-testid="dl-scene"]')).toHaveAttribute(
+      'data-has-image',
+      'false',
+    );
+    expect(prompts).toHaveLength(2);
+  });
+
+  test.describe('3D companion', () => {
+    test('a 3D companion can be uploaded, shown, kept and removed', async ({ page }) => {
+      await setup(page);
+      const win = await openDreamland(page);
+      const avatar = win.locator('[data-testid="dl-avatar"]');
+      await expect(avatar).toHaveAttribute('data-renderer', 'sprite');
+
+      await win.locator('[data-testid="dl-edit-btn"]').click();
+      const status = win.locator('[data-testid="dl-companion-status"]');
+      await expect(status).toContainText('dream sprite');
+
+      // Not a model: refused with a message
+      await win.locator('[data-testid="dl-model-input"]').setInputFiles({
+        name: 'notes.txt',
+        mimeType: 'text/plain',
+        buffer: Buffer.from('hello'),
+      });
+      await expect(win.locator('[data-testid="dl-toast"]')).toHaveText('Choose a .vrm file');
+      await win.locator('[data-testid="dl-model-input"]').setInputFiles({
+        name: 'fake.vrm',
+        mimeType: 'application/octet-stream',
+        buffer: Buffer.alloc(64, 1),
+      });
+      await expect(win.locator('[data-testid="dl-toast"]')).toHaveText(
+        'This file is not a VRM model',
+      );
+
+      const vrm = buildTestVrm();
+      await win.locator('[data-testid="dl-model-input"]').setInputFiles({
+        name: 'Companion.vrm',
+        mimeType: 'application/octet-stream',
+        buffer: vrm,
+      });
+      await expect(win.locator('[data-testid="dl-toast"]')).toHaveText('Your 3D companion is here');
+      await expect(status).toContainText('Companion.vrm');
+      await expect(win.locator('[data-testid="dl-vrm"]')).toHaveAttribute(
+        'data-vrm-state',
+        'ready',
+        {
+          timeout: 15000,
+        },
+      );
+      await expect(avatar).toHaveAttribute('data-renderer', 'vrm');
+      await win.locator('[data-testid="dl-inspector"] button[aria-label="Close"]').first().click();
+
+      // Expressions still change and the model keeps the name label
+      await expect(avatar).toHaveAttribute('aria-label', /Aoi/);
+
+      // Kept across reloads
+      await page.waitForTimeout(800);
+      await page.reload();
+      const win2 = await openDreamland(page);
+      await expect(win2.locator('[data-testid="dl-vrm"]')).toHaveAttribute(
+        'data-vrm-state',
+        'ready',
+        { timeout: 15000 },
+      );
+      await expect(win2.locator('[data-testid="dl-avatar"]')).toHaveAttribute(
+        'data-renderer',
+        'vrm',
+      );
+
+      await win2.locator('[data-testid="dl-edit-btn"]').click();
+      await win2.locator('[data-testid="dl-model-remove-btn"]').click();
+      await expect(win2.locator('[data-testid="dl-toast"]')).toHaveText('3D model removed');
+      await expect(win2.locator('[data-testid="dl-avatar"]')).toHaveAttribute(
+        'data-renderer',
+        'sprite',
+      );
+      await expect(win2.locator('[data-testid="dl-vrm"]')).toHaveCount(0);
+    });
+
+    test('a broken 3D model falls back to the dream sprite', async ({ page }) => {
+      await setup(page);
+      const win = await openDreamland(page);
+      await win.locator('[data-testid="dl-edit-btn"]').click();
+      // Valid header, broken content
+      const broken = Buffer.concat([Buffer.from('glTF'), Buffer.alloc(200, 7)]);
+      await win.locator('[data-testid="dl-model-input"]').setInputFiles({
+        name: 'broken.vrm',
+        mimeType: 'application/octet-stream',
+        buffer: broken,
+      });
+      await expect(win.locator('[data-testid="dl-companion-failed"]')).toBeVisible({
+        timeout: 15000,
+      });
+      await expect(win.locator('[data-testid="dl-toast"]')).toContainText(
+        'Could not show your 3D companion',
+      );
+      await expect(win.locator('[data-testid="dl-avatar"]')).toHaveAttribute(
+        'data-renderer',
+        'sprite',
+      );
+    });
+  });
+
+  test('the scene has depth that follows the mouse', async ({ page }) => {
+    await setup(page);
+    const win = await openDreamland(page);
+    const root = win.locator('[data-testid="dreamland"]');
+    await expect(win.locator('[data-testid="dl-bloom"]')).toBeVisible();
+    await expect(win.locator('[data-testid="dl-mood-light"]')).toBeAttached();
+    await expect(win.locator('[data-testid="dl-shimmer"]')).toBeAttached();
+
+    const box = await root.boundingBox();
+    if (!box) throw new Error('no app box');
+    const px = () => root.evaluate((el) => Number(el.style.getPropertyValue('--dl-px') || 0));
+    await page.mouse.move(box.x + box.width * 0.95, box.y + box.height * 0.5);
+    await expect.poll(px).toBeGreaterThan(0.5);
+    await page.mouse.move(box.x + box.width * 0.05, box.y + box.height * 0.5);
+    await expect.poll(px).toBeLessThan(-0.5);
+    // Back layers move against the pointer
+    const transform = await win
+      .locator('[data-testid="dl-depth-back"]')
+      .evaluate((el) => getComputedStyle(el).transform);
+    expect(transform).not.toBe('none');
   });
 
   test('the companion changes the dream through app actions', async ({ page }) => {
@@ -378,5 +519,37 @@ test.describe('Dreamland', () => {
           : -1;
       })
       .toBeLessThanOrEqual(1);
+  });
+
+  test('on a phone the scene can follow device tilt', async ({ browser }) => {
+    const context = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      hasTouch: true,
+      isMobile: true,
+    });
+    const page = await context.newPage();
+    await setup(page);
+    const win = await openDreamland(page, { mobile: true });
+    await win.locator('[data-testid="dl-edit-btn"]').click();
+    const toggle = win.locator('[data-testid="dl-tilt-toggle"]');
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+
+    const root = win.locator('[data-testid="dreamland"]');
+    const tilt = (beta: number, gamma: number) =>
+      page.evaluate(
+        ([b, g]) =>
+          window.dispatchEvent(
+            Object.assign(new Event('deviceorientation'), { beta: b, gamma: g, alpha: 0 }),
+          ),
+        [beta, gamma],
+      );
+    await tilt(40, 0); // resting position
+    await tilt(40, 15); // tilt to the right
+    await expect
+      .poll(() => root.evaluate((el) => Number(el.style.getPropertyValue('--dl-px') || 0)))
+      .toBeGreaterThan(0.3);
+    await context.close();
   });
 });

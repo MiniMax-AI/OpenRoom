@@ -12,6 +12,7 @@ import {
   TIMES_OF_DAY,
   WEATHERS,
   type AmbientSound,
+  type AvatarModelInfo,
   type Dreamspace,
   type DreamlandPersistedState,
   type Expression,
@@ -120,6 +121,7 @@ export function normalizeDreamspace(raw: unknown, fallbackId?: string): Dreamspa
     ambientSound: isAmbientSound(r.ambientSound) ? r.ambientSound : 'none',
     expression: isExpression(r.expression) ? r.expression : 'peaceful',
     caption: text(r.caption, CAPTION_MAX, ''),
+    autoBackground: typeof r.autoBackground === 'boolean' ? r.autoBackground : true,
     createdAt,
     updatedAt: typeof r.updatedAt === 'number' && r.updatedAt > 0 ? r.updatedAt : createdAt,
   };
@@ -146,7 +148,24 @@ export function normalizePersistedState(raw: unknown): Partial<DreamlandPersiste
   if (typeof r.volume === 'number' && Number.isFinite(r.volume)) {
     out.volume = Math.min(1, Math.max(0, r.volume));
   }
+  if (r.avatarModel === null) out.avatarModel = null;
+  else {
+    const model = normalizeAvatarModel(r.avatarModel);
+    if (model) out.avatarModel = model;
+  }
+  if (typeof r.motionEnabled === 'boolean') out.motionEnabled = r.motionEnabled;
   return out;
+}
+
+/** Validate stored 3D model info; anything malformed → null. */
+export function normalizeAvatarModel(raw: unknown): AvatarModelInfo | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const r = raw as Record<string, unknown>;
+  if (r.storage !== 'server' && r.storage !== 'browser') return null;
+  const fileName = text(r.fileName, NAME_MAX * 2, '') || 'companion.vrm';
+  const size = typeof r.size === 'number' && r.size > 0 ? r.size : 0;
+  const updatedAt = typeof r.updatedAt === 'number' && r.updatedAt > 0 ? r.updatedAt : 0;
+  return { fileName, size, updatedAt, storage: r.storage };
 }
 
 export function withStateDefaults(

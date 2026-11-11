@@ -70,7 +70,7 @@ describe('agent operations', () => {
   });
 
   it('sets the scene and paints a background unless regenerate=false', async () => {
-    const { run, api, generator } = await ready();
+    const { run, api, generator, controller } = await ready();
     expect(await run('SET_SCENE', {})).toBe('error: missing prompt');
     expect(await run('SET_SCENE', { prompt: 'A glass forest', regenerate: 'FALSE' })).toBe(
       'success',
@@ -78,7 +78,8 @@ describe('agent operations', () => {
     expect(saved(api, 'a').scenePrompt).toBe('A glass forest');
     expect(generator.generate).not.toHaveBeenCalled();
 
-    expect(await run('SET_SCENE', { prompt: 'A coral city' })).toBe('success');
+    expect(await run('SET_SCENE', { prompt: 'A coral city' })).toMatch(/^success: painting/);
+    await controller.idle();
     expect(generator.generate).toHaveBeenCalledWith(
       expect.objectContaining({ scenePrompt: 'A coral city' }),
     );
@@ -88,7 +89,7 @@ describe('agent operations', () => {
 
   it('regenerates backgrounds', async () => {
     const { run, generator } = await ready();
-    expect(await run('REGENERATE_BACKGROUND')).toBe('success');
+    expect(await run('REGENERATE_BACKGROUND')).toMatch(/^success: painting/);
     generator.isAvailable.mockResolvedValueOnce(false);
     expect(await run('REGENERATE_BACKGROUND', { dreamspaceId: 'b' })).toMatch(/not configured/);
     expect(await run('REGENERATE_BACKGROUND', { dreamspaceId: 'ghost' })).toMatch(/not found/);
