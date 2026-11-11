@@ -56,11 +56,7 @@
 }
 
 .vignette {
-  background: radial-gradient(
-    ellipse at 50% 45%,
-    rgba(0, 0, 0, 0) 55%,
-    rgba(0, 0, 0, 0.35) 100%
-  );
+  background: radial-gradient(ellipse at 50% 45%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.35) 100%);
 }
 
 .weather {

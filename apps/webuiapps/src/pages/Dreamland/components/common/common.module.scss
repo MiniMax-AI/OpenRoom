@@ -95,7 +95,9 @@
   background: transparent;
   color: var(--dl-text-2);
   cursor: pointer;
-  transition: background 150ms ease, color 150ms ease;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
 
   &:hover {
     background: var(--dl-chip-hover);
@@ -143,7 +145,10 @@
   color: var(--dl-text-2);
   font-size: 13px;
   cursor: pointer;
-  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+  transition:
+    background 150ms ease,
+    color 150ms ease,
+    border-color 150ms ease;
 
   &:hover {
     background: var(--dl-chip-hover);

@@ -86,7 +86,9 @@
   filter: drop-shadow(0 0 18px rgba(255, 63, 77, 0.55));
 
   .float {
-    animation: float 6s ease-in-out infinite, shake 2.6s ease-in-out infinite;
+    animation:
+      float 6s ease-in-out infinite,
+      shake 2.6s ease-in-out infinite;
   }
 }
 
